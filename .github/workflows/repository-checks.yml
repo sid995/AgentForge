@@ -1,0 +1,28 @@
+name: Repository checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - uses: docker/setup-buildx-action@v3
+      - name: Verify required tools
+        run: make check-tools
+      - name: Check formatting
+        run: |
+          make format
+          git diff --exit-code
+      - name: Verify repository controls
+        run: make verify
