@@ -4,12 +4,13 @@
 
 ## Current milestone
 
-Phase 1: Platform API foundation planning
+Phase 2: PostgreSQL persistence and migrations planning
 
 ## Overall state
 
-Phase 0 is complete. The repository remains specification and planning only;
-no production code has been implemented.
+Phase 1 is complete. The repository now contains the initial deployable
+Platform API foundation; persistence and all tenant-owned business APIs remain
+unimplemented.
 
 ## Completed
 
@@ -26,15 +27,16 @@ no production code has been implemented.
 - Specification manifest ownership, status, implementation-path, and test-path metadata
 - Development harness, repository verification, and CI workflow skeleton
 - Phase 0 completion audit
+- Phase 1 Platform API foundation: Go workspace, health endpoints, bounded
+  configuration, JSON logging, HTTP middleware, graceful shutdown, unit tests,
+  and a non-root container image
 
 ## In progress
 
-- Phase 1 Platform API foundation plan
+- Phase 2 PostgreSQL persistence and migrations plan
 
 ## Not started
 
-- Go workspace
-- Platform API
 - PostgreSQL migrations
 - Kafka and outbox
 - Scheduler
@@ -51,6 +53,5 @@ no production code has been implemented.
 
 ## Next tasks
 
-1. Prepare the Phase 0 bootstrap changes for commit.
-2. Plan Phase 1: Platform API foundation.
-3. Implement Phase 1 after reviewing the plan.
+1. Prepare the Phase 1 Platform API foundation changes for commit.
+2. Plan Phase 2 PostgreSQL persistence and migrations.

@@ -1,5 +1,21 @@
 # API Examples
 
+## Health checks
+
+```http
+GET /health/live
+```
+
+```json
+{
+  "status": "ok",
+  "service": "platform-api",
+  "version": "development",
+  "commit": "unknown",
+  "buildTime": "unknown"
+}
+```
+
 ## Create run
 
 ```http
@@ -40,6 +56,20 @@ Content-Type: application/json
     "requestId": "req_...",
     "retryable": true,
     "details": {"limit": 20}
+  }
+}
+```
+
+Platform API foundation errors use the same shape. For example, a request that
+exceeds the configured body limit returns `413`:
+
+```json
+{
+  "error": {
+    "code": "REQUEST_TOO_LARGE",
+    "message": "Request body exceeds the allowed size.",
+    "requestId": "req_...",
+    "retryable": false
   }
 }
 ```

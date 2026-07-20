@@ -12,7 +12,7 @@ This file maps approved requirements to implementation and test evidence. It mus
 
 | Requirement | Specification | Intended implementation | Intended tests | Status |
 |---|---|---|---|---|
-| FR-PLT-001 Platform health endpoints | `04-services/01-platform-api.md` | `services/platform-api/` | `services/platform-api/**/*_test.go` | Specified |
+| FR-PLT-001 Platform health endpoints | `04-services/01-platform-api.md`, `05-apis/01-rest-api.md` | `services/platform-api/internal/httpapi/` | `services/platform-api/internal/httpapi/server_test.go` | Verified |
 | FR-RUN-001 Create agent run | `01-product/01-requirements.md` | `services/platform-api/internal/runs/` | `tests/platform-api/` | Specified |
 | FR-RUN-002 Track run lifecycle | `03-domain/02-state-machines.md` | `internal/runs/` | domain and integration tests | Specified |
 | FR-SCH-001 Claim queued runs safely | `04-services/02-scheduler.md` | `services/scheduler/` | `tests/scheduler/` | Specified |
