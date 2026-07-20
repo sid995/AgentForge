@@ -109,7 +109,7 @@ Verify:
 10. Remaining debt is listed with severity and owner phase.
 
 Write the audit to:
-specs/12-llm-development/audits/<phase-id>-completion-audit.md
+specs/15-llm-development/audits/<phase-id>-completion-audit.md
 
 Do not mark the phase complete when critical findings remain.
 ```
@@ -174,7 +174,7 @@ Tasks:
 6. Propose the first implementation milestone dependency order.
 
 Write the result to:
-specs/12-llm-development/bootstrap-audit.md
+specs/15-llm-development/audits/bootstrap-audit.md
 
 Do not silently resolve architectural contradictions. Record them under
 "Decisions required".
@@ -187,21 +187,25 @@ Create the AgentForge specification repository structure.
 
 Required top-level specification areas:
 
-- 00-product
-- 01-architecture
-- 02-domain
-- 03-services
-- 04-contracts
-- 05-data
-- 06-infrastructure
-- 07-security
-- 08-observability
-- 09-testing
-- 10-delivery
-- 11-operations
-- 12-llm-development
-- 13-roadmap
-- adr
+- 00-overview
+- 01-product
+- 02-architecture
+- 03-domain
+- 04-services
+- 05-apis
+- 06-data
+- 07-events
+- 08-kubernetes
+- 09-security
+- 10-observability
+- 11-infrastructure
+- 12-testing
+- 13-delivery
+- 14-operations
+- 15-llm-development
+- 16-implementation
+- 17-decisions
+- 18-templates
 
 Create or normalize:
 
@@ -209,7 +213,7 @@ Create or normalize:
 - specs/SPEC-MANIFEST.md
 - specs/PROJECT-STATUS.md
 - specs/TRACEABILITY.md
-- specs/GLOSSARY.md
+- specs/00-overview/03-glossary.md
 
 Requirements:
 
@@ -332,11 +336,11 @@ Read:
 
 - AGENTS.md
 - specs/SPEC-MANIFEST.md
-- specs/01-architecture/*
-- specs/03-services/platform-api.md
-- specs/08-observability/logging.md
-- specs/09-testing/testing-strategy.md
-- specs/13-roadmap/milestones.md
+- specs/02-architecture/*
+- specs/04-services/01-platform-api.md
+- specs/10-observability/01-telemetry-standards.md
+- specs/12-testing/01-test-strategy.md
+- specs/16-implementation/03-milestones.md
 
 Do not edit code.
 
@@ -353,7 +357,7 @@ Produce:
 - risks
 
 Write the plan to:
-specs/12-llm-development/plans/phase-01-platform-api-foundation.md
+specs/15-llm-development/plans/phase-01-platform-api-foundation.md
 ```
 
 ## Prompt 1.2: Initialize Go workspace
@@ -446,11 +450,11 @@ Design Phase 2 persistence before implementing it.
 
 Read:
 
-- specs/05-data/postgres-schema.md
-- specs/05-data/indexing.md
-- specs/05-data/migrations.md
-- specs/02-domain/domain-model.md
-- specs/07-security/tenant-isolation.md
+- specs/06-data/01-relational-schema.md
+- specs/06-data/02-indexing-and-querying.md
+- specs/06-data/03-retention-backup-recovery.md
+- specs/03-domain/01-domain-model.md
+- specs/09-security/02-identity-rbac-secrets.md
 
 Produce:
 
@@ -570,10 +574,10 @@ Review the AgentRun state machine before implementation.
 
 Read:
 
-- specs/02-domain/agent-run-state-machine.md
-- specs/02-domain/invariants.md
-- specs/02-domain/error-taxonomy.md
-- specs/03-services/platform-api.md
+- specs/03-domain/02-state-machines.md
+- specs/03-domain/01-domain-model.md
+- specs/03-domain/03-error-taxonomy.md
+- specs/04-services/01-platform-api.md
 
 Identify:
 
@@ -676,9 +680,9 @@ Design the initial event architecture.
 
 Read:
 
-- specs/04-contracts/event-envelope.md
-- specs/04-contracts/kafka-topics.md
-- specs/01-architecture/failure-model.md
+- specs/07-events/01-event-envelope.md
+- specs/07-events/02-topic-catalog.md
+- specs/03-domain/03-error-taxonomy.md
 - ADRs related to PostgreSQL and Kafka
 
 Produce:
@@ -786,7 +790,7 @@ Create a detailed implementation plan for the Scheduler.
 
 Read:
 
-- specs/03-services/scheduler.md
+- specs/04-services/02-scheduler.md
 - state machine
 - quota requirements
 - Kafka contracts
@@ -2345,7 +2349,7 @@ Check:
 - known limitations
 
 Write:
-specs/11-operations/operational-readiness-review.md
+specs/14-operations/operational-readiness-review.md
 ```
 
 ### Phase 19 acceptance
@@ -2818,7 +2822,7 @@ Read all root-level documentation and locate the AgentForge specification
 bundle.
 
 Produce:
-specs/12-llm-development/bootstrap-audit.md
+specs/15-llm-development/audits/bootstrap-audit.md
 
 Include repository inventory, specification gaps, contradictions, broken
 references, and the recommended canonical structure.
