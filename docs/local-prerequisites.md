@@ -1,6 +1,6 @@
 # Local Prerequisites
 
-## Required during Phases 0 through 3
+## Required during Phases 0 through 4.2
 
 - Git
 - GNU Make or a compatible `make`
@@ -18,9 +18,9 @@ provision cloud resources.
 Copy [`.env.example`](../.env.example) to `.env` before running the local
 PostgreSQL dependency. The example documents every environment variable used
 by the Platform API, migration command, Compose configuration, and supported
-build metadata inputs through Phase 3.2. `.env` is ignored by Git; its included
-passwords are development-only defaults and must not be used outside a local
-machine.
+build metadata and relay inputs through Phase 4.2. `.env` is ignored by Git;
+its included passwords are development-only defaults and must not be used
+outside a local machine.
 
 The repository has one root Compose definition. Start the current local
 PostgreSQL dependency with `docker compose up --detach postgres` and stop it
@@ -41,7 +41,7 @@ The local environment specification adds PostgreSQL, Redis, Redpanda or Kafka,
 MinIO, Argo CD, and observability dependencies only in their respective
 implementation phases. Do not add them during Phase 0.
 
-## Phase 1 through Phase 3.2 commands
+## Phase 1 through Phase 4.2 commands
 
 ```bash
 make help
@@ -57,10 +57,12 @@ absent, it runs the pinned `golangci/golangci-lint:v2.9.0` container through the
 required Docker daemon. `make test` is an executable Phase 1 quality gate.
 
 `make test-integration` uses the root Compose definition to create an isolated
-PostgreSQL 17.5 project on host port `15432`, applies migrations with the local
-migration role, runs the tagged database tests with the application role, and
-tears the project down with its test volume. It supplies deterministic test
-values rather than relying on a developer's `.env`. Run `make migrate` against
+PostgreSQL 17.5 project on host port `25432`, applies migrations with the local
+migration role, runs the tagged database tests with the application and relay
+roles, and tears the project down with its test volume. The isolated port and
+Compose project avoid changing a developer's normal local stack on port
+`15432`. The target supplies deterministic test values rather than relying on
+a developer's `.env`. Run `make migrate` against
 an already running PostgreSQL instance after setting `AGENTFORGE_DATABASE_URL`
 to a migration-role URL.
 
@@ -71,6 +73,12 @@ pool controls are `AGENTFORGE_DATABASE_MAX_CONNS` (default `10`),
 `AGENTFORGE_DATABASE_ACQUIRE_TIMEOUT` (default `5s`), and
 `AGENTFORGE_DATABASE_CONNECT_TIMEOUT` (default `5s`). Do not use the local
 test credentials outside the Compose test environment.
+
+`AGENTFORGE_TEST_RELAY_DATABASE_URL` is integration-test-only and authenticates
+the cross-tenant outbox relay role. `POSTGRES_RELAY_PASSWORD` configures that
+role when a new local PostgreSQL volume is initialized. Existing volumes do not
+rerun initialization scripts; recreate a development volume deliberately if it
+predates the relay role and the local data is disposable.
 
 `make test-controller` still fails deliberately with a clear message because a
 Kubernetes operator has not been introduced.

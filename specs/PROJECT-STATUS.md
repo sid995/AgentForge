@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 4.1: Transactional outbox and Kafka event architecture
+Phase 4.3: Kafka-compatible adapter, schemas, and local Redpanda
 
 ## Overall state
 
@@ -37,17 +37,21 @@ remain explicit dependencies for their corresponding outbox event integrations.
   RLS, and migration/application database roles
 - Phase 3.1 normalized AgentRun/attempt state machines and Phase 3.2 durable
   AgentRun/attempt persistence with optimistic concurrency and tenant RLS
+- Phase 4.1 event architecture and transactional-outbox ADR
+- Phase 4.2 transactional AgentRun/outbox insertion, isolated relay role,
+  lease-based competing claims, durable publication retries, published-only
+  retention cleanup, provider-independent relay loop, and failure-window tests
 
 ## In progress
 
-- Phase 4.1 event architecture and transactional-outbox ADR
+- Phase 4.3 Kafka-compatible adapter, schemas, and local Redpanda
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Transactional outbox, Kafka adapter, and consumer foundation
+- Idempotent Kafka consumer foundation
 - Scheduler
 - Kubernetes Operator
 - Agent Runner
@@ -62,6 +66,8 @@ remain explicit dependencies for their corresponding outbox event integrations.
 
 ## Next tasks
 
-1. Commit the validated Phase 4.1 event architecture and ADR.
-2. Implement Phase 4.2 transactional outbox against the available AgentRun
-   repository transaction, preserving the unresolved cancellation/retry wiring.
+1. Commit the validated Phase 4.2 transactional outbox implementation.
+2. Implement Phase 4.3 Kafka-compatible publication, executable schemas, topic
+   bootstrap, and local Redpanda in the existing root Compose definition.
+3. Preserve the unresolved cancellation/retry event wiring until their Phase
+   3.4/3.5 command transactions exist.

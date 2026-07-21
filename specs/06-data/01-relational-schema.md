@@ -61,3 +61,23 @@ unique. `agent_runs` has tenant/project history and partial scheduler-queue
 indexes; attempts have a partial active-attempt index. Both tables have forced
 RLS for `agentforge_app`, transaction-local tenant context, explicit repository
 tenant predicates, and only `SELECT`, `INSERT`, and `UPDATE` grants.
+
+## Phase 4.2 transactional outbox boundary
+
+`outbox_events` durably records a canonical event envelope, routing metadata,
+aggregate identity/version, publication disposition, lease ownership, retry
+state, bounded failure details, broker acknowledgement metadata, and UTC
+timestamps. AgentRun creation inserts `agent-run.requested.v1` into this table
+inside the same tenant transaction as the run and first attempt. Event
+serialization and validation happen before that transaction begins.
+
+The claim index supports ordered, competing relay claims with
+`FOR UPDATE SKIP LOCKED`; the published index supports bounded retention
+cleanup. Relay claims use expiring leases and preserve the event ID across
+retries and crash recovery. Cleanup deletes only `PUBLISHED` rows; pending and
+terminal rows are never removed by the implemented cleanup operation.
+
+Forced RLS remains enabled. `agentforge_app` can only insert rows accepted by
+the transaction-local tenant policy. The isolated `agentforge_relay` role uses
+`BYPASSRLS` solely to perform cross-tenant `SELECT`, `UPDATE`, and `DELETE` on
+`outbox_events`; it has no grants on tenant business tables.

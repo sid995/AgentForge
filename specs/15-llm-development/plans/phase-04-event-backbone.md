@@ -2,9 +2,11 @@
 
 ## Status
 
-Phase 4.1 design is complete and awaiting its sub-phase commit. Canonical paths
-in this checkout are `07-events`, `06-data`, `03-domain`, and
-`15-llm-development`; they replace older path names in the supplied prompt.
+Phase 4.1 design is committed. Phase 4.2 implements and verifies transactional
+AgentRun creation/outbox insertion, competing relay claims, durable retry,
+published-only cleanup, and relay shutdown behavior. Canonical paths in this
+checkout are `07-events`, `06-data`, `03-domain`, and `15-llm-development`;
+they replace older path names in the supplied prompt.
 
 ## Sub-phases
 
@@ -18,6 +20,12 @@ in this checkout are `07-events`, `06-data`, `03-domain`, and
    retry classification, DLQ publication, and replica/crash tests.
 5. Add compatibility validation and CI, review distributed failure sequences,
    run the Phase 4 gate, and write the completion audit.
+
+Phase 4.2 evidence covers broker absence during the business transaction,
+outbox-insert rollback of run/attempt rows, competing claims, relay death after
+broker success but before publication marking, stable event IDs on reclaim,
+transient retry delay, terminal classification, bounded cleanup, and graceful
+publisher close. The broker adapter itself begins in Phase 4.3.
 
 Each validated sub-phase is committed before the next begins. Phase-specific
 Compose files are prohibited; Phase 4.3 extends the existing root

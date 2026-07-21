@@ -11,7 +11,7 @@ BUILD_TIME ?= unknown
 
 help:
 	@printf '%s\n' 'AgentForge development targets:'
-	@printf '%s\n' '  check-tools       Check Phase 0 through Phase 3 prerequisites'
+	@printf '%s\n' '  check-tools       Check Phase 0 through Phase 4 prerequisites'
 	@printf '%s\n' '  format            Format tracked Go source'
 	@printf '%s\n' '  lint              Run Platform API static analysis'
 	@printf '%s\n' '  test              Run Platform API unit tests'
@@ -43,12 +43,13 @@ test:
 
 test-integration:
 	@set -euo pipefail; \
-		cleanup() { docker compose -f docker-compose.yml -p agentforge-phase2-test down --volumes --remove-orphans; }; \
+		cleanup() { docker compose -f docker-compose.yml -p agentforge-integration-test down --volumes --remove-orphans; }; \
 		trap cleanup EXIT; \
-		POSTGRES_DB=agentforge POSTGRES_USER=agentforge_migrator POSTGRES_PASSWORD=agentforge-migrator POSTGRES_APP_PASSWORD=agentforge-app POSTGRES_HOST_PORT=15432 docker compose -f docker-compose.yml -p agentforge-phase2-test up --detach --wait; \
-		AGENTFORGE_DATABASE_URL='postgres://agentforge_migrator:agentforge-migrator@127.0.0.1:15432/agentforge?sslmode=disable' go run ./services/platform-api/cmd/migrate; \
-		AGENTFORGE_TEST_DATABASE_URL='postgres://agentforge_migrator:agentforge-migrator@127.0.0.1:15432/agentforge?sslmode=disable' \
-		AGENTFORGE_TEST_APP_DATABASE_URL='postgres://agentforge_app:agentforge-app@127.0.0.1:15432/agentforge?sslmode=disable' \
+		POSTGRES_DB=agentforge POSTGRES_USER=agentforge_migrator POSTGRES_PASSWORD=agentforge-migrator POSTGRES_APP_PASSWORD=agentforge-app POSTGRES_RELAY_PASSWORD=agentforge-relay POSTGRES_HOST_PORT=25432 docker compose -f docker-compose.yml -p agentforge-integration-test up --detach --wait; \
+		AGENTFORGE_DATABASE_URL='postgres://agentforge_migrator:agentforge-migrator@127.0.0.1:25432/agentforge?sslmode=disable' go run ./services/platform-api/cmd/migrate; \
+		AGENTFORGE_TEST_DATABASE_URL='postgres://agentforge_migrator:agentforge-migrator@127.0.0.1:25432/agentforge?sslmode=disable' \
+		AGENTFORGE_TEST_APP_DATABASE_URL='postgres://agentforge_app:agentforge-app@127.0.0.1:25432/agentforge?sslmode=disable' \
+		AGENTFORGE_TEST_RELAY_DATABASE_URL='postgres://agentforge_relay:agentforge-relay@127.0.0.1:25432/agentforge?sslmode=disable' \
 		go test -count=1 -tags=integration ./services/platform-api/...
 
 test-controller:

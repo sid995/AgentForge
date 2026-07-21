@@ -10,6 +10,7 @@ import (
 
 	"github.com/sid995/agentforge/services/platform-api/internal/database"
 	"github.com/sid995/agentforge/services/platform-api/internal/domain"
+	"github.com/sid995/agentforge/services/platform-api/internal/events"
 	"github.com/sid995/agentforge/services/platform-api/internal/ports"
 )
 
@@ -28,6 +29,10 @@ func (repository *AgentRunRepository) Create(ctx context.Context, run domain.Age
 	if err := validateInitialAttempt(run, attempt); err != nil {
 		return err
 	}
+	event, err := events.NewAgentRunRequested(run, attempt)
+	if err != nil {
+		return err
+	}
 	tx, err := repository.database.BeginTenant(ctx, run.TenantID)
 	if err != nil {
 		return translateError(err)
@@ -41,6 +46,9 @@ func (repository *AgentRunRepository) Create(ctx context.Context, run domain.Age
 		return translateError(err)
 	}
 	if err := insertAttempt(ctx, tx, attempt); err != nil {
+		return translateError(err)
+	}
+	if err := insertOutboxEvent(ctx, tx, event); err != nil {
 		return translateError(err)
 	}
 	if err := tx.Commit(); err != nil {
