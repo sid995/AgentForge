@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 3: AgentRun domain and state-machine planning
+Phase 3.1: AgentRun state-machine normalization
 
 ## Overall state
 
@@ -39,7 +39,7 @@ tenant resolver is introduced.
 
 ## In progress
 
-- Phase 3 AgentRun domain and state-machine plan
+- Phase 3.1 AgentRun state-machine normalization
 
 ## Not started
 
@@ -58,5 +58,5 @@ tenant resolver is introduced.
 
 ## Next tasks
 
-1. Prepare the Phase 2 PostgreSQL persistence changes for commit.
-2. Plan Phase 3 AgentRun domain and state-machine work.
+1. Commit the validated Phase 3.1 state-machine normalization.
+2. Implement Phase 3.2 AgentRun and AgentRunAttempt persistence.
