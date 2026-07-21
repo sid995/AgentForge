@@ -2,7 +2,10 @@
 
 AgentForge is a Kubernetes-native infrastructure platform for running autonomous coding-agent workloads in isolated environments, tracking their execution and cost, building validated container artifacts, and deploying generated applications through GitOps.
 
-This starter repository currently contains the complete specification and GPT-5.6 Codex execution playbook. Production implementation should proceed phase by phase rather than asking one coding agent to manifest a cloud platform through optimism.
+This repository contains the complete specification and GPT-5.6 Codex execution
+playbook, plus the Phase 1 Platform API foundation. Production implementation
+proceeds phase by phase rather than asking one coding agent to manifest a cloud
+platform through optimism.
 
 ## Start here
 
@@ -22,4 +25,7 @@ This starter repository currently contains the complete specification and GPT-5.
 
 ## Current state
 
-Specification and planning only. No production services are implemented yet.
+Phase 1 is complete: the repository has a deployable Platform API with health
+endpoints, bounded configuration and middleware, structured JSON logs, graceful
+shutdown, and a non-root container image. PostgreSQL and all tenant-owned
+business APIs remain future work; see [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).

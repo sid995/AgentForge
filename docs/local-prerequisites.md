@@ -5,7 +5,7 @@
 - Git
 - GNU Make or a compatible `make`
 - Bash, `awk`, and `find`
-- Go, using the version selected when the Phase 1 workspace is initialized
+- Go 1.26.0 or a compatible patch release
 - Docker CLI and a running Docker-compatible daemon for container builds and
   later local dependencies
 
@@ -35,7 +35,9 @@ make format
 make verify
 ```
 
-`make lint`, `make test`, `make test-integration`, and `make test-controller`
-currently fail deliberately with a clear message because no product source or
-test environment exists. They become executable quality gates when the
-corresponding implementation is introduced.
+`make lint` uses a local `golangci-lint` v2 installation when present. If it is
+absent, it runs the pinned `golangci/golangci-lint:v2.9.0` container through the
+required Docker daemon. `make test` is an executable Phase 1 quality gate.
+
+`make test-integration` and `make test-controller` still fail deliberately with
+a clear message because their dependency environments have not been introduced.

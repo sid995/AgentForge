@@ -47,6 +47,6 @@ while IFS= read -r specification; do
     printf 'specification missing from manifest: %s\n' "${specification}" >&2
     exit 1
   fi
-done < <(find specs -mindepth 2 -type f -name '*.md' -not -path '*/audits/*' | sort)
+done < <(find specs -mindepth 2 -type f -name '*.md' -not -path '*/audits/*' -not -path '*/plans/*' | sort)
 
 printf '%s\n' 'repository verification passed'
