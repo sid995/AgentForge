@@ -81,6 +81,9 @@ func newEvent(eventType string, schemaVersion int, occurredAt time.Time, produce
 		return OutboxEvent{}, fmt.Errorf("generate event ID: %w", err)
 	}
 	envelope := Envelope{EventID: eventID, EventType: eventType, SchemaVersion: schemaVersion, OccurredAt: occurredAt.UTC(), Producer: producer, TenantID: tenantID, ProjectID: projectID, RunID: runID, AggregateType: aggregateType, AggregateID: aggregateID, AggregateVersion: aggregateVersion, CorrelationID: correlationID, CausationID: causationID, Payload: payloadJSON}
+	if err := ValidateEnvelope(envelope); err != nil {
+		return OutboxEvent{}, err
+	}
 	serialized, err := json.Marshal(envelope)
 	if err != nil {
 		return OutboxEvent{}, fmt.Errorf("serialize event envelope: %w", err)
@@ -91,5 +94,5 @@ func newEvent(eventType string, schemaVersion int, occurredAt time.Time, produce
 // NewAgentRunRequested creates the event intent atomically stored with a new run.
 func NewAgentRunRequested(run domain.AgentRun, attempt domain.AgentRunAttempt) (OutboxEvent, error) {
 	payload := AgentRunRequestedPayload{ProjectID: run.ProjectID, RunID: run.ID, Status: run.Status, AttemptNumber: attempt.AttemptNumber, Runtime: run.Runtime, CPUMillis: run.CPUMillis, MemoryMiB: run.MemoryMiB, TimeoutSeconds: run.TimeoutSeconds, MaxAttempts: run.MaxAttempts, PromptReference: run.PromptReference}
-	return newEvent("agent-run.requested.v1", 1, run.CreatedAt, "platform-api", run.TenantID, &run.ProjectID, &run.ID, "AgentRun", run.ID, run.Version, run.IdempotencyKey, run.IdempotencyKey, payload)
+	return newEvent(AgentRunRequestedType, 1, run.CreatedAt, "platform-api", run.TenantID, &run.ProjectID, &run.ID, "AgentRun", run.ID, run.Version, run.IdempotencyKey, run.IdempotencyKey, payload)
 }

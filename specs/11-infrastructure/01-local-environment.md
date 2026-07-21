@@ -20,3 +20,9 @@ Pin tool and image versions. A new developer should bootstrap from documented pr
 Document every local environment variable in the checked-in `.env.example`;
 developers copy it to ignored `.env` and replace development-only credentials
 for any non-local environment.
+
+Phase 4.3 implements PostgreSQL and pinned Redpanda in that one root Compose
+file. `scripts/bootstrap-topics.sh` is the reproducible topic entry point; it
+uses the `COMPOSE_PROJECT_NAME` value and fails when the broker is unavailable.
+The broker integration gate uses a separate Compose project and host port so it
+does not stop or mutate a developer's normal local stack.

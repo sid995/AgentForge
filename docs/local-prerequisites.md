@@ -1,6 +1,6 @@
 # Local Prerequisites
 
-## Required during Phases 0 through 4.2
+## Required during Phases 0 through 4.3
 
 - Git
 - GNU Make or a compatible `make`
@@ -18,13 +18,15 @@ provision cloud resources.
 Copy [`.env.example`](../.env.example) to `.env` before running the local
 PostgreSQL dependency. The example documents every environment variable used
 by the Platform API, migration command, Compose configuration, and supported
-build metadata and relay inputs through Phase 4.2. `.env` is ignored by Git;
-its included passwords are development-only defaults and must not be used
-outside a local machine.
+build metadata, relay, Kafka client, and Redpanda inputs through Phase 4.3.
+`.env` is ignored by Git; its included passwords are development-only defaults
+and must not be used outside a local machine.
 
 The repository has one root Compose definition. Start the current local
-PostgreSQL dependency with `docker compose up --detach postgres` and stop it
-with `docker compose down`. Later phases extend this same
+PostgreSQL dependency with `docker compose up --detach postgres`. Start the
+local event broker with `docker compose up --detach --wait redpanda`, then run
+`make bootstrap-topics`. Stop the local stack with `docker compose down`. Later
+phases extend this same
 [`docker-compose.yml`](../docker-compose.yml); they must not add phase-specific
 Compose files.
 
@@ -41,7 +43,7 @@ The local environment specification adds PostgreSQL, Redis, Redpanda or Kafka,
 MinIO, Argo CD, and observability dependencies only in their respective
 implementation phases. Do not add them during Phase 0.
 
-## Phase 1 through Phase 4.2 commands
+## Phase 1 through Phase 4.3 commands
 
 ```bash
 make help
@@ -50,6 +52,8 @@ make format
 make verify
 make test
 make test-integration
+make test-events-integration
+make bootstrap-topics
 ```
 
 `make lint` uses a local `golangci-lint` v2 installation when present. If it is
@@ -79,6 +83,17 @@ the cross-tenant outbox relay role. `POSTGRES_RELAY_PASSWORD` configures that
 role when a new local PostgreSQL volume is initialized. Existing volumes do not
 rerun initialization scripts; recreate a development volume deliberately if it
 predates the relay role and the local data is disposable.
+
+`make test-events-integration` starts only the pinned single-node Redpanda
+service in the isolated `agentforge-events-integration` Compose project on host
+port `29092`, creates all declared topics, runs the producer/manual-ack consumer
+contract tests, and removes the test volume. It fails if Docker, broker health,
+topic bootstrap, or Kafka contracts fail. The normal local broker listens on
+`REDPANDA_HOST_PORT` (default `19092`). `AGENTFORGE_KAFKA_BROKERS`,
+`AGENTFORGE_KAFKA_CLIENT_ID`, `AGENTFORGE_KAFKA_PUBLISH_TIMEOUT`,
+`AGENTFORGE_KAFKA_MAX_ATTEMPTS`, and `AGENTFORGE_KAFKA_MAX_MESSAGE_BYTES`
+configure clients. Local Redpanda uses plaintext and replication one; it is
+only a development/test topology.
 
 `make test-controller` still fails deliberately with a clear message because a
 Kubernetes operator has not been introduced.

@@ -4,7 +4,9 @@
 
 This design governs Phase 4. It uses PostgreSQL as the atomic event-intent
 store and Kafka-compatible brokers for at-least-once delivery. Phase 4.1 is
-design-only: it adds no migrations, broker, relay, producer, or consumer code.
+the accepted design; Phase 4.2 implements the transactional outbox, and Phase
+4.3 implements the Kafka adapter, executable first-event schema, manual-ack
+consumer base, topic bootstrap, and root-Compose Redpanda broker.
 
 Phase 3.1 and 3.2 are present, but the create-run API and cancellation/retry
 application commands from Phase 3.3 through 3.5 are not. Phase 4.2 can attach
@@ -255,6 +257,27 @@ Tests use three layers:
   producer/consumer shutdown, retry/DLQ routing, duplicate business-effect
   suppression, and crash windows. Tests use deterministic IDs/clocks and do not
   report success when Docker or broker prerequisites are unavailable.
+
+## Phase 4.3 implementation choices
+
+The adapter uses `franz-go` v1.21.5. It keeps Kafka records and error types
+inside `internal/adapters/kafka`, uses all in-sync-replica acknowledgements and
+the client's default idempotent producer, limits immediate publication to at
+most three attempts within the bounded delivery timeout, disables topic auto
+creation, and disables consumer auto-commit. Callers explicitly acknowledge a
+provider-neutral received record only after their later business transaction.
+
+`jsonschema/v6` v6.0.2 compiles and validates checked-in schemas in contract
+tests. Runtime validation remains dependency-light and typed so malformed,
+unknown, unsupported-version, topic/key, or header/body mismatches are
+permanent records that cannot reach business logic. The dependency adds a test
+compilation cost but no broker or schema-registry runtime dependency.
+
+Local development pins Redpanda `v26.1.13` in the existing root Compose file.
+It is plaintext, single-node, and replication-one by design and is not a
+production security or availability topology. `make test-events-integration`
+uses an isolated Compose project and port, bootstraps declared topics, runs the
+real producer/consumer contract, and tears down its volume.
 
 ## Resolved specification contradictions
 

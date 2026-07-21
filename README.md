@@ -22,7 +22,7 @@ platform through optimism.
 - [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md): current implementation status
 - [`specs/TRACEABILITY.md`](specs/TRACEABILITY.md): requirement-to-code-and-test mapping
 - [`specs/15-llm-development/05-codex-execution-playbook.md`](specs/15-llm-development/05-codex-execution-playbook.md): complete phased prompt sequence
-- [`.env.example`](.env.example): documented local configuration through Phase 4.2
+- [`.env.example`](.env.example): documented local configuration through Phase 4.3
 
 ## Current state
 
@@ -31,5 +31,7 @@ complete. Phase 4.1 now defines the transactional-outbox, at-least-once Kafka,
 idempotent-consumer, retry/DLQ, replay, retention, security, and compatibility
 architecture. Phase 3.3 through 3.5 command/API work remains explicitly
 unfinished. Phase 4.2 adds the PostgreSQL transactional outbox and
-provider-independent relay foundation; see
+provider-independent relay foundation. Phase 4.3 adds executable event
+contracts, Kafka adapters, and pinned local Redpanda in the same root Compose
+file; see
 [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).

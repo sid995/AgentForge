@@ -58,3 +58,12 @@ Physical topic: `agentforge.deployment.lifecycle.v1`.
 Physical topic: `agentforge.governance.events.v1`, keyed by the owning
 aggregate ID. Retry and dead-letter topics insert `.retry.<delay>` or `.dlq`
 before the single version suffix, as specified in the event architecture.
+
+## Phase 4.3 local bootstrap
+
+`scripts/bootstrap-topics.sh` creates these four lifecycle/governance topics
+plus the AgentRun `1m`, `5m`, and `30m` retry topics and its DLQ. Local topics
+use three partitions and one replica because the root Compose environment has
+one broker. Retention is 7 days for run/build lifecycle, 14 days for deployment
+and retry topics, 30 days for governance, and 90 days for the AgentRun DLQ.
+Production replication and ACLs remain environment-owned configuration.

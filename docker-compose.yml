@@ -18,5 +18,34 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./deploy/postgres/init-app-role.sh:/docker-entrypoint-initdb.d/001-app-role.sh:ro
 
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v26.1.13
+    command:
+      - redpanda
+      - start
+      - --mode
+      - dev-container
+      - --smp
+      - "1"
+      - --default-log-level=info
+      - --kafka-addr
+      - internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr
+      - internal://redpanda:9092,external://127.0.0.1:${REDPANDA_HOST_PORT:-19092}
+      - --rpc-addr
+      - redpanda:33145
+      - --advertise-rpc-addr
+      - redpanda:33145
+    ports:
+      - "${REDPANDA_HOST_PORT:-19092}:19092"
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health", "--exit-when-healthy"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+
 volumes:
   postgres-data:
+  redpanda-data:

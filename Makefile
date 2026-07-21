@@ -7,7 +7,7 @@ BUILD_VERSION ?= development
 BUILD_COMMIT ?= unknown
 BUILD_TIME ?= unknown
 
-.PHONY: help check-tools format lint test test-integration test-controller migrate build-platform-api verify
+.PHONY: help check-tools format lint test test-integration test-events-integration test-controller migrate bootstrap-topics build-platform-api verify
 
 help:
 	@printf '%s\n' 'AgentForge development targets:'
@@ -16,8 +16,10 @@ help:
 	@printf '%s\n' '  lint              Run Platform API static analysis'
 	@printf '%s\n' '  test              Run Platform API unit tests'
 	@printf '%s\n' '  test-integration  Run PostgreSQL integration tests in Docker Compose'
+	@printf '%s\n' '  test-events-integration Run Kafka contract tests against isolated Redpanda'
 	@printf '%s\n' '  test-controller   Run controller tests (unavailable until configured)'
 	@printf '%s\n' '  migrate           Apply checked-in PostgreSQL migrations'
+	@printf '%s\n' '  bootstrap-topics  Create/update local Redpanda topics'
 	@printf '%s\n' '  build-platform-api Build the Platform API container image (BUILD_VERSION, BUILD_COMMIT, BUILD_TIME are supported)'
 	@printf '%s\n' '  verify            Validate repository controls and documentation inventory'
 
@@ -45,12 +47,20 @@ test-integration:
 	@set -euo pipefail; \
 		cleanup() { docker compose -f docker-compose.yml -p agentforge-integration-test down --volumes --remove-orphans; }; \
 		trap cleanup EXIT; \
-		POSTGRES_DB=agentforge POSTGRES_USER=agentforge_migrator POSTGRES_PASSWORD=agentforge-migrator POSTGRES_APP_PASSWORD=agentforge-app POSTGRES_RELAY_PASSWORD=agentforge-relay POSTGRES_HOST_PORT=25432 docker compose -f docker-compose.yml -p agentforge-integration-test up --detach --wait; \
+		POSTGRES_DB=agentforge POSTGRES_USER=agentforge_migrator POSTGRES_PASSWORD=agentforge-migrator POSTGRES_APP_PASSWORD=agentforge-app POSTGRES_RELAY_PASSWORD=agentforge-relay POSTGRES_HOST_PORT=25432 docker compose -f docker-compose.yml -p agentforge-integration-test up --detach --wait postgres; \
 		AGENTFORGE_DATABASE_URL='postgres://agentforge_migrator:agentforge-migrator@127.0.0.1:25432/agentforge?sslmode=disable' go run ./services/platform-api/cmd/migrate; \
 		AGENTFORGE_TEST_DATABASE_URL='postgres://agentforge_migrator:agentforge-migrator@127.0.0.1:25432/agentforge?sslmode=disable' \
 		AGENTFORGE_TEST_APP_DATABASE_URL='postgres://agentforge_app:agentforge-app@127.0.0.1:25432/agentforge?sslmode=disable' \
 		AGENTFORGE_TEST_RELAY_DATABASE_URL='postgres://agentforge_relay:agentforge-relay@127.0.0.1:25432/agentforge?sslmode=disable' \
 		go test -count=1 -tags=integration ./services/platform-api/...
+
+test-events-integration:
+	@set -euo pipefail; \
+		cleanup() { docker compose -f docker-compose.yml -p agentforge-events-integration down --volumes --remove-orphans; }; \
+		trap cleanup EXIT; \
+		REDPANDA_HOST_PORT=29092 docker compose -f docker-compose.yml -p agentforge-events-integration up --detach --wait redpanda; \
+		COMPOSE_PROJECT_NAME=agentforge-events-integration scripts/bootstrap-topics.sh; \
+		AGENTFORGE_TEST_KAFKA_BROKERS='127.0.0.1:29092' go test -count=1 -tags=brokerintegration ./services/platform-api/internal/adapters/kafka
 
 test-controller:
 	@echo 'Controller tests are unavailable: Phase 1 has no Kubernetes operator.' >&2
@@ -58,6 +68,9 @@ test-controller:
 
 migrate:
 	@go run ./services/platform-api/cmd/migrate
+
+bootstrap-topics:
+	@scripts/bootstrap-topics.sh
 
 build-platform-api:
 	@docker build \

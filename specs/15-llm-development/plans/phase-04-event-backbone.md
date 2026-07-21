@@ -8,6 +8,11 @@ published-only cleanup, and relay shutdown behavior. Canonical paths in this
 checkout are `07-events`, `06-data`, `03-domain`, and `15-llm-development`;
 they replace older path names in the supplied prompt.
 
+Phase 4.3 now implements the Kafka-compatible producer and manual-ack consumer
+base, strict envelope/header/version validation, the first JSON Schema and
+fixture, pinned root-Compose Redpanda, topic bootstrap, and a real broker
+contract test. Business consumers remain excluded until Phase 4.4.
+
 ## Sub-phases
 
 1. Approve the envelope, topics, ownership, delivery, retry/DLQ, retention,

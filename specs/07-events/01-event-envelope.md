@@ -33,3 +33,9 @@
 
 The complete field, header, validation, and evolution contract is defined in
 `07-events/04-event-architecture.md`.
+
+The implemented `agent-run.requested.v1` contract is checked in at
+`contracts/events/agent-run.requested.v1.schema.json` with its canonical fixture
+under `contracts/events/examples/`. Runtime decoding rejects unknown envelope
+and payload fields, mismatched major/schema versions, unsupported event types,
+invalid UUIDv7 identities, invalid trace context, and header/body mismatches.

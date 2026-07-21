@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 4.3: Kafka-compatible adapter, schemas, and local Redpanda
+Phase 4.4: Idempotent-consumer foundation
 
 ## Overall state
 
@@ -41,17 +41,20 @@ remain explicit dependencies for their corresponding outbox event integrations.
 - Phase 4.2 transactional AgentRun/outbox insertion, isolated relay role,
   lease-based competing claims, durable publication retries, published-only
   retention cleanup, provider-independent relay loop, and failure-window tests
+- Phase 4.3 strict event validation and first executable schema/fixture,
+  idempotent Kafka producer adapter, manual-ack consumer-group base, pinned
+  root-Compose Redpanda, reproducible topic bootstrap, and broker contract tests
 
 ## In progress
 
-- Phase 4.3 Kafka-compatible adapter, schemas, and local Redpanda
+- Phase 4.4 idempotent-consumer transaction and retry/DLQ foundation
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Idempotent Kafka consumer foundation
+- Phase 4.5 event compatibility validation and Phase 4 audit
 - Scheduler
 - Kubernetes Operator
 - Agent Runner
@@ -66,8 +69,8 @@ remain explicit dependencies for their corresponding outbox event integrations.
 
 ## Next tasks
 
-1. Commit the validated Phase 4.2 transactional outbox implementation.
-2. Implement Phase 4.3 Kafka-compatible publication, executable schemas, topic
-   bootstrap, and local Redpanda in the existing root Compose definition.
+1. Commit the validated Phase 4.3 Kafka adapter and contracts.
+2. Implement Phase 4.4 processed-event storage, explicit consumer transaction
+   boundaries, retry classification, and DLQ publication.
 3. Preserve the unresolved cancellation/retry event wiring until their Phase
    3.4/3.5 command transactions exist.

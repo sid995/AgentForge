@@ -25,9 +25,10 @@ This file maps approved requirements to implementation and test evidence. It mus
 | SEC-TEN-001 Tenant-scoped data access | `09-security/02-identity-rbac-secrets.md` | repositories and RLS | cross-tenant integration tests | Specified |
 | SEC-TEN-002 Project repository and RLS isolation | `09-security/02-identity-rbac-secrets.md`, `06-data/01-relational-schema.md` | `internal/adapters/postgres/`, `db/migrations/` | `internal/adapters/postgres/projects_integration_test.go` | Verified |
 | SEC-EXE-001 Non-privileged agent workloads | `09-security/03-sandbox-and-network.md` | operator workload builder | manifest security tests | Specified |
-| REL-EVT-001 Transactional event publication | `07-events/03-delivery-retry-dlq.md`, `07-events/04-event-architecture.md`, ADR-002 | outbox relay | broker-failure integration tests | Planned |
+| REL-EVT-001 Transactional event publication | `07-events/03-delivery-retry-dlq.md`, `07-events/04-event-architecture.md`, ADR-002 | outbox relay and Kafka producer adapter | PostgreSQL failure-window and Redpanda integration tests | Implemented |
 | REL-EVT-003 Transactional run-request outbox foundation | `06-data/01-relational-schema.md`, `07-events/04-event-architecture.md`, ADR-002 | `internal/events/`, `internal/application/outbox/`, `internal/adapters/postgres/`, `db/migrations/000003_transactional_outbox.*` | event/relay unit tests and `internal/adapters/postgres/outbox_integration_test.go` | Verified |
 | REL-EVT-002 Idempotent event consumption | `07-events/03-delivery-retry-dlq.md`, `07-events/04-event-architecture.md`, ADR-002 | consumer foundation | duplicate-delivery tests | Planned |
+| REL-EVT-004 Versioned Kafka event contract and adapter | `07-events/01-event-envelope.md`, `07-events/02-topic-catalog.md`, `07-events/04-event-architecture.md` | `contracts/events/`, `internal/events/`, `internal/adapters/kafka/`, `scripts/bootstrap-topics.sh` | schema/unit tests and `kafka_integration_test.go` | Verified |
 | OBS-001 End-to-end correlated telemetry | `10-observability/01-telemetry-standards.md` | shared telemetry packages | trace integration test | Specified |
 | COST-001 Per-run usage attribution | `14-operations/03-capacity-cost.md` | usage ledger | ledger idempotency tests | Specified |
 
