@@ -282,6 +282,22 @@ production security or availability topology. `make test-events-integration`
 uses an isolated Compose project and port, bootstraps declared topics, runs the
 real producer/consumer contract, and tears down its volume.
 
+## Phase 4.5 compatibility implementation
+
+Every implemented event now has a draft-2020-12 JSON Schema and canonical
+example. The published-major baseline records the original required sets and
+the JSON signature of every published property. The contract gate rejects a
+removed field, any required-set change, or a changed property type, constant,
+or reference. Optional additions are allowed only in the live schema; the
+baseline remains immutable. Supported v1 consumer fixtures prove old messages
+still pass both schema and strict runtime decoding.
+
+Producer contract tests validate the typed `agent-run.requested.v1` and
+`event-delivery.dead-lettered.v1` constructors against their schemas. This
+found and corrected the DLQ header JSON field casing before publication.
+`.github/workflows/repository-checks.yml` runs the compatibility target and the
+real Redpanda contract integration independently.
+
 ## Resolved specification contradictions
 
 - The old topic catalog mixed event types with Kafka topics. Event types remain

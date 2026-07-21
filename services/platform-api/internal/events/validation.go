@@ -26,8 +26,8 @@ var traceparentPattern = regexp.MustCompile(`^[\da-f]{2}-[\da-f]{32}-[\da-f]{16}
 
 // Header is provider-independent Kafka routing and correlation metadata.
 type Header struct {
-	Key   string
-	Value string
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 // DecodeEnvelope strictly decodes and validates one supported event envelope.

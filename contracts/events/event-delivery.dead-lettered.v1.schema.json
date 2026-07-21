@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentforge.dev/contracts/events/event-delivery.dead-lettered.v1.schema.json",
+  "title": "Event delivery dead-lettered event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId", "eventType", "schemaVersion", "occurredAt", "producer",
+    "tenantId", "aggregateType", "aggregateId", "aggregateVersion",
+    "correlationId", "causationId", "payload"
+  ],
+  "properties": {
+    "eventId": { "$ref": "#/$defs/uuidV7" },
+    "eventType": { "const": "event-delivery.dead-lettered.v1" },
+    "schemaVersion": { "const": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "producer": { "const": "event-consumer" },
+    "tenantId": { "$ref": "#/$defs/uuidV7" },
+    "projectId": { "$ref": "#/$defs/uuidV7" },
+    "runId": { "$ref": "#/$defs/uuidV7" },
+    "aggregateType": { "const": "EventDeliveryFailure" },
+    "aggregateId": { "$ref": "#/$defs/uuidV7" },
+    "aggregateVersion": { "const": 1 },
+    "requestId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "traceparent": { "type": "string", "pattern": "^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$" },
+    "tracestate": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "correlationId": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "causationId": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "originalTopic", "originalPartition", "originalOffset",
+        "consumerIdentity", "failureCode", "failureReason", "attempts",
+        "firstFailedAt", "lastFailedAt", "replayDisposition"
+      ],
+      "properties": {
+        "originalEnvelope": { "type": "object" },
+        "rawFingerprint": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "rawSize": { "type": "integer", "minimum": 0 },
+        "originalTopic": { "type": "string", "minLength": 1, "maxLength": 249 },
+        "originalPartition": { "type": "integer", "minimum": 0 },
+        "originalOffset": { "type": "integer", "minimum": 0 },
+        "originalKey": { "type": "string", "maxLength": 255 },
+        "originalHeaders": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["key", "value"],
+            "properties": {
+              "key": { "type": "string", "minLength": 1, "maxLength": 64 },
+              "value": { "type": "string", "maxLength": 512 }
+            }
+          }
+        },
+        "consumerIdentity": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "failureCode": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "failureReason": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "attempts": { "type": "integer", "minimum": 1 },
+        "firstFailedAt": { "type": "string", "format": "date-time" },
+        "lastFailedAt": { "type": "string", "format": "date-time" },
+        "replayDisposition": { "const": "QUARANTINED" }
+      },
+      "oneOf": [
+        {
+          "required": ["originalEnvelope"],
+          "not": { "anyOf": [{ "required": ["rawFingerprint"] }, { "required": ["rawSize"] }] }
+        },
+        {
+          "required": ["rawFingerprint", "rawSize"],
+          "not": { "required": ["originalEnvelope"] }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "uuidV7": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    }
+  }
+}

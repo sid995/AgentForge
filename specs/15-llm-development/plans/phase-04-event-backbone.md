@@ -18,6 +18,11 @@ duplicate acknowledgement semantics, transient/permanent failure model, three
 retry-topic stages, sanitized DLQ construction, metrics hooks, and database and
 broker crash/replica/failure tests. No business consumer is introduced.
 
+Phase 4.5 now implements schemas and canonical examples for every implemented
+event, immutable-major compatibility baselines, supported v1 consumer fixtures,
+typed producer contract tests, Make/CI gates, and the Phase 4 distributed-
+systems audit.
+
 ## Sub-phases
 
 1. Approve the envelope, topics, ownership, delivery, retry/DLQ, retention,

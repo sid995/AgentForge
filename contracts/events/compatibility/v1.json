@@ -1,0 +1,85 @@
+{
+  "policy": "Immutable published-major baseline. Additive optional properties may be added to current schemas; existing fields and required sets may not change.",
+  "events": [
+    {
+      "schema": "agent-run.requested.v1.schema.json",
+      "required": {
+        "/required": ["aggregateId", "aggregateType", "aggregateVersion", "causationId", "correlationId", "eventId", "eventType", "occurredAt", "payload", "producer", "projectId", "runId", "schemaVersion", "tenantId"],
+        "/properties/payload/required": ["attemptNumber", "cpuMillis", "maxAttempts", "memoryMiB", "projectId", "promptReference", "runId", "runtime", "status", "timeoutSeconds"]
+      },
+      "fields": {
+        "/properties/eventId": "ref:#/$defs/uuidV7",
+        "/properties/eventType": "const:string:agent-run.requested.v1",
+        "/properties/schemaVersion": "const:number:1",
+        "/properties/occurredAt": "type:string",
+        "/properties/producer": "type:string",
+        "/properties/tenantId": "ref:#/$defs/uuidV7",
+        "/properties/projectId": "ref:#/$defs/uuidV7",
+        "/properties/runId": "ref:#/$defs/uuidV7",
+        "/properties/aggregateType": "const:string:AgentRun",
+        "/properties/aggregateId": "ref:#/$defs/uuidV7",
+        "/properties/aggregateVersion": "type:integer",
+        "/properties/requestId": "type:string",
+        "/properties/traceparent": "type:string",
+        "/properties/tracestate": "type:string",
+        "/properties/correlationId": "type:string",
+        "/properties/causationId": "type:string",
+        "/properties/payload": "type:object",
+        "/properties/payload/properties/projectId": "ref:#/$defs/uuidV7",
+        "/properties/payload/properties/runId": "ref:#/$defs/uuidV7",
+        "/properties/payload/properties/status": "const:string:QUEUED",
+        "/properties/payload/properties/attemptNumber": "const:number:1",
+        "/properties/payload/properties/runtime": "type:string",
+        "/properties/payload/properties/cpuMillis": "type:integer",
+        "/properties/payload/properties/memoryMiB": "type:integer",
+        "/properties/payload/properties/timeoutSeconds": "type:integer",
+        "/properties/payload/properties/maxAttempts": "type:integer",
+        "/properties/payload/properties/promptReference": "type:string"
+      }
+    },
+    {
+      "schema": "event-delivery.dead-lettered.v1.schema.json",
+      "required": {
+        "/required": ["aggregateId", "aggregateType", "aggregateVersion", "causationId", "correlationId", "eventId", "eventType", "occurredAt", "payload", "producer", "schemaVersion", "tenantId"],
+        "/properties/payload/required": ["attempts", "consumerIdentity", "failureCode", "failureReason", "firstFailedAt", "lastFailedAt", "originalOffset", "originalPartition", "originalTopic", "replayDisposition"],
+        "/properties/payload/properties/originalHeaders/items/required": ["key", "value"]
+      },
+      "fields": {
+        "/properties/eventId": "ref:#/$defs/uuidV7",
+        "/properties/eventType": "const:string:event-delivery.dead-lettered.v1",
+        "/properties/schemaVersion": "const:number:1",
+        "/properties/occurredAt": "type:string",
+        "/properties/producer": "const:string:event-consumer",
+        "/properties/tenantId": "ref:#/$defs/uuidV7",
+        "/properties/projectId": "ref:#/$defs/uuidV7",
+        "/properties/runId": "ref:#/$defs/uuidV7",
+        "/properties/aggregateType": "const:string:EventDeliveryFailure",
+        "/properties/aggregateId": "ref:#/$defs/uuidV7",
+        "/properties/aggregateVersion": "const:number:1",
+        "/properties/requestId": "type:string",
+        "/properties/traceparent": "type:string",
+        "/properties/tracestate": "type:string",
+        "/properties/correlationId": "type:string",
+        "/properties/causationId": "type:string",
+        "/properties/payload": "type:object",
+        "/properties/payload/properties/originalEnvelope": "type:object",
+        "/properties/payload/properties/rawFingerprint": "type:string",
+        "/properties/payload/properties/rawSize": "type:integer",
+        "/properties/payload/properties/originalTopic": "type:string",
+        "/properties/payload/properties/originalPartition": "type:integer",
+        "/properties/payload/properties/originalOffset": "type:integer",
+        "/properties/payload/properties/originalKey": "type:string",
+        "/properties/payload/properties/originalHeaders": "type:array",
+        "/properties/payload/properties/originalHeaders/items/properties/key": "type:string",
+        "/properties/payload/properties/originalHeaders/items/properties/value": "type:string",
+        "/properties/payload/properties/consumerIdentity": "type:string",
+        "/properties/payload/properties/failureCode": "type:string",
+        "/properties/payload/properties/failureReason": "type:string",
+        "/properties/payload/properties/attempts": "type:integer",
+        "/properties/payload/properties/firstFailedAt": "type:string",
+        "/properties/payload/properties/lastFailedAt": "type:string",
+        "/properties/payload/properties/replayDisposition": "const:string:QUARANTINED"
+      }
+    }
+  ]
+}

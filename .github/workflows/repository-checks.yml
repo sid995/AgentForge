@@ -30,11 +30,15 @@ jobs:
         run: make lint
       - name: Test Platform API
         run: make test
+      - name: Verify event contracts and compatibility
+        run: make verify-event-contracts
       - name: Race-test Platform API
         run: go test -race ./services/platform-api/...
       - name: Vet Platform API
         run: go vet ./services/platform-api/...
       - name: Integration-test PostgreSQL persistence
         run: make test-integration
+      - name: Integration-test Kafka contracts
+        run: make test-events-integration
       - name: Build Platform API image
         run: make build-platform-api

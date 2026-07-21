@@ -7,7 +7,7 @@ BUILD_VERSION ?= development
 BUILD_COMMIT ?= unknown
 BUILD_TIME ?= unknown
 
-.PHONY: help check-tools format lint test test-integration test-events-integration test-controller migrate bootstrap-topics build-platform-api verify
+.PHONY: help check-tools format lint test verify-event-contracts test-integration test-events-integration test-controller migrate bootstrap-topics build-platform-api verify
 
 help:
 	@printf '%s\n' 'AgentForge development targets:'
@@ -15,6 +15,7 @@ help:
 	@printf '%s\n' '  format            Format tracked Go source'
 	@printf '%s\n' '  lint              Run Platform API static analysis'
 	@printf '%s\n' '  test              Run Platform API unit tests'
+	@printf '%s\n' '  verify-event-contracts Validate event schemas, compatibility, and fixtures'
 	@printf '%s\n' '  test-integration  Run PostgreSQL integration tests in Docker Compose'
 	@printf '%s\n' '  test-events-integration Run Kafka contract tests against isolated Redpanda'
 	@printf '%s\n' '  test-controller   Run controller tests (unavailable until configured)'
@@ -42,6 +43,9 @@ lint:
 
 test:
 	@go test ./services/platform-api/...
+
+verify-event-contracts:
+	@go test -count=1 ./services/platform-api/internal/events -run '^TestEventContract'
 
 test-integration:
 	@set -euo pipefail; \

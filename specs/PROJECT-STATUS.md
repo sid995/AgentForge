@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 4.5: Event compatibility validation and Phase 4 audit
+Phase 4 complete; next approved work is pending
 
 ## Overall state
 
@@ -48,10 +48,13 @@ remain explicit dependencies for their corresponding outbox event integrations.
   duplicate no-ops across replicas and acknowledgement crashes, explicit
   transient/permanent failures, retry topics, sanitized DLQ envelopes, and
   malformed-message fingerprint quarantine
+- Phase 4.5 machine-readable schemas for all implemented events, immutable-
+  major compatibility baselines, producer contracts, supported v1 consumer
+  fixtures, CI/Make validation, distributed-systems review, and completion audit
 
 ## In progress
 
-- Phase 4.5 compatibility validation, distributed-systems review, and audit
+- No implementation phase is currently in progress
 
 ## Not started
 
@@ -72,8 +75,8 @@ remain explicit dependencies for their corresponding outbox event integrations.
 
 ## Next tasks
 
-1. Commit the validated Phase 4.4 idempotent-consumer foundation.
-2. Implement Phase 4.5 schema compatibility validation and CI fixtures, then
-   perform the Phase 4 distributed-systems review and completion audit.
-3. Preserve the unresolved cancellation/retry event wiring until their Phase
+1. Resume Phase 3.3 authenticated create/get/list API work when approved.
+2. Preserve the unresolved cancellation/retry event wiring until their Phase
    3.4/3.5 command transactions exist.
+3. Wire the relay and first business consumer into deployable workloads only
+   in their approved owning phases.
