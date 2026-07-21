@@ -22,6 +22,10 @@ func (api *API) ready(writer http.ResponseWriter, request *http.Request) {
 		writeError(writer, request, http.StatusServiceUnavailable, "NOT_READY", "Service is not ready.", true)
 		return
 	}
+	if api.readiness != nil && api.readiness(request.Context()) != nil {
+		writeError(writer, request, http.StatusServiceUnavailable, "DEPENDENCY_UNAVAILABLE", "A required dependency is unavailable.", true)
+		return
+	}
 	api.writeHealth(writer, http.StatusOK, "ok")
 }
 

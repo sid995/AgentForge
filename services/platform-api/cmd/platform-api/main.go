@@ -13,6 +13,7 @@ import (
 
 	"github.com/sid995/agentforge/services/platform-api/internal/buildinfo"
 	"github.com/sid995/agentforge/services/platform-api/internal/config"
+	"github.com/sid995/agentforge/services/platform-api/internal/database"
 	"github.com/sid995/agentforge/services/platform-api/internal/httpapi"
 	"github.com/sid995/agentforge/services/platform-api/internal/logging"
 )
@@ -31,11 +32,19 @@ func run() error {
 	}
 
 	logger := logging.New(os.Stdout, configuration.Environment)
+	startupContext, cancelStartup := context.WithTimeout(context.Background(), configuration.Database.ConnectTimeout)
+	defer cancelStartup()
+	databasePool, err := database.Open(startupContext, configuration.Database)
+	if err != nil {
+		return err
+	}
+	defer databasePool.Close()
 	api := httpapi.New(httpapi.Options{
 		Logger:              logger,
 		Build:               buildinfo.Current(),
 		RequestTimeout:      configuration.RequestTimeout,
 		MaxRequestBodyBytes: configuration.MaxRequestBodyBytes,
+		Readiness:           databasePool.Ping,
 	})
 	server := &http.Server{
 		Handler:           api.Handler(),

@@ -14,6 +14,7 @@ LLMs accelerate implementation but do not own architectural truth. The Markdown 
 6. Run format, lint, tests, security checks, and contract validation.
 7. Ask a separate review pass to find correctness, concurrency, security, and operability defects.
 8. Update specs or ADRs when decisions change.
+9. Commit the validated work unit before starting the next sub-phase.
 
 ## Rules
 
@@ -22,3 +23,4 @@ LLMs accelerate implementation but do not own architectural truth. The Markdown 
 - Require citations to repository files in plans and reviews.
 - Prefer tests and executable validation over prose confidence.
 - Keep changes narrow enough for human review.
+- Do not carry uncommitted implementation changes across sub-phase boundaries.

@@ -4,13 +4,15 @@
 
 ## Current milestone
 
-Phase 2: PostgreSQL persistence and migrations planning
+Phase 3: AgentRun domain and state-machine planning
 
 ## Overall state
 
-Phase 1 is complete. The repository now contains the initial deployable
-Platform API foundation; persistence and all tenant-owned business APIs remain
-unimplemented.
+Phase 2 is complete. The repository now contains the deployable Platform API
+foundation plus PostgreSQL-backed Tenant and Project persistence, repeatable
+migrations, connection-aware readiness, and repository-and-RLS tenant
+isolation. Tenant-owned HTTP endpoints remain deferred until an authenticated
+tenant resolver is introduced.
 
 ## Completed
 
@@ -30,14 +32,17 @@ unimplemented.
 - Phase 1 Platform API foundation: Go workspace, health endpoints, bounded
   configuration, JSON logging, HTTP middleware, graceful shutdown, unit tests,
   a non-root container image, and linker-injected build metadata
+- Phase 2 PostgreSQL persistence: bounded `database/sql` pool using the `pgx`
+  driver, migration command and tracking, local Compose integration tests,
+  Tenant and Project repositories, transaction-local tenant context, project
+  RLS, and migration/application database roles
 
 ## In progress
 
-- Phase 2 PostgreSQL persistence and migrations plan
+- Phase 3 AgentRun domain and state-machine plan
 
 ## Not started
 
-- PostgreSQL migrations
 - Kafka and outbox
 - Scheduler
 - Kubernetes Operator
@@ -49,9 +54,9 @@ unimplemented.
 ## Known gaps to resolve during bootstrap
 
 - Create ADRs for decisions currently described only inside component specifications.
-- Add executable OpenAPI, event schema, CRD, SQL migration, and Terraform artifacts during their implementation phases.
+- Add executable OpenAPI, event schema, CRD, and Terraform artifacts during their implementation phases.
 
 ## Next tasks
 
-1. Prepare the Phase 1 Platform API foundation changes for commit.
-2. Plan Phase 2 PostgreSQL persistence and migrations.
+1. Prepare the Phase 2 PostgreSQL persistence changes for commit.
+2. Plan Phase 3 AgentRun domain and state-machine work.

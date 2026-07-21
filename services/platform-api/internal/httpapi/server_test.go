@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net"
@@ -38,6 +39,22 @@ func TestHealthEndpoints(t *testing.T) {
 		t.Fatalf("ready status = %d, want %d", ready.Code, http.StatusOK)
 	}
 	assertHealthResponse(t, ready, "build-1")
+}
+
+func TestReadinessReportsUnavailableDependency(t *testing.T) {
+	api := New(Options{
+		Build:              buildinfo.Info{Version: "build-1", Commit: "commit-1", BuildTime: "2026-07-21T00:00:00Z"},
+		RequestIDGenerator: func() (string, error) { return "req_test", nil },
+		Readiness: func(context.Context) error {
+			return errors.New("database unavailable")
+		},
+	})
+	api.SetReady(true)
+	response := serve(api.Handler(), http.MethodGet, "/health/ready", nil)
+	if response.Code != http.StatusServiceUnavailable {
+		t.Fatalf("readiness status = %d", response.Code)
+	}
+	assertErrorCode(t, response, "DEPENDENCY_UNAVAILABLE")
 }
 
 func TestRequestIDAndTraceparent(t *testing.T) {

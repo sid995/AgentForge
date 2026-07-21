@@ -38,6 +38,7 @@ surfaced, not silently resolved.
 | `06-data/01-relational-schema.md` | Draft | Persistence | `db/migrations/`, `internal/adapters/` | Migration and integration tests |
 | `06-data/02-indexing-and-querying.md` | Draft | Persistence | `db/migrations/`, `internal/adapters/` | Query-plan and integration tests |
 | `06-data/03-retention-backup-recovery.md` | Draft | Operations | `db/`, `runbooks/` | Restore and recovery drills |
+| `06-data/04-migrations.md` | Draft | Persistence | `db/migrations/`, `cmd/migrate/` | Migration and integration tests |
 | `07-events/01-event-envelope.md` | Draft | Messaging | `internal/`, event schemas | Event contract tests |
 | `07-events/02-topic-catalog.md` | Draft | Messaging | `internal/`, broker configuration | Event contract tests |
 | `07-events/03-delivery-retry-dlq.md` | Draft | Messaging | `internal/`, outbox relay | Broker-failure and duplicate-delivery tests |

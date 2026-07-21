@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"sync/atomic"
@@ -19,12 +20,14 @@ type Options struct {
 	RequestTimeout      time.Duration
 	MaxRequestBodyBytes int64
 	RequestIDGenerator  func() (string, error)
+	Readiness           func(context.Context) error
 }
 
 // API exposes the Platform API HTTP handler and process readiness state.
 type API struct {
 	build      buildinfo.Info
 	readyState atomic.Bool
+	readiness  func(context.Context) error
 	handler    http.Handler
 }
 
@@ -44,7 +47,7 @@ func New(options Options) *API {
 		options.RequestIDGenerator = newRequestID
 	}
 
-	api := &API{build: options.Build}
+	api := &API{build: options.Build, readiness: options.Readiness}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health/live", api.live)
 	mux.HandleFunc("GET /health/ready", api.ready)
