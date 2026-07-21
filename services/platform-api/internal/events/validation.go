@@ -79,8 +79,45 @@ func ValidateEnvelope(envelope Envelope) error {
 	switch envelope.EventType {
 	case AgentRunRequestedType:
 		return validateAgentRunRequested(envelope)
+	case DeliveryDeadLetteredType:
+		return validateDeadLetter(envelope)
 	default:
 		return fmt.Errorf("unsupported event type %q", envelope.EventType)
+	}
+}
+
+// TopicAccepts reports whether an event type may be published to a physical topic.
+func TopicAccepts(eventType, topic string) bool {
+	switch eventType {
+	case AgentRunRequestedType:
+		return topic == AgentRunLifecycleTopic || topic == "agentforge.agent-run.lifecycle.retry.1m.v1" || topic == "agentforge.agent-run.lifecycle.retry.5m.v1" || topic == "agentforge.agent-run.lifecycle.retry.30m.v1"
+	case DeliveryDeadLetteredType:
+		return topic == AgentRunDLQTopic
+	default:
+		return false
+	}
+}
+
+// ExpectedPartitionKey derives the contract key without provider-specific types.
+func ExpectedPartitionKey(envelope Envelope) (string, error) {
+	switch envelope.EventType {
+	case AgentRunRequestedType:
+		return envelope.AggregateID.String(), nil
+	case DeliveryDeadLetteredType:
+		var payload DeadLetterPayload
+		if err := json.Unmarshal(envelope.Payload, &payload); err != nil {
+			return "", err
+		}
+		if len(payload.OriginalEnvelope) > 0 {
+			original, err := DecodeEnvelope(payload.OriginalEnvelope)
+			if err != nil {
+				return "", err
+			}
+			return original.AggregateID.String(), nil
+		}
+		return envelope.AggregateID.String(), nil
+	default:
+		return "", fmt.Errorf("unsupported event type %q", envelope.EventType)
 	}
 }
 
@@ -154,6 +191,32 @@ func validateAgentRunRequested(envelope Envelope) error {
 	promptReference, promptErr := url.Parse(payload.PromptReference)
 	if strings.TrimSpace(payload.Runtime) == "" || len(payload.Runtime) > 120 || payload.CPUMillis < 1 || payload.CPUMillis > 128000 || payload.MemoryMiB < 1 || payload.MemoryMiB > 524288 || payload.TimeoutSeconds < 1 || payload.TimeoutSeconds > 86400 || payload.MaxAttempts < 1 || payload.MaxAttempts > 10 || strings.TrimSpace(payload.PromptReference) == "" || len(payload.PromptReference) > 2048 || promptErr != nil || promptReference.Scheme == "" || !strings.Contains(payload.PromptReference, "://") {
 		return fmt.Errorf("run-request payload constraints are invalid")
+	}
+	return nil
+}
+
+func validateDeadLetter(envelope Envelope) error {
+	if envelope.AggregateType != "EventDeliveryFailure" {
+		return fmt.Errorf("dead-letter aggregate metadata is invalid")
+	}
+	var payload DeadLetterPayload
+	decoder := json.NewDecoder(bytes.NewReader(envelope.Payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&payload); err != nil {
+		return fmt.Errorf("decode dead-letter payload: %w", err)
+	}
+	if err := requireEOF(decoder); err != nil {
+		return err
+	}
+	hasEnvelope := len(payload.OriginalEnvelope) > 0
+	hasFingerprint := strings.HasPrefix(payload.RawFingerprint, "sha256:") && len(payload.RawFingerprint) == 71 && payload.RawSize >= 0
+	if hasEnvelope == hasFingerprint || strings.TrimSpace(payload.OriginalTopic) == "" || payload.OriginalPartition < 0 || payload.OriginalOffset < 0 || strings.TrimSpace(payload.ConsumerIdentity) == "" || len(payload.ConsumerIdentity) > 160 || strings.TrimSpace(payload.FailureCode) == "" || len(payload.FailureCode) > 80 || strings.TrimSpace(payload.FailureReason) == "" || len(payload.FailureReason) > 500 || payload.Attempts < 1 || payload.FirstFailedAt.IsZero() || payload.LastFailedAt.Before(payload.FirstFailedAt) || payload.ReplayDisposition != "QUARANTINED" {
+		return fmt.Errorf("dead-letter payload is invalid")
+	}
+	if hasEnvelope {
+		if _, err := DecodeEnvelope(payload.OriginalEnvelope); err != nil {
+			return fmt.Errorf("dead-letter original envelope is invalid: %w", err)
+		}
 	}
 	return nil
 }

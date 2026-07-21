@@ -43,6 +43,7 @@ type OutboxEvent struct {
 	Envelope     Envelope
 	Topic        string
 	PartitionKey string
+	Headers      []Header
 	Serialized   []byte
 	CreatedAt    time.Time
 }

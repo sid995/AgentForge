@@ -34,3 +34,21 @@ markers are not deleted to force a duplicate business effect.
 
 See `07-events/04-event-architecture.md` and ADR-002 for claim leases,
 acknowledgement ordering, retry/DLQ topics, replay, retention, and cleanup.
+
+## Phase 4.4 implementation
+
+The PostgreSQL processor exposes the marker transaction explicitly to the
+business-effect callback. Broker acknowledgement remains a separate caller
+operation after `Process` commits. Two replicas racing on one event rely on the
+database primary key; no in-memory lock participates in correctness.
+
+The failure router requires explicit transient/permanent classification when
+known. Transient failures publish the unchanged envelope and event ID to the
+`1m`, `5m`, then `30m` retry topics before source acknowledgement. Retry
+records carry an explicit UTC `retry-not-before` header that retry consumers
+must enforce before invoking business logic. Permanent failures and exhausted
+transient delivery publish a new
+`event-delivery.dead-lettered.v1` envelope. Valid originals are preserved;
+malformed bytes are never embedded and are represented by SHA-256 fingerprint,
+size, source coordinates, safe failure metadata, and a trusted quarantine
+tenant. Publication failure leaves the source unacknowledged.

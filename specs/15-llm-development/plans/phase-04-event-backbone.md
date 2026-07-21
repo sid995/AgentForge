@@ -13,6 +13,11 @@ base, strict envelope/header/version validation, the first JSON Schema and
 fixture, pinned root-Compose Redpanda, topic bootstrap, and a real broker
 contract test. Business consumers remain excluded until Phase 4.4.
 
+Phase 4.4 now implements the explicit processed-marker/business transaction,
+duplicate acknowledgement semantics, transient/permanent failure model, three
+retry-topic stages, sanitized DLQ construction, metrics hooks, and database and
+broker crash/replica/failure tests. No business consumer is introduced.
+
 ## Sub-phases
 
 1. Approve the envelope, topics, ownership, delivery, retry/DLQ, retention,

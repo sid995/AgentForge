@@ -73,8 +73,11 @@ func (consumer *Consumer) decodeRecord(record *kgo.Record) (ports.ReceivedEvent,
 	if err == nil {
 		err = events.ValidateHeaders(envelope, received.Headers)
 	}
-	if err == nil && (record.Topic != events.AgentRunLifecycleTopic || !bytes.Equal(record.Key, []byte(envelope.AggregateID.String()))) {
-		err = fmt.Errorf("event topic or partition key is invalid")
+	if err == nil {
+		expectedKey, keyErr := events.ExpectedPartitionKey(envelope)
+		if keyErr != nil || !events.TopicAccepts(envelope.EventType, record.Topic) || !bytes.Equal(record.Key, []byte(expectedKey)) {
+			err = fmt.Errorf("event topic or partition key is invalid")
+		}
 	}
 	if err != nil {
 		return ports.ReceivedEvent{}, &ports.InvalidEventError{Record: received, Cause: err}

@@ -7,6 +7,9 @@ store and Kafka-compatible brokers for at-least-once delivery. Phase 4.1 is
 the accepted design; Phase 4.2 implements the transactional outbox, and Phase
 4.3 implements the Kafka adapter, executable first-event schema, manual-ack
 consumer base, topic bootstrap, and root-Compose Redpanda broker.
+Phase 4.4 implements the processed-event transaction, duplicate no-op,
+transient retry routing, poison-message DLQ envelope, and sanitized malformed
+message quarantine.
 
 Phase 3.1 and 3.2 are present, but the create-run API and cancellation/retry
 application commands from Phase 3.3 through 3.5 are not. Phase 4.2 can attach

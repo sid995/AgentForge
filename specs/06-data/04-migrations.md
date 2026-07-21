@@ -20,6 +20,12 @@ table and its dependent policies/indexes. It deliberately retains the relay
 role because role removal is unsafe when another database in the PostgreSQL
 cluster may grant or own objects through that role.
 
+Phase 4.4 adds `000004_processed_events`. It creates the consumer/event primary
+key, source and aggregate metadata constraints, tenant/time index,
+least-privilege application grants, and forced tenant RLS. Its local down
+migration drops the marker table; production rollback retains data and uses a
+corrective forward migration under the normal migration contract.
+
 ## Naming and ordering
 
 Migration files use a six-digit, increasing version and a kebab-case purpose:

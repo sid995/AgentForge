@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	consumerapp "github.com/sid995/agentforge/services/platform-api/internal/application/consumer"
 	"github.com/sid995/agentforge/services/platform-api/internal/config"
 	"github.com/sid995/agentforge/services/platform-api/internal/events"
 )
@@ -68,5 +69,35 @@ func TestRedpandaProducerConsumerOrderingHeadersAndDuplicateDelivery(t *testing.
 	}
 	if first.Envelope.EventID != event.Envelope.EventID || second.Envelope.EventID != event.Envelope.EventID || first.Partition != second.Partition || first.Offset >= second.Offset {
 		t.Fatalf("records out of order or identity changed: first=%#v second=%#v", first, second)
+	}
+
+	retryConsumer, err := NewConsumer(configuration, "retry-contract-"+uuid.NewString(), "agentforge.agent-run.lifecycle.retry.1m.v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer retryConsumer.Close()
+	dlqConsumer, err := NewConsumer(configuration, "dlq-contract-"+uuid.NewString(), events.AgentRunDLQTopic)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dlqConsumer.Close()
+	router, err := consumerapp.NewRouter(producer, nil, "contract-consumer.v1", uuid.Must(uuid.NewV7()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	failedAt := time.Now().UTC()
+	if routed, err := router.Route(ctx, first, consumerapp.NewTransientFailure("TEMPORARY", "temporary dependency", nil), 1, failedAt, failedAt); err != nil || routed != consumerapp.RoutedRetry {
+		t.Fatalf("retry route=%q err=%v", routed, err)
+	}
+	retried, err := retryConsumer.Poll(ctx)
+	if err != nil || retried.Envelope.EventID != first.Envelope.EventID {
+		t.Fatalf("retried=%#v err=%v", retried, err)
+	}
+	if routed, err := router.Route(ctx, first, consumerapp.NewPermanentFailure("INVALID", "invalid business event", nil), 1, failedAt, failedAt); err != nil || routed != consumerapp.RoutedDLQ {
+		t.Fatalf("DLQ route=%q err=%v", routed, err)
+	}
+	deadLetter, err := dlqConsumer.Poll(ctx)
+	if err != nil || deadLetter.Envelope.EventType != events.DeliveryDeadLetteredType {
+		t.Fatalf("deadLetter=%#v err=%v", deadLetter, err)
 	}
 }

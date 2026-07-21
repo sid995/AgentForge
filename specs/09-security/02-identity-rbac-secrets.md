@@ -39,6 +39,13 @@ it excludes raw prompt/source content, authorization material, provider keys,
 and the internal idempotency request hash. Persisted failure reasons are
 truncated to 1,000 characters and must not contain secrets.
 
+Phase 4.4 consumer processing revalidates the complete envelope, headers,
+topic, key, and serialized bytes before opening the tenant transaction. The
+tenant comes from that validated envelope, not a business callback parameter.
+Unknown errors become a generic stored reason. Malformed broker bytes and
+unapproved headers are not copied into DLQ events; only a SHA-256 fingerprint,
+byte count, bounded source coordinates, and trusted quarantine tenant are used.
+
 ## Secrets
 
 Store secrets in a cloud secret manager or Vault. Database rows hold references only. The agent accesses approved capabilities through brokers or scoped credentials. Every secret access is audited.

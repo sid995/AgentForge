@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 4.4: Idempotent-consumer foundation
+Phase 4.5: Event compatibility validation and Phase 4 audit
 
 ## Overall state
 
@@ -44,17 +44,20 @@ remain explicit dependencies for their corresponding outbox event integrations.
 - Phase 4.3 strict event validation and first executable schema/fixture,
   idempotent Kafka producer adapter, manual-ack consumer-group base, pinned
   root-Compose Redpanda, reproducible topic bootstrap, and broker contract tests
+- Phase 4.4 processed-event marker/business transactions, database-enforced
+  duplicate no-ops across replicas and acknowledgement crashes, explicit
+  transient/permanent failures, retry topics, sanitized DLQ envelopes, and
+  malformed-message fingerprint quarantine
 
 ## In progress
 
-- Phase 4.4 idempotent-consumer transaction and retry/DLQ foundation
+- Phase 4.5 compatibility validation, distributed-systems review, and audit
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Phase 4.5 event compatibility validation and Phase 4 audit
 - Scheduler
 - Kubernetes Operator
 - Agent Runner
@@ -69,8 +72,8 @@ remain explicit dependencies for their corresponding outbox event integrations.
 
 ## Next tasks
 
-1. Commit the validated Phase 4.3 Kafka adapter and contracts.
-2. Implement Phase 4.4 processed-event storage, explicit consumer transaction
-   boundaries, retry classification, and DLQ publication.
+1. Commit the validated Phase 4.4 idempotent-consumer foundation.
+2. Implement Phase 4.5 schema compatibility validation and CI fixtures, then
+   perform the Phase 4 distributed-systems review and completion audit.
 3. Preserve the unresolved cancellation/retry event wiring until their Phase
    3.4/3.5 command transactions exist.

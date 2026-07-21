@@ -47,10 +47,15 @@ func (producer *Producer) Publish(ctx context.Context, event events.OutboxEvent)
 		return ports.PublicationResult{}, &PublicationError{permanent: true, reason: "event message size is invalid"}
 	}
 	decoded, err := events.DecodeEnvelope(event.Serialized)
-	if err != nil || decoded.EventID != event.Envelope.EventID || event.Topic != events.AgentRunLifecycleTopic || event.PartitionKey != decoded.AggregateID.String() {
+	expectedKey, keyErr := events.ExpectedPartitionKey(decoded)
+	if err != nil || keyErr != nil || decoded.EventID != event.Envelope.EventID || !events.TopicAccepts(decoded.EventType, event.Topic) || event.PartitionKey != expectedKey {
 		return ports.PublicationResult{}, &PublicationError{cause: err, permanent: true, reason: "event contract is invalid"}
 	}
 	headers := events.HeadersForEnvelope(decoded)
+	headers = append(headers, event.Headers...)
+	if err := events.ValidateHeaders(decoded, headers); err != nil {
+		return ports.PublicationResult{}, &PublicationError{cause: err, permanent: true, reason: "event headers are invalid"}
+	}
 	record := &kgo.Record{Topic: event.Topic, Key: []byte(event.PartitionKey), Value: event.Serialized, Timestamp: decoded.OccurredAt}
 	for _, header := range headers {
 		record.Headers = append(record.Headers, kgo.RecordHeader{Key: header.Key, Value: []byte(header.Value)})
