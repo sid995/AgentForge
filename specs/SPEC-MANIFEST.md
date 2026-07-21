@@ -42,6 +42,7 @@ surfaced, not silently resolved.
 | `07-events/01-event-envelope.md` | Draft | Messaging | `internal/`, event schemas | Event contract tests |
 | `07-events/02-topic-catalog.md` | Draft | Messaging | `internal/`, broker configuration | Event contract tests |
 | `07-events/03-delivery-retry-dlq.md` | Draft | Messaging | `internal/`, outbox relay | Broker-failure and duplicate-delivery tests |
+| `07-events/04-event-architecture.md` | Draft | Messaging | `internal/events/`, messaging adapters, outbox relay | Contract, PostgreSQL, and Redpanda integration tests |
 | `08-kubernetes/01-crd-agent-run.md` | Draft | Agent operator | `operator/api/`, `operator/config/` | CRD schema and admission tests |
 | `08-kubernetes/02-workload-resources.md` | Draft | Agent operator | `operator/` | Manifest security tests |
 | `08-kubernetes/03-controller-behavior.md` | Draft | Agent operator | `operator/controllers/` | Envtest and kind tests |

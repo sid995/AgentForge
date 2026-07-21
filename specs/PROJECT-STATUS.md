@@ -4,15 +4,14 @@
 
 ## Current milestone
 
-Phase 3.2: AgentRun and AgentRunAttempt persistence
+Phase 4.1: Transactional outbox and Kafka event architecture
 
 ## Overall state
 
-Phase 2 is complete. Phase 3.2 now adds durable AgentRun and AgentRunAttempt
-persistence: validated state/failure value objects, repeatable migrations,
-tenant-scoped idempotency uniqueness, transaction-local RLS, and
-optimistic-locking repository writes. Tenant-owned HTTP endpoints remain
-deferred until the authenticated Phase 3.3 API vertical slice.
+Phase 2 and the Phase 3.1/3.2 state-machine and persistence foundation are
+complete. At the user's direction, work has moved to Phase 4 event architecture
+before Phase 3.3 through 3.5 API, cancellation, and retry commands. Those gaps
+remain explicit dependencies for their corresponding outbox event integrations.
 
 ## Completed
 
@@ -36,14 +35,19 @@ deferred until the authenticated Phase 3.3 API vertical slice.
   driver, migration command and tracking, local Compose integration tests,
   Tenant and Project repositories, transaction-local tenant context, project
   RLS, and migration/application database roles
+- Phase 3.1 normalized AgentRun/attempt state machines and Phase 3.2 durable
+  AgentRun/attempt persistence with optimistic concurrency and tenant RLS
 
 ## In progress
 
-- Phase 3.2 AgentRun and AgentRunAttempt persistence
+- Phase 4.1 event architecture and transactional-outbox ADR
 
 ## Not started
 
-- Kafka and outbox
+- Phase 3.3 create/get/list run API
+- Phase 3.4 cancellation command
+- Phase 3.5 retry command and Phase 3 audit
+- Transactional outbox, Kafka adapter, and consumer foundation
 - Scheduler
 - Kubernetes Operator
 - Agent Runner
@@ -58,5 +62,6 @@ deferred until the authenticated Phase 3.3 API vertical slice.
 
 ## Next tasks
 
-1. Commit the validated Phase 3.2 AgentRun and AgentRunAttempt persistence.
-2. Implement Phase 3.3 authenticated create/get/list run API vertical slice.
+1. Commit the validated Phase 4.1 event architecture and ADR.
+2. Implement Phase 4.2 transactional outbox against the available AgentRun
+   repository transaction, preserving the unresolved cancellation/retry wiring.

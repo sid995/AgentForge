@@ -25,8 +25,8 @@ This file maps approved requirements to implementation and test evidence. It mus
 | SEC-TEN-001 Tenant-scoped data access | `09-security/02-identity-rbac-secrets.md` | repositories and RLS | cross-tenant integration tests | Specified |
 | SEC-TEN-002 Project repository and RLS isolation | `09-security/02-identity-rbac-secrets.md`, `06-data/01-relational-schema.md` | `internal/adapters/postgres/`, `db/migrations/` | `internal/adapters/postgres/projects_integration_test.go` | Verified |
 | SEC-EXE-001 Non-privileged agent workloads | `09-security/03-sandbox-and-network.md` | operator workload builder | manifest security tests | Specified |
-| REL-EVT-001 Transactional event publication | `07-events/03-delivery-retry-dlq.md` | outbox relay | broker-failure integration tests | Specified |
-| REL-EVT-002 Idempotent event consumption | `07-events/03-delivery-retry-dlq.md` | consumer foundation | duplicate-delivery tests | Specified |
+| REL-EVT-001 Transactional event publication | `07-events/03-delivery-retry-dlq.md`, `07-events/04-event-architecture.md`, ADR-002 | outbox relay | broker-failure integration tests | Planned |
+| REL-EVT-002 Idempotent event consumption | `07-events/03-delivery-retry-dlq.md`, `07-events/04-event-architecture.md`, ADR-002 | consumer foundation | duplicate-delivery tests | Planned |
 | OBS-001 End-to-end correlated telemetry | `10-observability/01-telemetry-standards.md` | shared telemetry packages | trace integration test | Specified |
 | COST-001 Per-run usage attribution | `14-operations/03-capacity-cost.md` | usage ledger | ledger idempotency tests | Specified |
 

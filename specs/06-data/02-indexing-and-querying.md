@@ -6,7 +6,7 @@
 - Tenant-scoped run history index on `(tenant_id, project_id, created_at desc)`.
 - Active attempts index on run and state.
 - Deployment environment index on `(tenant_id, project_id, environment, created_at desc)`.
-- Unpublished outbox index on `published_at is null` and creation time.
+- Claimable outbox index on terminal disposition, `published_at`, `next_attempt_at`, claim expiry, creation time, and event ID.
 - Usage ledger indexes by tenant, project, run, resource type, and observed time.
 
 ## Query rules

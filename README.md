@@ -26,8 +26,8 @@ platform through optimism.
 
 ## Current state
 
-Phase 2 is complete, and Phase 3.2 adds the durable AgentRun/attempt domain:
-PostgreSQL migrations, tenant-scoped persistence, explicit transition
-validation, idempotency uniqueness, and optimistic concurrency controls.
-Tenant-owned HTTP APIs remain deferred until the Phase 3.3 identity and API
-vertical slice; see [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).
+Phase 2 and the Phase 3.1/3.2 AgentRun state/persistence foundation are
+complete. Phase 4.1 now defines the transactional-outbox, at-least-once Kafka,
+idempotent-consumer, retry/DLQ, replay, retention, security, and compatibility
+architecture. Phase 3.3 through 3.5 command/API work remains explicitly
+unfinished; see [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).
