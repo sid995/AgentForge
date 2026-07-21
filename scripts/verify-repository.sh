@@ -49,4 +49,34 @@ while IFS= read -r specification; do
   fi
 done < <(find specs -mindepth 2 -type f -name '*.md' -not -path '*/audits/*' -not -path '*/plans/*' | sort)
 
+if [[ -d db/migrations ]]; then
+  previous_version=''
+  while IFS= read -r up_migration; do
+    migration_name=$(basename "${up_migration}")
+    migration_version=${migration_name%%_*}
+    down_migration="${up_migration%.up.sql}.down.sql"
+    if [[ ! "${migration_version}" =~ ^[0-9]{6}$ ]]; then
+      printf 'migration version must use six digits: %s\n' "${up_migration}" >&2
+      exit 1
+    fi
+    if [[ ! -f "${down_migration}" ]]; then
+      printf 'migration is missing a down file: %s\n' "${up_migration}" >&2
+      exit 1
+    fi
+    if [[ -n "${previous_version}" && "${migration_version}" == "${previous_version}" ]]; then
+      printf 'duplicate migration version: %s\n' "${migration_version}" >&2
+      exit 1
+    fi
+    previous_version="${migration_version}"
+  done < <(find db/migrations -maxdepth 1 -type f -name '*.up.sql' | sort)
+
+  while IFS= read -r down_migration; do
+    up_migration="${down_migration%.down.sql}.up.sql"
+    if [[ ! -f "${up_migration}" ]]; then
+      printf 'migration down file has no up file: %s\n' "${down_migration}" >&2
+      exit 1
+    fi
+  done < <(find db/migrations -maxdepth 1 -type f -name '*.down.sql' | sort)
+fi
+
 printf '%s\n' 'repository verification passed'

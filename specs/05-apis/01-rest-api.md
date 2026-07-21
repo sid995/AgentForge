@@ -27,6 +27,11 @@ Both endpoints return `application/json; charset=utf-8` with:
 
 ## Projects
 
+Project persistence is implemented in Phase 2, but these tenant-owned HTTP
+endpoints remain deferred until Phase 3 introduces an authenticated tenant
+resolver. The API must not accept a client-supplied tenant ID or development
+header as a substitute.
+
 - `POST /projects`
 - `GET /projects/{projectId}`
 - `PATCH /projects/{projectId}`
@@ -72,3 +77,5 @@ Both endpoints return `application/json; charset=utf-8` with:
 - Malformed routes, oversized requests, timeouts, and unexpected failures use
   the structured error envelope. Their stable codes are `NOT_FOUND`,
   `REQUEST_TOO_LARGE`, `REQUEST_TIMEOUT`, and `INTERNAL`.
+- A process that is live but cannot reach PostgreSQL returns `503` from
+  `/health/ready` with retryable code `DEPENDENCY_UNAVAILABLE`.

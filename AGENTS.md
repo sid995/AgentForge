@@ -29,7 +29,9 @@ For every implementation task:
 6. Run formatting, linting, focused tests, and relevant integration tests.
 7. Review the diff for correctness, security, concurrency, and scope creep.
 8. Update specifications, project status, and traceability when behavior changes.
-9. Report changed files, commands run, test results, and unresolved risks.
+9. Commit each validated sub-phase before beginning the next sub-phase; do not
+   carry uncommitted implementation work across a sub-phase boundary.
+10. Report changed files, commands run, test results, and unresolved risks.
 
 ## Architecture invariants
 

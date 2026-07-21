@@ -34,5 +34,7 @@ jobs:
         run: go test -race ./services/platform-api/...
       - name: Vet Platform API
         run: go vet ./services/platform-api/...
+      - name: Integration-test PostgreSQL persistence
+        run: make test-integration
       - name: Build Platform API image
         run: make build-platform-api

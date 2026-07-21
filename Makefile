@@ -7,16 +7,17 @@ BUILD_VERSION ?= development
 BUILD_COMMIT ?= unknown
 BUILD_TIME ?= unknown
 
-.PHONY: help check-tools format lint test test-integration test-controller build-platform-api verify
+.PHONY: help check-tools format lint test test-integration test-controller migrate build-platform-api verify
 
 help:
 	@printf '%s\n' 'AgentForge development targets:'
-	@printf '%s\n' '  check-tools       Check Phase 0 and Phase 1 prerequisites'
+	@printf '%s\n' '  check-tools       Check Phase 0 through Phase 2 prerequisites'
 	@printf '%s\n' '  format            Format tracked Go source'
 	@printf '%s\n' '  lint              Run Platform API static analysis'
 	@printf '%s\n' '  test              Run Platform API unit tests'
-	@printf '%s\n' '  test-integration  Run integration tests (unavailable until configured)'
+	@printf '%s\n' '  test-integration  Run PostgreSQL integration tests in Docker Compose'
 	@printf '%s\n' '  test-controller   Run controller tests (unavailable until configured)'
+	@printf '%s\n' '  migrate           Apply checked-in PostgreSQL migrations'
 	@printf '%s\n' '  build-platform-api Build the Platform API container image (BUILD_VERSION, BUILD_COMMIT, BUILD_TIME are supported)'
 	@printf '%s\n' '  verify            Validate repository controls and documentation inventory'
 
@@ -41,12 +42,21 @@ test:
 	@go test ./services/platform-api/...
 
 test-integration:
-	@echo 'Integration tests are unavailable: Phase 1 has no external dependency environment.' >&2
-	@exit 1
+	@set -euo pipefail; \
+		cleanup() { docker compose -f docker-compose.yml -p agentforge-phase2-test down --volumes --remove-orphans; }; \
+		trap cleanup EXIT; \
+		POSTGRES_DB=agentforge POSTGRES_USER=agentforge_migrator POSTGRES_PASSWORD=agentforge-migrator POSTGRES_APP_PASSWORD=agentforge-app POSTGRES_HOST_PORT=15432 docker compose -f docker-compose.yml -p agentforge-phase2-test up --detach --wait; \
+		AGENTFORGE_DATABASE_URL='postgres://agentforge_migrator:agentforge-migrator@127.0.0.1:15432/agentforge?sslmode=disable' go run ./services/platform-api/cmd/migrate; \
+		AGENTFORGE_TEST_DATABASE_URL='postgres://agentforge_migrator:agentforge-migrator@127.0.0.1:15432/agentforge?sslmode=disable' \
+		AGENTFORGE_TEST_APP_DATABASE_URL='postgres://agentforge_app:agentforge-app@127.0.0.1:15432/agentforge?sslmode=disable' \
+		go test -count=1 -tags=integration ./services/platform-api/...
 
 test-controller:
 	@echo 'Controller tests are unavailable: Phase 1 has no Kubernetes operator.' >&2
 	@exit 1
+
+migrate:
+	@go run ./services/platform-api/cmd/migrate
 
 build-platform-api:
 	@docker build \

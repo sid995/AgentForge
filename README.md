@@ -22,10 +22,12 @@ platform through optimism.
 - [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md): current implementation status
 - [`specs/TRACEABILITY.md`](specs/TRACEABILITY.md): requirement-to-code-and-test mapping
 - [`specs/15-llm-development/05-codex-execution-playbook.md`](specs/15-llm-development/05-codex-execution-playbook.md): complete phased prompt sequence
+- [`.env.example`](.env.example): documented local configuration through Phase 2
 
 ## Current state
 
-Phase 1 is complete: the repository has a deployable Platform API with health
-endpoints, bounded configuration and middleware, structured JSON logs, graceful
-shutdown, and a non-root container image. PostgreSQL and all tenant-owned
-business APIs remain future work; see [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).
+Phase 2 is complete: the repository has a deployable Platform API plus
+PostgreSQL migrations, tenant/project persistence, connection-aware readiness,
+and tenant isolation enforced by both repository queries and database RLS.
+Tenant-owned HTTP APIs remain deferred until an authenticated tenant resolver
+exists; see [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).

@@ -12,7 +12,8 @@ This file maps approved requirements to implementation and test evidence. It mus
 
 | Requirement | Specification | Intended implementation | Intended tests | Status |
 |---|---|---|---|---|
-| FR-PLT-001 Platform health endpoints | `04-services/01-platform-api.md`, `05-apis/01-rest-api.md` | `services/platform-api/internal/httpapi/`, `internal/buildinfo/` | `services/platform-api/internal/httpapi/server_test.go`, `internal/buildinfo/buildinfo_test.go` | Verified |
+| FR-PLT-001 Platform health endpoints | `04-services/01-platform-api.md`, `05-apis/01-rest-api.md` | `services/platform-api/internal/httpapi/`, `internal/database/`, `internal/buildinfo/` | `services/platform-api/internal/httpapi/server_test.go`, `internal/adapters/postgres/projects_integration_test.go`, `internal/buildinfo/buildinfo_test.go` | Verified |
+| FR-PRJ-001 Persist tenant projects | `03-domain/01-domain-model.md`, `06-data/01-relational-schema.md` | `internal/domain/`, `internal/application/projects/`, `internal/adapters/postgres/` | unit tests and `internal/adapters/postgres/projects_integration_test.go` | Verified |
 | FR-RUN-001 Create agent run | `01-product/01-requirements.md` | `services/platform-api/internal/runs/` | `tests/platform-api/` | Specified |
 | FR-RUN-002 Track run lifecycle | `03-domain/02-state-machines.md` | `internal/runs/` | domain and integration tests | Specified |
 | FR-SCH-001 Claim queued runs safely | `04-services/02-scheduler.md` | `services/scheduler/` | `tests/scheduler/` | Specified |
@@ -21,6 +22,7 @@ This file maps approved requirements to implementation and test evidence. It mus
 | FR-BLD-001 Build immutable image | `04-services/07-build-service.md` | `services/build-service/` | build integration tests | Specified |
 | FR-DEP-001 Deploy through GitOps | `04-services/08-deployment-service.md` | `services/deployment-service/` | Git and Argo contract tests | Specified |
 | SEC-TEN-001 Tenant-scoped data access | `09-security/02-identity-rbac-secrets.md` | repositories and RLS | cross-tenant integration tests | Specified |
+| SEC-TEN-002 Project repository and RLS isolation | `09-security/02-identity-rbac-secrets.md`, `06-data/01-relational-schema.md` | `internal/adapters/postgres/`, `db/migrations/` | `internal/adapters/postgres/projects_integration_test.go` | Verified |
 | SEC-EXE-001 Non-privileged agent workloads | `09-security/03-sandbox-and-network.md` | operator workload builder | manifest security tests | Specified |
 | REL-EVT-001 Transactional event publication | `07-events/03-delivery-retry-dlq.md` | outbox relay | broker-failure integration tests | Specified |
 | REL-EVT-002 Idempotent event consumption | `07-events/03-delivery-retry-dlq.md` | consumer foundation | duplicate-delivery tests | Specified |

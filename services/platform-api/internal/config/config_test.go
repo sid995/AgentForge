@@ -7,7 +7,7 @@ import (
 )
 
 func TestLoadDefaults(t *testing.T) {
-	config, err := Load(func(string) (string, bool) { return "", false })
+	config, err := Load(testLookup(nil))
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -18,21 +18,30 @@ func TestLoadDefaults(t *testing.T) {
 	if config.ShutdownTimeout != 10*time.Second || config.RequestTimeout != 30*time.Second || config.MaxRequestBodyBytes != 1<<20 {
 		t.Fatalf("Load() config = %#v", config)
 	}
+	if config.Database.MaxConns != 10 || config.Database.MaxIdleConns != 5 || config.Database.AcquireTimeout != 5*time.Second {
+		t.Fatalf("Load() database config = %#v", config.Database)
+	}
 }
 
 func TestLoadOverrides(t *testing.T) {
 	values := map[string]string{
-		"AGENTFORGE_HTTP_ADDR":              "127.0.0.1:9000",
-		"AGENTFORGE_ENVIRONMENT":            "test",
-		"AGENTFORGE_SHUTDOWN_TIMEOUT":       "3s",
-		"AGENTFORGE_REQUEST_TIMEOUT":        "4s",
-		"AGENTFORGE_MAX_REQUEST_BODY_BYTES": "512",
+		"AGENTFORGE_HTTP_ADDR":                  "127.0.0.1:9000",
+		"AGENTFORGE_ENVIRONMENT":                "test",
+		"AGENTFORGE_SHUTDOWN_TIMEOUT":           "3s",
+		"AGENTFORGE_REQUEST_TIMEOUT":            "4s",
+		"AGENTFORGE_MAX_REQUEST_BODY_BYTES":     "512",
+		"AGENTFORGE_DATABASE_URL":               "postgres://user:password@localhost:5432/agentforge?sslmode=disable",
+		"AGENTFORGE_DATABASE_MAX_CONNS":         "12",
+		"AGENTFORGE_DATABASE_MAX_IDLE_CONNS":    "2",
+		"AGENTFORGE_DATABASE_MAX_CONN_LIFETIME": "4m",
+		"AGENTFORGE_DATABASE_ACQUIRE_TIMEOUT":   "3s",
+		"AGENTFORGE_DATABASE_CONNECT_TIMEOUT":   "2s",
 	}
 	config, err := Load(func(name string) (string, bool) { value, ok := values[name]; return value, ok })
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	if config.HTTPAddress != "127.0.0.1:9000" || config.Environment != "test" || config.ShutdownTimeout != 3*time.Second || config.RequestTimeout != 4*time.Second || config.MaxRequestBodyBytes != 512 {
+	if config.HTTPAddress != "127.0.0.1:9000" || config.Environment != "test" || config.ShutdownTimeout != 3*time.Second || config.RequestTimeout != 4*time.Second || config.MaxRequestBodyBytes != 512 || config.Database.MaxConns != 12 || config.Database.MaxIdleConns != 2 || config.Database.MaxConnLifetime != 4*time.Minute || config.Database.AcquireTimeout != 3*time.Second || config.Database.ConnectTimeout != 2*time.Second {
 		t.Fatalf("Load() config = %#v", config)
 	}
 }
@@ -48,19 +57,55 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		{name: "shutdown timeout", key: "AGENTFORGE_SHUTDOWN_TIMEOUT", value: "0s"},
 		{name: "request timeout", key: "AGENTFORGE_REQUEST_TIMEOUT", value: "invalid"},
 		{name: "body limit", key: "AGENTFORGE_MAX_REQUEST_BODY_BYTES", value: "0"},
+		{name: "database URL", key: "AGENTFORGE_DATABASE_URL", value: "mysql://localhost/agentforge"},
+		{name: "database URL without user", key: "AGENTFORGE_DATABASE_URL", value: "postgres://localhost/agentforge"},
+		{name: "database max connections", key: "AGENTFORGE_DATABASE_MAX_CONNS", value: "0"},
+		{name: "database max idle connections", key: "AGENTFORGE_DATABASE_MAX_IDLE_CONNS", value: "-1"},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := Load(func(name string) (string, bool) {
-				if name == test.key {
-					return test.value, true
-				}
-				return "", false
-			})
+			_, err := Load(testLookup(map[string]string{test.key: test.value}))
 			if err == nil || !strings.Contains(err.Error(), test.key) {
 				t.Fatalf("Load() error = %v, want error naming %s", err, test.key)
 			}
 		})
+	}
+}
+
+func TestLoadRejectsMissingDatabaseURL(t *testing.T) {
+	_, err := Load(func(string) (string, bool) { return "", false })
+	if err == nil || !strings.Contains(err.Error(), "AGENTFORGE_DATABASE_URL") {
+		t.Fatalf("Load() error = %v", err)
+	}
+}
+
+func TestLoadRejectsDatabasePoolBounds(t *testing.T) {
+	_, err := Load(testLookup(map[string]string{
+		"AGENTFORGE_DATABASE_MAX_CONNS":      "2",
+		"AGENTFORGE_DATABASE_MAX_IDLE_CONNS": "3",
+	}))
+	if err == nil || !strings.Contains(err.Error(), "AGENTFORGE_DATABASE_MAX_IDLE_CONNS") {
+		t.Fatalf("Load() error = %v", err)
+	}
+}
+
+func TestLoadClampsDefaultIdleConnectionsToMaximum(t *testing.T) {
+	configuration, err := Load(testLookup(map[string]string{"AGENTFORGE_DATABASE_MAX_CONNS": "2"}))
+	if err != nil || configuration.Database.MaxIdleConns != 2 {
+		t.Fatalf("Load() config = %#v, error = %v", configuration.Database, err)
+	}
+}
+
+func testLookup(values map[string]string) LookupEnv {
+	defaults := map[string]string{
+		"AGENTFORGE_DATABASE_URL": "postgres://user:password@localhost:5432/agentforge?sslmode=disable",
+	}
+	for key, value := range values {
+		defaults[key] = value
+	}
+	return func(name string) (string, bool) {
+		value, ok := defaults[name]
+		return value, ok
 	}
 }
