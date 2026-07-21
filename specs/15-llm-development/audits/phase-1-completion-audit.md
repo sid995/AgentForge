@@ -23,7 +23,7 @@
 | Liveness and readiness behave as documented | Handler tests cover liveness, unready state, ready state, JSON response, and build metadata | Passed |
 | Structured logs contain service and request context | JSON logger and request-log tests cover request ID, trace ID, method, path, status, and sensitive-data exclusion | Passed |
 | Unit tests and static analysis pass | `make test`, `go test -race ./services/platform-api/...`, `go vet ./services/platform-api/...`, and `make lint` | Passed |
-| Container builds successfully | `make build-platform-api` produced `agentforge/platform-api:dev` from a non-root distroless final image | Passed |
+| Container builds successfully | `make build-platform-api` produced `agentforge/platform-api:dev` from a non-root distroless final image, with `BUILD_VERSION`, `BUILD_COMMIT`, and `BUILD_TIME` injected through Go linker flags | Passed |
 
 ## Contract and security review
 
@@ -47,8 +47,8 @@
 | `go test -race ./services/platform-api/...` | Passed |
 | `go vet ./services/platform-api/...` | Passed |
 | `make verify` | Passed |
-| `make build-platform-api` | Passed |
-| Container HTTP smoke check | Passed for liveness and readiness endpoints |
+| `make build-platform-api BUILD_VERSION=v1.2.3 BUILD_COMMIT=abc123 BUILD_TIME=2026-07-21T12:00:00Z` | Passed |
+| Container HTTP smoke check | Passed for liveness and readiness endpoints, including injected build metadata |
 
 `make test-integration` and `make test-controller` remain intentional clear
 failures: Phase 1 creates no external dependency environment or Kubernetes

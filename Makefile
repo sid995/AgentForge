@@ -3,6 +3,9 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
 GOLANGCI_LINT_IMAGE := golangci/golangci-lint:v2.9.0
+BUILD_VERSION ?= development
+BUILD_COMMIT ?= unknown
+BUILD_TIME ?= unknown
 
 .PHONY: help check-tools format lint test test-integration test-controller build-platform-api verify
 
@@ -14,7 +17,7 @@ help:
 	@printf '%s\n' '  test              Run Platform API unit tests'
 	@printf '%s\n' '  test-integration  Run integration tests (unavailable until configured)'
 	@printf '%s\n' '  test-controller   Run controller tests (unavailable until configured)'
-	@printf '%s\n' '  build-platform-api Build the Platform API container image'
+	@printf '%s\n' '  build-platform-api Build the Platform API container image (BUILD_VERSION, BUILD_COMMIT, BUILD_TIME are supported)'
 	@printf '%s\n' '  verify            Validate repository controls and documentation inventory'
 
 check-tools:
@@ -46,7 +49,12 @@ test-controller:
 	@exit 1
 
 build-platform-api:
-	@docker build --tag agentforge/platform-api:dev --file services/platform-api/Dockerfile .
+	@docker build \
+		--build-arg BUILD_VERSION="$(BUILD_VERSION)" \
+		--build-arg BUILD_COMMIT="$(BUILD_COMMIT)" \
+		--build-arg BUILD_TIME="$(BUILD_TIME)" \
+		--tag agentforge/platform-api:dev \
+		--file services/platform-api/Dockerfile .
 
 verify:
 	@scripts/verify-repository.sh

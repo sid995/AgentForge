@@ -29,7 +29,7 @@ unimplemented.
 - Phase 0 completion audit
 - Phase 1 Platform API foundation: Go workspace, health endpoints, bounded
   configuration, JSON logging, HTTP middleware, graceful shutdown, unit tests,
-  and a non-root container image
+  a non-root container image, and linker-injected build metadata
 
 ## In progress
 

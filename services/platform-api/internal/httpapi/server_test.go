@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/sid995/agentforge/services/platform-api/internal/buildinfo"
+	"github.com/sid995/agentforge/services/platform-api/internal/logging"
 )
 
 func TestHealthEndpoints(t *testing.T) {
@@ -112,16 +113,21 @@ func TestTimeoutAndPanicRecovery(t *testing.T) {
 
 func TestRequestLogExcludesSensitiveHeadersAndBody(t *testing.T) {
 	var logs bytes.Buffer
-	logger := slog.New(slog.NewJSONHandler(&logs, nil))
+	logger := logging.New(&logs, "test")
 	handler := requestContext(func() (string, error) { return "req_log", nil }, requestLogging(logger, http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		writer.WriteHeader(http.StatusNoContent)
 	})))
 	request := httptest.NewRequest(http.MethodPost, "/test", strings.NewReader("private prompt"))
 	request.Header.Set("Authorization", "Bearer secret-token")
+	request.Header.Set(traceparent, "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
 	handler.ServeHTTP(httptest.NewRecorder(), request)
 
 	output := logs.String()
-	if !strings.Contains(output, "req_log") || strings.Contains(output, "secret-token") || strings.Contains(output, "private prompt") {
+	if !strings.Contains(output, "req_log") ||
+		!strings.Contains(output, "4bf92f3577b34da6a3ce929d0e0e4736") ||
+		!strings.Contains(output, `"service":"platform-api"`) ||
+		strings.Contains(output, "secret-token") ||
+		strings.Contains(output, "private prompt") {
 		t.Fatalf("unexpected log output: %s", output)
 	}
 }
@@ -180,7 +186,12 @@ func assertHealthResponse(t *testing.T, response *httptest.ResponseRecorder, ver
 	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode health body: %v", err)
 	}
-	if body.Status != "ok" || body.Service != "platform-api" || body.Version != version {
+	if response.Header().Get(requestIDHeader) == "" ||
+		body.Status != "ok" ||
+		body.Service != "platform-api" ||
+		body.Version != version ||
+		body.Commit != "commit-1" ||
+		body.BuildTime != "2026-07-21T00:00:00Z" {
 		t.Fatalf("health body = %#v", body)
 	}
 }
