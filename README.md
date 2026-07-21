@@ -22,12 +22,12 @@ platform through optimism.
 - [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md): current implementation status
 - [`specs/TRACEABILITY.md`](specs/TRACEABILITY.md): requirement-to-code-and-test mapping
 - [`specs/15-llm-development/05-codex-execution-playbook.md`](specs/15-llm-development/05-codex-execution-playbook.md): complete phased prompt sequence
-- [`.env.example`](.env.example): documented local configuration through Phase 2
+- [`.env.example`](.env.example): documented local configuration through Phase 3.2
 
 ## Current state
 
-Phase 2 is complete: the repository has a deployable Platform API plus
-PostgreSQL migrations, tenant/project persistence, connection-aware readiness,
-and tenant isolation enforced by both repository queries and database RLS.
-Tenant-owned HTTP APIs remain deferred until an authenticated tenant resolver
-exists; see [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).
+Phase 2 is complete, and Phase 3.2 adds the durable AgentRun/attempt domain:
+PostgreSQL migrations, tenant-scoped persistence, explicit transition
+validation, idempotency uniqueness, and optimistic concurrency controls.
+Tenant-owned HTTP APIs remain deferred until the Phase 3.3 identity and API
+vertical slice; see [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).

@@ -4,12 +4,18 @@
 
 - `agent-run.requested.v1`
 - `agent-run.scheduled.v1`
+- `agent-run.capacity-wait.v1`
+- `agent-run.provisioning-requested.v1`
 - `agent-run.started.v1`
+- `agent-run.execution-completed.v1`
+- `agent-run.tests-accepted.v1`
 - `agent-run.heartbeat.v1`
 - `agent-run.completed.v1`
 - `agent-run.failed.v1`
+- `agent-run.timed-out.v1`
 - `agent-run.cancel-requested.v1`
 - `agent-run.cancelled.v1`
+- `agent-run.retry-requested.v1`
 
 Partition key: run ID.
 

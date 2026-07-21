@@ -4,15 +4,15 @@
 
 ## Current milestone
 
-Phase 3: AgentRun domain and state-machine planning
+Phase 3.2: AgentRun and AgentRunAttempt persistence
 
 ## Overall state
 
-Phase 2 is complete. The repository now contains the deployable Platform API
-foundation plus PostgreSQL-backed Tenant and Project persistence, repeatable
-migrations, connection-aware readiness, and repository-and-RLS tenant
-isolation. Tenant-owned HTTP endpoints remain deferred until an authenticated
-tenant resolver is introduced.
+Phase 2 is complete. Phase 3.2 now adds durable AgentRun and AgentRunAttempt
+persistence: validated state/failure value objects, repeatable migrations,
+tenant-scoped idempotency uniqueness, transaction-local RLS, and
+optimistic-locking repository writes. Tenant-owned HTTP endpoints remain
+deferred until the authenticated Phase 3.3 API vertical slice.
 
 ## Completed
 
@@ -39,7 +39,7 @@ tenant resolver is introduced.
 
 ## In progress
 
-- Phase 3 AgentRun domain and state-machine plan
+- Phase 3.2 AgentRun and AgentRunAttempt persistence
 
 ## Not started
 
@@ -58,5 +58,5 @@ tenant resolver is introduced.
 
 ## Next tasks
 
-1. Prepare the Phase 2 PostgreSQL persistence changes for commit.
-2. Plan Phase 3 AgentRun domain and state-machine work.
+1. Commit the validated Phase 3.2 AgentRun and AgentRunAttempt persistence.
+2. Implement Phase 3.3 authenticated create/get/list run API vertical slice.

@@ -11,7 +11,7 @@ BUILD_TIME ?= unknown
 
 help:
 	@printf '%s\n' 'AgentForge development targets:'
-	@printf '%s\n' '  check-tools       Check Phase 0 through Phase 2 prerequisites'
+	@printf '%s\n' '  check-tools       Check Phase 0 through Phase 3 prerequisites'
 	@printf '%s\n' '  format            Format tracked Go source'
 	@printf '%s\n' '  lint              Run Platform API static analysis'
 	@printf '%s\n' '  test              Run Platform API unit tests'

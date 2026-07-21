@@ -6,6 +6,13 @@ Phase 2 establishes PostgreSQL as the authoritative store for implemented
 entities. Schema changes use checked-in, forward-only SQL migrations in
 `db/migrations/`; the migration runner records applied versions in PostgreSQL.
 
+Phase 3.2 adds `000002_agent_runs_and_attempts`. It first adds the project
+`(id, tenant_id)` ownership key needed by the composite foreign key, then
+creates run and attempt constraints, idempotency uniqueness, history and
+active-work indexes, least-privilege application grants, and forced RLS. Its
+down migration removes the dependent tables before the temporary composite
+project key.
+
 ## Naming and ordering
 
 Migration files use a six-digit, increasing version and a kebab-case purpose:

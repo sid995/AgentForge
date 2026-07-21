@@ -43,3 +43,21 @@ creation index supports future project history queries.
 `projects` has PostgreSQL RLS enabled and forced for the application role. The
 application role receives tenant context only through transaction-local
 `app.tenant_id`; repository SQL still includes `tenant_id` explicitly.
+
+## Phase 3 persistence boundary
+
+`agent_runs` and `agent_run_attempts` are the next implemented tenant-owned
+tables. A run stores project ownership, a secure prompt reference (never raw
+prompt text), runtime/resource/timeout constraints, max and current attempt
+numbers, lifecycle status, a normalized failure category, optimistic version,
+tenant-scoped idempotency key and effective-request hash, actor, cancellation
+metadata, and UTC lifecycle timestamps. The composite project/tenant foreign
+key prevents a run from referencing a project in another tenant.
+
+An attempt stores its owning run and tenant, immutable monotonic attempt number,
+lifecycle status, normalized failure category, optimistic version, opaque
+cluster/workload references, and UTC timestamps. `(run_id, attempt_number)` is
+unique. `agent_runs` has tenant/project history and partial scheduler-queue
+indexes; attempts have a partial active-attempt index. Both tables have forced
+RLS for `agentforge_app`, transaction-local tenant context, explicit repository
+tenant predicates, and only `SELECT`, `INSERT`, and `UPDATE` grants.
