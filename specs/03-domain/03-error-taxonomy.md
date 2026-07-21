@@ -17,6 +17,17 @@
 
 Retry only errors explicitly classified as transient. Every retry decision records attempt count, selected delay, and reason. Validation, authorization, policy rejection, and test failure are not infrastructure retries.
 
+## AgentRun persistence errors
+
+- `VERSION_CONFLICT`: a conditional run or attempt update lost an
+  optimistic-lock race. Callers may reload and re-evaluate an idempotent command
+  but must not blindly overwrite the current status.
+- `IDEMPOTENCY_KEY_REUSED`: a tenant reused a create-run key with a materially
+  different effective request. It is a non-retryable conflict.
+- `RUN_TERMINAL`: a command requested a transition prohibited by the terminal
+  outcome. The documented manual retry exception remains subject to its failure
+  category and maximum-attempt guards.
+
 ## API mapping
 
 - Validation: 400 or 422.

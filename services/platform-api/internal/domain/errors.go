@@ -9,4 +9,8 @@ var (
 	ErrConflict = errors.New("resource conflicts with existing state")
 	// ErrForbidden is returned when a database policy rejects an attempted write.
 	ErrForbidden = errors.New("operation is not permitted")
+	// ErrVersionConflict is returned when an optimistic update lost a race.
+	ErrVersionConflict = errors.New("resource version conflicts with current state")
+	// ErrInvalidTransition is returned when a command violates the aggregate state machine.
+	ErrInvalidTransition = errors.New("state transition is not permitted")
 )

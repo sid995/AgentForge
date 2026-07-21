@@ -16,6 +16,7 @@ This file maps approved requirements to implementation and test evidence. It mus
 | FR-PRJ-001 Persist tenant projects | `03-domain/01-domain-model.md`, `06-data/01-relational-schema.md` | `internal/domain/`, `internal/application/projects/`, `internal/adapters/postgres/` | unit tests and `internal/adapters/postgres/projects_integration_test.go` | Verified |
 | FR-RUN-001 Create agent run | `01-product/01-requirements.md`, `03-domain/02-state-machines.md` | `services/platform-api/internal/runs/` | domain, contract, and integration tests | Planned |
 | FR-RUN-002 Track run lifecycle | `03-domain/02-state-machines.md` | `internal/runs/` | domain and integration tests | Planned |
+| FR-RUN-003 Durable AgentRun and attempt persistence | `03-domain/02-state-machines.md`, `06-data/01-relational-schema.md`, `06-data/04-migrations.md` | `services/platform-api/internal/domain/`, `internal/adapters/postgres/`, `db/migrations/000002_agent_runs_and_attempts.*` | `internal/domain/agent_run_test.go`, `internal/adapters/postgres/agent_runs_integration_test.go` | Verified |
 | FR-SCH-001 Claim queued runs safely | `04-services/02-scheduler.md` | `services/scheduler/` | `tests/scheduler/` | Specified |
 | FR-OPR-001 Reconcile AgentRun CR | `08-kubernetes/03-controller-behavior.md` | `operator/controllers/` | envtest and kind tests | Specified |
 | FR-EXE-001 Run isolated agent workload | `04-services/05-agent-runner.md` | `agent-runner/` | runner container tests | Specified |
