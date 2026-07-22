@@ -17,7 +17,10 @@ This file maps approved requirements to implementation and test evidence. It mus
 | FR-RUN-001 Create agent run | `01-product/01-requirements.md`, `03-domain/02-state-machines.md` | `services/platform-api/internal/runs/` | domain, contract, and integration tests | Planned |
 | FR-RUN-002 Track run lifecycle | `03-domain/02-state-machines.md` | `internal/runs/` | domain and integration tests | Planned |
 | FR-RUN-003 Durable AgentRun and attempt persistence | `03-domain/02-state-machines.md`, `06-data/01-relational-schema.md`, `06-data/04-migrations.md` | `services/platform-api/internal/domain/`, `internal/adapters/postgres/`, `db/migrations/000002_agent_runs_and_attempts.*` | `internal/domain/agent_run_test.go`, `internal/adapters/postgres/agent_runs_integration_test.go` | Verified |
-| FR-SCH-001 Claim queued runs safely | `04-services/02-scheduler.md` | `services/scheduler/` | `tests/scheduler/` | Specified |
+| FR-SCH-001 Claim queued runs safely | `04-services/02-scheduler.md`, ADR-003 | `services/platform-api/internal/application/scheduler/`, `internal/adapters/postgres/` | Scheduler unit and PostgreSQL concurrency tests | Planned |
+| FR-SCH-002 Enforce scheduling eligibility and quotas | `04-services/02-scheduler.md`, `14-operations/03-capacity-cost.md`, ADR-003 | Scheduler policies and PostgreSQL aggregate queries | boundary, concurrency, and noisy-neighbour tests | Planned |
+| FR-SCH-003 Select clusters and reserve capacity | `04-services/02-scheduler.md`, `06-data/01-relational-schema.md`, ADR-003 | cluster registry, strategies, and transactional reservations | deterministic selection and reservation concurrency tests | Planned |
+| FR-SCH-004 Emit atomic scheduling intent | `03-domain/02-state-machines.md`, `07-events/02-topic-catalog.md`, ADR-002, ADR-003 | Scheduler transaction, outbox contract, and process | queued-to-scheduled component and crash tests | Planned |
 | FR-OPR-001 Reconcile AgentRun CR | `08-kubernetes/03-controller-behavior.md` | `operator/controllers/` | envtest and kind tests | Specified |
 | FR-EXE-001 Run isolated agent workload | `04-services/05-agent-runner.md` | `agent-runner/` | runner container tests | Specified |
 | FR-BLD-001 Build immutable image | `04-services/07-build-service.md` | `services/build-service/` | build integration tests | Specified |

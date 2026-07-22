@@ -21,6 +21,11 @@ defined in `07-events/04-event-architecture.md`.
 - `agent-run.cancelled.v1`
 - `agent-run.retry-requested.v1`
 
+`agent-run.scheduled.v1` is the Scheduler's durable assignment intent emitted
+with the `PROVISIONING` transition, not a temporary claim notification.
+`agent-run.provisioning-requested.v1` remains reserved and unimplemented until
+the Phase 6 Operator input boundary is approved.
+
 Partition key: run ID.
 
 Physical topic: `agentforge.agent-run.lifecycle.v1`.

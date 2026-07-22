@@ -1,17 +1,17 @@
 # AgentForge Project Status
 
-**Last updated:** 2026-07-21
+**Last updated:** 2026-07-22
 
 ## Current milestone
 
-Phase 4 complete; next approved work is pending
+Phase 5.2: Scheduler queued-run claiming
 
 ## Overall state
 
-Phase 2 and the Phase 3.1/3.2 state-machine and persistence foundation are
-complete. At the user's direction, work has moved to Phase 4 event architecture
+Phase 2, the Phase 3.1/3.2 state-machine and persistence foundation, and Phase
+4 are complete. At the user's direction, work has moved to Phase 5 Scheduler
 before Phase 3.3 through 3.5 API, cancellation, and retry commands. Those gaps
-remain explicit dependencies for their corresponding outbox event integrations.
+remain explicit dependencies for their corresponding command integrations.
 
 ## Completed
 
@@ -51,17 +51,21 @@ remain explicit dependencies for their corresponding outbox event integrations.
 - Phase 4.5 machine-readable schemas for all implemented events, immutable-
   major compatibility baselines, producer contracts, supported v1 consumer
   fixtures, CI/Make validation, distributed-systems review, and completion audit
+- Phase 5.1 Scheduler implementation plan and ADR-003 covering competing
+  PostgreSQL claims, fairness, quotas, registry selection, reservations,
+  process lifecycle, observability, and failure/concurrency testing
 
 ## In progress
 
-- No implementation phase is currently in progress
+- Phase 5.2 queued-run claiming and scheduler leases
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Scheduler
+- Scheduler eligibility, cluster registry/selection, reservations, scheduling
+  intent, and process lifecycle after the current claim sub-phase
 - Kubernetes Operator
 - Agent Runner
 - Model Gateway
@@ -75,8 +79,8 @@ remain explicit dependencies for their corresponding outbox event integrations.
 
 ## Next tasks
 
-1. Resume Phase 3.3 authenticated create/get/list API work when approved.
-2. Preserve the unresolved cancellation/retry event wiring until their Phase
-   3.4/3.5 command transactions exist.
-3. Wire the relay and first business consumer into deployable workloads only
-   in their approved owning phases.
+1. Implement and commit Phase 5.2 queued-run claiming and leases.
+2. Implement each remaining Scheduler sub-phase through Phase 5.8 with a clean
+   commit boundary.
+3. Preserve the unresolved Phase 3 cancellation/retry command dependencies and
+   the Phase 6 no-Kubernetes boundary.
