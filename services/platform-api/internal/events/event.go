@@ -63,13 +63,28 @@ type AgentRunRequestedPayload struct {
 }
 
 // newEvent constructs and serializes a typed event before its business transaction begins.
-func newEvent(eventType string, schemaVersion int, occurredAt time.Time, producer string, tenantID uuid.UUID, projectID, runID *uuid.UUID, aggregateType string, aggregateID uuid.UUID, aggregateVersion int64, correlationID, causationID string, payload any) (OutboxEvent, error) {
+func newEvent(
+	eventType string,
+	schemaVersion int,
+	occurredAt time.Time,
+	producer string,
+	tenantID uuid.UUID,
+	projectID,
+	runID *uuid.UUID,
+	aggregateType string,
+	aggregateID uuid.UUID,
+	aggregateVersion int64,
+	correlationID,
+	causationID string,
+	payload any,
+) (OutboxEvent, error) {
 	if !eventTypePattern.MatchString(eventType) || schemaVersion < 1 || tenantID == uuid.Nil || aggregateID == uuid.Nil || aggregateVersion < 1 {
 		return OutboxEvent{}, fmt.Errorf("event identity and version are invalid")
 	}
 	producer = strings.TrimSpace(producer)
 	correlationID = strings.TrimSpace(correlationID)
 	causationID = strings.TrimSpace(causationID)
+
 	if producer == "" || aggregateType == "" || correlationID == "" || causationID == "" {
 		return OutboxEvent{}, fmt.Errorf("event producer, aggregate, correlation, and causation are required")
 	}
@@ -89,11 +104,31 @@ func newEvent(eventType string, schemaVersion int, occurredAt time.Time, produce
 	if err != nil {
 		return OutboxEvent{}, fmt.Errorf("serialize event envelope: %w", err)
 	}
-	return OutboxEvent{Envelope: envelope, Topic: AgentRunLifecycleTopic, PartitionKey: aggregateID.String(), Serialized: serialized, CreatedAt: occurredAt.UTC()}, nil
+	return OutboxEvent{
+		Envelope:     envelope,
+		Topic:        AgentRunLifecycleTopic,
+		PartitionKey: aggregateID.String(),
+		Serialized:   serialized,
+		CreatedAt:    occurredAt.UTC(),
+	}, nil
 }
 
 // NewAgentRunRequested creates the event intent atomically stored with a new run.
 func NewAgentRunRequested(run domain.AgentRun, attempt domain.AgentRunAttempt) (OutboxEvent, error) {
 	payload := AgentRunRequestedPayload{ProjectID: run.ProjectID, RunID: run.ID, Status: run.Status, AttemptNumber: attempt.AttemptNumber, Runtime: run.Runtime, CPUMillis: run.CPUMillis, MemoryMiB: run.MemoryMiB, TimeoutSeconds: run.TimeoutSeconds, MaxAttempts: run.MaxAttempts, PromptReference: run.PromptReference}
-	return newEvent(AgentRunRequestedType, 1, run.CreatedAt, "platform-api", run.TenantID, &run.ProjectID, &run.ID, "AgentRun", run.ID, run.Version, run.IdempotencyKey, run.IdempotencyKey, payload)
+	return newEvent(
+		AgentRunRequestedType,
+		1,
+		run.CreatedAt,
+		"platform-api",
+		run.TenantID,
+		&run.ProjectID,
+		&run.ID,
+		"AgentRun",
+		run.ID,
+		run.Version,
+		run.IdempotencyKey,
+		run.IdempotencyKey,
+		payload,
+	)
 }
