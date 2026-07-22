@@ -61,3 +61,37 @@ unique. `agent_runs` has tenant/project history and partial scheduler-queue
 indexes; attempts have a partial active-attempt index. Both tables have forced
 RLS for `agentforge_app`, transaction-local tenant context, explicit repository
 tenant predicates, and only `SELECT`, `INSERT`, and `UPDATE` grants.
+
+## Phase 4.2 transactional outbox boundary
+
+`outbox_events` durably records a canonical event envelope, routing metadata,
+aggregate identity/version, publication disposition, lease ownership, retry
+state, bounded failure details, broker acknowledgement metadata, and UTC
+timestamps. AgentRun creation inserts `agent-run.requested.v1` into this table
+inside the same tenant transaction as the run and first attempt. Event
+serialization and validation happen before that transaction begins.
+
+The claim index supports ordered, competing relay claims with
+`FOR UPDATE SKIP LOCKED`; the published index supports bounded retention
+cleanup. Relay claims use expiring leases and preserve the event ID across
+retries and crash recovery. Cleanup deletes only `PUBLISHED` rows; pending and
+terminal rows are never removed by the implemented cleanup operation.
+
+Forced RLS remains enabled. `agentforge_app` can only insert rows accepted by
+the transaction-local tenant policy. The isolated `agentforge_relay` role uses
+`BYPASSRLS` solely to perform cross-tenant `SELECT`, `UPDATE`, and `DELETE` on
+`outbox_events`; it has no grants on tenant business tables.
+
+## Phase 4.4 processed-event boundary
+
+`processed_events` records the stable consumer identity and event UUIDv7 as its
+primary key, plus tenant, event/schema, aggregate, source topic/partition/offset,
+processing time, and optional replay identity. A consumer inserts this marker
+and applies its business effect inside one tenant transaction. A primary-key
+conflict is an acknowledged duplicate no-op; a failed effect rolls the marker
+back so delivery can retry.
+
+The table has forced RLS and only tenant-scoped `SELECT`/`INSERT` grants for
+`agentforge_app`. Its tenant/time index supports the future one-year retention
+job, which remains disabled until replay policy is configured. Successful
+markers are never deleted to force replay.

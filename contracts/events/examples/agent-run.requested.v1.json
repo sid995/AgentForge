@@ -1,0 +1,29 @@
+{
+  "eventId": "019b0000-0000-7000-8000-000000000001",
+  "eventType": "agent-run.requested.v1",
+  "schemaVersion": 1,
+  "occurredAt": "2026-07-21T12:00:00Z",
+  "producer": "platform-api",
+  "tenantId": "019b0000-0000-7000-8000-000000000002",
+  "projectId": "019b0000-0000-7000-8000-000000000003",
+  "runId": "019b0000-0000-7000-8000-000000000004",
+  "aggregateType": "AgentRun",
+  "aggregateId": "019b0000-0000-7000-8000-000000000004",
+  "aggregateVersion": 1,
+  "requestId": "req_example",
+  "traceparent": "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01",
+  "correlationId": "command-example",
+  "causationId": "command-example",
+  "payload": {
+    "projectId": "019b0000-0000-7000-8000-000000000003",
+    "runId": "019b0000-0000-7000-8000-000000000004",
+    "status": "QUEUED",
+    "attemptNumber": 1,
+    "runtime": "python-3.12",
+    "cpuMillis": 1000,
+    "memoryMiB": 2048,
+    "timeoutSeconds": 1800,
+    "maxAttempts": 3,
+    "promptReference": "vault://prompts/example"
+  }
+}

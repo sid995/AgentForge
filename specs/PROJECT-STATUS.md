@@ -4,15 +4,14 @@
 
 ## Current milestone
 
-Phase 3.2: AgentRun and AgentRunAttempt persistence
+Phase 4 complete; next approved work is pending
 
 ## Overall state
 
-Phase 2 is complete. Phase 3.2 now adds durable AgentRun and AgentRunAttempt
-persistence: validated state/failure value objects, repeatable migrations,
-tenant-scoped idempotency uniqueness, transaction-local RLS, and
-optimistic-locking repository writes. Tenant-owned HTTP endpoints remain
-deferred until the authenticated Phase 3.3 API vertical slice.
+Phase 2 and the Phase 3.1/3.2 state-machine and persistence foundation are
+complete. At the user's direction, work has moved to Phase 4 event architecture
+before Phase 3.3 through 3.5 API, cancellation, and retry commands. Those gaps
+remain explicit dependencies for their corresponding outbox event integrations.
 
 ## Completed
 
@@ -36,14 +35,32 @@ deferred until the authenticated Phase 3.3 API vertical slice.
   driver, migration command and tracking, local Compose integration tests,
   Tenant and Project repositories, transaction-local tenant context, project
   RLS, and migration/application database roles
+- Phase 3.1 normalized AgentRun/attempt state machines and Phase 3.2 durable
+  AgentRun/attempt persistence with optimistic concurrency and tenant RLS
+- Phase 4.1 event architecture and transactional-outbox ADR
+- Phase 4.2 transactional AgentRun/outbox insertion, isolated relay role,
+  lease-based competing claims, durable publication retries, published-only
+  retention cleanup, provider-independent relay loop, and failure-window tests
+- Phase 4.3 strict event validation and first executable schema/fixture,
+  idempotent Kafka producer adapter, manual-ack consumer-group base, pinned
+  root-Compose Redpanda, reproducible topic bootstrap, and broker contract tests
+- Phase 4.4 processed-event marker/business transactions, database-enforced
+  duplicate no-ops across replicas and acknowledgement crashes, explicit
+  transient/permanent failures, retry topics, sanitized DLQ envelopes, and
+  malformed-message fingerprint quarantine
+- Phase 4.5 machine-readable schemas for all implemented events, immutable-
+  major compatibility baselines, producer contracts, supported v1 consumer
+  fixtures, CI/Make validation, distributed-systems review, and completion audit
 
 ## In progress
 
-- Phase 3.2 AgentRun and AgentRunAttempt persistence
+- No implementation phase is currently in progress
 
 ## Not started
 
-- Kafka and outbox
+- Phase 3.3 create/get/list run API
+- Phase 3.4 cancellation command
+- Phase 3.5 retry command and Phase 3 audit
 - Scheduler
 - Kubernetes Operator
 - Agent Runner
@@ -58,5 +75,8 @@ deferred until the authenticated Phase 3.3 API vertical slice.
 
 ## Next tasks
 
-1. Commit the validated Phase 3.2 AgentRun and AgentRunAttempt persistence.
-2. Implement Phase 3.3 authenticated create/get/list run API vertical slice.
+1. Resume Phase 3.3 authenticated create/get/list API work when approved.
+2. Preserve the unresolved cancellation/retry event wiring until their Phase
+   3.4/3.5 command transactions exist.
+3. Wire the relay and first business consumer into deployable workloads only
+   in their approved owning phases.

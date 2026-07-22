@@ -80,9 +80,10 @@ stateDiagram-v2
 ## AgentRun transition contract
 
 The following table is exhaustive. Each listed integration event is an
-immutable event intent with the run ID as partition key. Phase 3 records the
-state and required audit record transactionally; broker delivery is deferred to
-the Phase 4 outbox implementation and does not add Kafka in this phase.
+immutable event intent with the run ID as partition key. Once the relevant
+command is implemented, aggregate state, audit record, and event intent are one
+PostgreSQL transaction. Phase 3.1/3.2 do not yet persist audit/outbox rows;
+Phase 4 introduces the outbox and at-least-once delivery.
 
 | Source | Target | Trigger and actor | Guards | Transactional side effects | Idempotency behaviour | Audit record | Integration event |
 |---|---|---|---|---|---|---|---|
@@ -186,9 +187,9 @@ not reopen the completed execution attempt.
 - Create requests use a tenant-scoped idempotency key and canonical effective
   request hash. Cancellation and retry use a stable command ID (the API accepts
   `Idempotency-Key`) so transport retries return the original result.
-- State transition, attempt mutation, idempotency result, and audit record are
-  one transaction. The expected integration event is an event intent; Phase 4
-  adds durable outbox publication. No Phase 3 code publishes Kafka messages.
+- State transition, attempt mutation, idempotency result, audit record, and
+  outbox intent are one transaction once those command paths are implemented.
+  No business transaction synchronously publishes to Kafka.
 - After a process crash, PostgreSQL state is authoritative. Future Scheduler
   recovery reclaims expired `SCHEDULING` leases and reconciles incomplete
   provisioning; future Operator recovery observes the current run/attempt

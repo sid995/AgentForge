@@ -17,6 +17,10 @@
 - publish failure after transaction.
 - consumer crash after commit before acknowledgment.
 - DLQ and authorized replay.
+- canonical examples and typed producer output against machine-readable schemas.
+- immutable-major required-field and JSON-type compatibility baselines.
+- supported old consumer fixtures against current schemas and runtime decoders.
+- retry-attempt progression and publish-before-acknowledgment against Redpanda.
 
 ## Isolation
 

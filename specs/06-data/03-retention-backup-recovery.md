@@ -7,6 +7,11 @@
 - Audit events: policy-defined, default 7 years for demonstration.
 - Build images: retain referenced releases; expire unreferenced images.
 - Temporary workspaces: delete after terminal completion and grace period.
+- Published outbox events: 7 days; unpublished, claimed, or repair-required
+  rows are never automatically deleted.
+- Processed-event markers: at least the maximum replay window, default 1 year.
+- Kafka lifecycle topics: 7 to 30 days by stream; retry topics default 14 days
+  and DLQ topics default 90 days.
 
 ## PostgreSQL
 

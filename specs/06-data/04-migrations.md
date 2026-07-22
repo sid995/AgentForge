@@ -13,6 +13,19 @@ active-work indexes, least-privilege application grants, and forced RLS. Its
 down migration removes the dependent tables before the temporary composite
 project key.
 
+Phase 4.2 adds `000003_transactional_outbox`. It creates the outbox table,
+claim and retention indexes, constrained publication state, an application
+insert policy, and narrowly scoped relay grants. Its down migration drops the
+table and its dependent policies/indexes. It deliberately retains the relay
+role because role removal is unsafe when another database in the PostgreSQL
+cluster may grant or own objects through that role.
+
+Phase 4.4 adds `000004_processed_events`. It creates the consumer/event primary
+key, source and aggregate metadata constraints, tenant/time index,
+least-privilege application grants, and forced tenant RLS. Its local down
+migration drops the marker table; production rollback retains data and uses a
+corrective forward migration under the normal migration contract.
+
 ## Naming and ordering
 
 Migration files use a six-digit, increasing version and a kebab-case purpose:
@@ -31,6 +44,8 @@ rewrite applied history.
 - `agentforge_migrator` owns schema changes and is the only role allowed to run
   migrations.
 - `agentforge_app` is a least-privilege, `NOBYPASSRLS` application role.
+- `agentforge_relay` is an isolated cross-tenant relay role with `BYPASSRLS`
+  and DML access only to `outbox_events`.
 - The migration role can create and alter roles, tables, indexes, and RLS
   policies. The application role has only the schema and DML privileges needed
   by implemented repositories.
@@ -53,8 +68,8 @@ migration when data loss or incompatible data transformations are possible.
 - Verify version ordering and paired files in repository validation.
 - Run migrations with the privileged role and integration tests with the
   application role.
-- Include migration application and repeated-execution evidence in Phase 2
-  completion audits.
+- Include migration application and repeated-execution evidence in the
+  governing phase completion audit.
 
 ## Recovery implications
 

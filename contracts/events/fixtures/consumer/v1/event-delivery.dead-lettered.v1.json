@@ -1,0 +1,27 @@
+{
+  "eventId": "019b1000-0000-7000-8000-000000000005",
+  "eventType": "event-delivery.dead-lettered.v1",
+  "schemaVersion": 1,
+  "occurredAt": "2026-07-21T13:10:00Z",
+  "producer": "event-consumer",
+  "tenantId": "019b1000-0000-7000-8000-000000000002",
+  "aggregateType": "EventDeliveryFailure",
+  "aggregateId": "019b1000-0000-7000-8000-000000000006",
+  "aggregateVersion": 1,
+  "correlationId": "sha256:1e8f65fd5a3dc1f0c3351a63c78055b0f1bda5027359c3d7d1bb5f674084c62c",
+  "causationId": "sha256:1e8f65fd5a3dc1f0c3351a63c78055b0f1bda5027359c3d7d1bb5f674084c62c",
+  "payload": {
+    "rawFingerprint": "sha256:1e8f65fd5a3dc1f0c3351a63c78055b0f1bda5027359c3d7d1bb5f674084c62c",
+    "rawSize": 37,
+    "originalTopic": "agentforge.agent-run.lifecycle.v1",
+    "originalPartition": 0,
+    "originalOffset": 7,
+    "consumerIdentity": "scheduler.v1",
+    "failureCode": "INVALID_ENVELOPE",
+    "failureReason": "invalid event envelope",
+    "attempts": 1,
+    "firstFailedAt": "2026-07-21T13:10:00Z",
+    "lastFailedAt": "2026-07-21T13:10:00Z",
+    "replayDisposition": "QUARANTINED"
+  }
+}

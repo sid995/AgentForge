@@ -13,3 +13,8 @@ Initial decisions to record:
 - Object storage for large artifacts.
 - Hybrid current-state tables plus append-only audit and usage streams.
 - One cloud provider first.
+
+## Recorded decisions
+
+- `docs/adr/ADR-001-postgresql-persistence-and-migrations.md`
+- `docs/adr/ADR-002-transactional-outbox-and-at-least-once-events.md`
