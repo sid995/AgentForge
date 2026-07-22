@@ -116,6 +116,12 @@ Stop new work, gracefully terminate active work within a bounded deadline,
 preserve diagnostics/partial-state opportunities, and make every cancellation
 position and restart path idempotent.
 
+Status: implemented and validated. Cancellation precedes resource creation,
+uses foreground Job deletion for the runner grace period, persists a two-minute
+deadline in status across restarts, and applies zero-grace deletion only to
+exact owner-UID Pods after expiry. Graceful and forced terminal outcomes,
+completion races, repetition, and already-missing Jobs are covered.
+
 ### 6.8 Retry
 
 Apply the approved retry taxonomy and attempt ceiling, use deterministic new

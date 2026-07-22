@@ -106,18 +106,21 @@ remain explicit dependencies for their corresponding command integrations.
   timestamps/status, terminal stability, deleted-Job no-recreation, first
   consumer PVC binding, exhaustive unit/envtest coverage, and digest-pinned
   kind 0.32.0/Kubernetes 1.36.1 integration
+- Phase 6.7 cancellation-before-creation, graceful foreground Job termination,
+  durable two-minute restart-safe deadline, exact owner-UID forced Pod
+  termination, graceful/forced terminal status, completion-race preservation,
+  repeated cancellation idempotency, and focused controller tests
 
 ## In progress
 
-- Phase 6.7 cancellation reconciliation
+- Phase 6.8 retry reconciliation
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Phase 6.7 through 6.10 Operator cancellation, retry, cleanup,
-  cancellation, retry, cleanup, and Scheduler handoff
+- Phase 6.8 through 6.10 Operator retry, cleanup, and Scheduler handoff
 - Agent Runner
 - Model Gateway
 - Build and deployment services
@@ -130,7 +133,7 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Commit the validated Phase 6.6 Job and Pod lifecycle observation.
-2. Implement and commit Phase 6.7 cancellation reconciliation.
+1. Commit the validated Phase 6.7 cancellation reconciliation.
+2. Implement and commit Phase 6.8 retry reconciliation.
 3. Preserve the unresolved Phase 3 cancellation/retry command dependencies and
    the Phase 6 no-Kubernetes boundary.

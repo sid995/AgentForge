@@ -75,6 +75,14 @@ runner termination message contains strict versioned artifact-manifest
 evidence; raw messages are never projected. An externally deleted observed Job
 fails without recreation.
 
+Phase 6.7 reconciles one-way cancellation before any ordinary prerequisite
+work. Runs without a Job cancel immediately. Active Jobs receive a foreground
+delete so the Pod's configured grace period can be used for partial-state
+upload; a durable condition anchors a two-minute maximum deadline across
+controller restarts. After that deadline, only Pods whose controller UID
+matches the observed Job are force-deleted. Status distinguishes graceful and
+forced cancellation, retains existing diagnostics, and remains idempotent.
+
 Run the real lifecycle gate with:
 
 ```bash

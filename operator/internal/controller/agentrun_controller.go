@@ -47,14 +47,15 @@ const (
 	// RetainedResourcesFinalizer gates cleanup only when the desired workspace is explicitly retained.
 	RetainedResourcesFinalizer = "execution.agentforge.dev/retained-resources"
 
-	ConditionSpecValid           = "SpecValid"
-	ConditionServiceAccountReady = "ServiceAccountReady"
-	ConditionConfigurationReady  = "ConfigurationReady"
-	ConditionWorkspaceReady      = "WorkspaceReady"
-	ConditionNetworkPolicyReady  = "NetworkPolicyReady"
-	ConditionJobReady            = "JobReady"
-	ConditionReady               = "Ready"
-	ConditionCleanupPending      = "CleanupPending"
+	ConditionSpecValid            = "SpecValid"
+	ConditionServiceAccountReady  = "ServiceAccountReady"
+	ConditionConfigurationReady   = "ConfigurationReady"
+	ConditionWorkspaceReady       = "WorkspaceReady"
+	ConditionNetworkPolicyReady   = "NetworkPolicyReady"
+	ConditionJobReady             = "JobReady"
+	ConditionReady                = "Ready"
+	ConditionCancellationComplete = "CancellationComplete"
+	ConditionCleanupPending       = "CleanupPending"
 
 	minimumRetryDelay = time.Second
 	maximumRetryDelay = 2 * time.Minute
@@ -72,10 +73,10 @@ type AgentRunReconciler struct {
 // +kubebuilder:rbac:groups=execution.agentforge.dev,resources=agentruns/finalizers,verbs=update;patch
 // +kubebuilder:rbac:groups="",resources=serviceaccounts;configmaps;persistentvolumeclaims,verbs=get;list;watch;create;patch
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;delete
 // +kubebuilder:rbac:groups=storage.k8s.io,resources=storageclasses,verbs=get;list;watch
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;patch
-// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;patch
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;patch;delete
 
 // Reconcile fetches an AgentRun, validates it, establishes cleanup ownership, and ensures prerequisites.
 func (r *AgentRunReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
@@ -164,6 +165,24 @@ func (r *AgentRunReconciler) Reconcile(ctx context.Context, request ctrl.Request
 		}
 		return ctrl.Result{}, nil
 	}
+	if run.Spec.DesiredState == executionv1alpha1.DesiredStateCancelled {
+		r.initializeCancellationStatus(run)
+		result, cancellationErr := r.reconcileCancellation(ctx, run)
+		changed, err := r.patchStatusIfChanged(ctx, beforeStatus, run)
+		if err != nil {
+			reconcileErr := classifyAPIError("CancellationStatusWriteFailed", err)
+			outcome = string(reconcileErr.Class) + "_error"
+			return ctrl.Result{}, terminalIfPermanent(reconcileErr)
+		}
+		if cancellationErr != nil {
+			outcome = string(errorClass(cancellationErr)) + "_error"
+			return result, terminalIfPermanent(cancellationErr)
+		}
+		if !changed {
+			outcome = "unchanged"
+		}
+		return result, nil
+	}
 	r.initializeAcceptedStatus(run)
 	result, prerequisiteErr := r.reconcilePrerequisites(ctx, run)
 	changed, err := r.patchStatusIfChanged(ctx, beforeStatus, run)
@@ -182,6 +201,20 @@ func (r *AgentRunReconciler) Reconcile(ctx context.Context, request ctrl.Request
 		outcome = "unchanged"
 	}
 	return result, nil
+}
+
+func (r *AgentRunReconciler) initializeCancellationStatus(run *executionv1alpha1.AgentRun) {
+	if run.Status.Phase == "" {
+		run.Status.Phase = executionv1alpha1.AgentRunPhasePending
+	}
+	if run.Status.Attempt == 0 {
+		run.Status.Attempt = run.Spec.Attempt
+	}
+	if run.Status.Namespace == "" {
+		run.Status.Namespace = run.Namespace
+	}
+	run.Status.ObservedGeneration = run.Generation
+	r.setCondition(run, ConditionSpecValid, metav1.ConditionTrue, "Accepted", "AgentRun desired state is valid")
 }
 
 func (r *AgentRunReconciler) initializeAcceptedStatus(run *executionv1alpha1.AgentRun) {

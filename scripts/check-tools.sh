@@ -18,7 +18,7 @@ for tool in "${optional_tools[@]}"; do
   if command -v "${tool}" >/dev/null 2>&1; then
     printf 'optional: %s (%s)\n' "${tool}" "$(command -v "${tool}")"
   else
-    printf 'optional (repository-pinned where required through Phase 6.6): %s unavailable\n' "${tool}"
+    printf 'optional (repository-pinned where required through Phase 6.7): %s unavailable\n' "${tool}"
   fi
 done
 

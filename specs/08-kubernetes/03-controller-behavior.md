@@ -106,3 +106,20 @@ status is stable across repeated reconciliation. If an already observed Job is
 deleted, the attempt becomes `INTERNAL`/`JobMissing` and the same Job is not
 recreated. Active states poll every five seconds, while owned Job events also
 enqueue reconciliation.
+
+## Phase 6.7 cancellation
+
+One-way cancellation intent is reconciled before any new prerequisite can be
+created. No-Job cancellation completes immediately. Otherwise the Operator
+foreground-deletes the deterministic Job so dependent Pods receive their
+configured graceful termination interval and the Job remains observable until
+its dependents are gone.
+
+The first `CancellationComplete=False` transition is the durable cancellation
+clock. Repeated reconciliation and controller restart preserve its transition
+time. Graceful termination is bounded to two minutes; after the deadline, only
+Pods with an exact Job controller name and UID match receive zero-grace delete,
+followed by a forced Job delete. Absence then projects terminal `Cancelled`
+with either `GracefulCancellation` or `ForcedCancellation`. Repeated terminal
+reconciliation is a semantic no-op, existing diagnostics are retained, and a
+fully observed terminal Job outcome wins a later cancellation request.

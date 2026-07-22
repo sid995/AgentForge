@@ -117,3 +117,21 @@ Success requires a completed Job and strict bounded runner termination evidence
 containing a versioned artifact-manifest reference. Exit zero without that
 evidence is an execution failure. Raw Pod messages, termination output, and
 secret data are never copied into AgentRun status or logs.
+
+## Phase 6.7 cancellation reconciliation
+
+`desiredState: Cancelled` is handled before prerequisite creation or ordinary
+lifecycle reconciliation. A run with no observed Job becomes `Cancelled`
+immediately. A nonterminal observed Job is deleted with foreground propagation,
+allowing the runner Pod's bounded termination grace period to upload partial
+state before Kubernetes removes it.
+
+`CancellationComplete=False` records the durable start of a two-minute maximum
+cancellation window. Reconciliation and controller restarts reuse that
+condition timestamp rather than restarting the deadline. Once it expires, the
+Operator requests zero-grace deletion only for Pods whose controller owner UID
+matches the observed Job, then force-deletes the Job. The terminal condition
+distinguishes `GracefulCancellation` from `ForcedCancellation`; current Job,
+Pod, timing, and prior failure diagnostics are retained. Repeated requests and
+already-missing Jobs converge without recreating work. An already observed
+terminal Job result wins a later cancellation race.

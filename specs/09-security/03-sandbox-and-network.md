@@ -42,3 +42,9 @@ strict, versioned, 4096-byte result-evidence object, validates the artifact
 reference against the CR status contract, and emits only normalized bounded
 reasons. Raw termination messages and Kubernetes diagnostic text are not
 copied into status, logs, or metric labels.
+
+Phase 6.7 grants the Operator delete access only to namespaced Jobs and Pods.
+Graceful cancellation deletes the deterministic owned Job with foreground
+propagation. Forced cancellation lists by Job label but acts only after exact
+controller APIVersion, kind, name, and UID verification, so a spoofed label
+cannot cause another Pod to be deleted.

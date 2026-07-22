@@ -70,6 +70,10 @@
   ownership-filtered Pod observation; strict result-evidence parsing; bounded
   attempt history; terminal no-ops;
   `WaitForFirstConsumer` binding; and no duplicate Job creation;
+- cancellation before Job creation, while pending, while running, after
+  observed success, repeated cancellation, already-missing Job convergence,
+  graceful delete, forced deadline, exact Job-owner Pod filtering, and
+  controller restart recovery;
 - a pinned kind 0.32.0 two-node cluster using Kubernetes 1.36.1 by digest,
   proving real scheduling, PVC binding, Pod completion, missing-evidence
   failure, attempt projection, and one-Job idempotency;

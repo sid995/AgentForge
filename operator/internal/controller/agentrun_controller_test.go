@@ -466,6 +466,28 @@ func TestAgentRunReconcilerFoundationEnvtest(t *testing.T) {
 		}
 	})
 
+	t.Run("cancellation before Job creation creates no work", func(t *testing.T) {
+		run := validControllerAgentRun("cancel-before-creation")
+		run.Spec.DesiredState = executionv1alpha1.DesiredStateCancelled
+		if err := baseClient.Create(ctx, run); err != nil {
+			t.Fatalf("create cancelled AgentRun: %v", err)
+		}
+		if _, err := reconciler.Reconcile(ctx, requestFor(run.Name)); err != nil {
+			t.Fatalf("reconcile cancellation before creation: %v", err)
+		}
+		stored := getControllerAgentRun(t, ctx, baseClient, run.Name)
+		if stored.Status.Phase != executionv1alpha1.AgentRunPhaseCancelled {
+			t.Fatalf("cancellation before Job creation did not complete: %#v", stored.Status)
+		}
+		names, err := naming.ForAgentRun(stored)
+		if err != nil {
+			t.Fatalf("derive cancellation names: %v", err)
+		}
+		if err := baseClient.Get(ctx, client.ObjectKey{Namespace: stored.Namespace, Name: names.Job}, &batchv1.Job{}); !apierrors.IsNotFound(err) {
+			t.Fatalf("cancellation created an execution Job: %v", err)
+		}
+	})
+
 	t.Run("retained workspace receives finalizer", func(t *testing.T) {
 		run := validControllerAgentRun("retained")
 		run.Spec.Workspace.RetentionPolicy = executionv1alpha1.WorkspaceRetentionRetain
