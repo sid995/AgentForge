@@ -1,6 +1,8 @@
 services:
   postgres:
     image: postgres:17.5-alpine
+    cpus: ${POSTGRES_CPUS:-1.0}
+    mem_limit: ${POSTGRES_MEMORY_LIMIT:-512m}
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-agentforge}
       POSTGRES_USER: ${POSTGRES_USER:-agentforge_migrator}
@@ -21,6 +23,8 @@ services:
 
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v26.1.13
+    cpus: ${REDPANDA_CPUS:-1.0}
+    mem_limit: ${REDPANDA_MEMORY_LIMIT:-1g}
     command:
       - redpanda
       - start
@@ -48,6 +52,8 @@ services:
       - redpanda-data:/var/lib/redpanda/data
 
   scheduler:
+    cpus: ${SCHEDULER_CPUS:-0.5}
+    mem_limit: ${SCHEDULER_MEMORY_LIMIT:-256m}
     build:
       context: .
       dockerfile: services/platform-api/Scheduler.Dockerfile

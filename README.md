@@ -61,3 +61,9 @@ reads `.env` for interpolation and explicitly supplies the Scheduler's isolated
 database URL; it does not export `.env` into the caller's shell. Run
 `clusterctl` with an explicitly exported Scheduler database URL before testing
 real scheduling; tenant policies must likewise exist for admitted tenants.
+
+The root Compose stack caps processor and memory usage for every service. The
+local defaults are PostgreSQL at `1.0` CPU and `512m`, Redpanda at `1.0` CPU
+and `1g`, and Scheduler at `0.5` CPU and `256m`. Override the corresponding
+`*_CPUS` and `*_MEMORY_LIMIT` values in `.env` when the development workload
+needs a different budget.

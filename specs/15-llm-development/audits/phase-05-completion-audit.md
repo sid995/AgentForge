@@ -131,6 +131,11 @@ documentation changes.
 | Root Compose Scheduler smoke | Passed: PostgreSQL, migrations, Scheduler start, `/health/live`, `/health/ready`, and `/metrics` |
 | `make test-controller` | Unavailable by design and fails clearly: no Kubernetes operator exists before Phase 6 |
 
+After the completion gate, the root Compose services received configurable
+local resource ceilings: PostgreSQL defaults to `1.0` CPU/`512m`, Redpanda to
+`1.0` CPU/`1g`, and Scheduler to `0.5` CPU/`256m`. These development limits are
+documented in `.env.example` and do not define production capacity policy.
+
 ## Remaining boundaries and follow-up work
 
 | Severity | Item | Owner phase |
