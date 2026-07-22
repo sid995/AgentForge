@@ -31,7 +31,12 @@ integration tests.
 Phase 5.5 is now implemented and verified by replaceable strategies, bounded
 strategy configuration, deterministic integer scoring and tie-breaking,
 temporary capacity deferral, observable safe decisions, and region-fallback
-tests. Phase 5.6 is next.
+tests.
+
+Phase 5.6 is now implemented and verified by migration 000008, attempt-attached
+capacity/budget reservations, locked capacity and daily-budget admission,
+idempotent exact replay/release/settlement/reclaim, and concurrent overbooking
+tests. Phase 5.7 is next.
 
 ## Process boundary
 

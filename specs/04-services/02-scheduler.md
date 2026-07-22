@@ -99,3 +99,19 @@ decision records the strategy, cluster, reason, score components, fallback,
 and time. The observable application wrapper logs only safe decision fields
 and uses bounded strategy/result metric dimensions. The strategy is selected
 by the validated `AGENTFORGE_SCHEDULER_STRATEGY` configuration value.
+
+## Phase 5.6 implementation
+
+Capacity and budget reservations are durable, tenant/run/attempt-attached
+records created in one PostgreSQL transaction. Admission locks the tenant
+policy and cluster in stable order, subtracts active unexpired reservations
+from the latest reported capacity, locks daily budget usage, and rejects
+overbooking with typed temporary capacity or budget errors. A unique active
+run-attempt reservation plus exact input comparison makes retries idempotent.
+
+Release, execution-start settlement, and expired reclaim are conditional and
+idempotent. Budget settlement moves reserved integer minor units to spent;
+release and expiry return them to availability. Scheduler reservations remain
+estimates and do not replace Kubernetes ResourceQuota, admission, or observed
+node capacity. Phase 5.7 composes this admission into the run transition and
+outbox transaction.

@@ -19,7 +19,7 @@ This repository contains the complete specification and GPT-5.6 Codex execution 
 - [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md): current implementation status
 - [`specs/TRACEABILITY.md`](specs/TRACEABILITY.md): requirement-to-code-and-test mapping
 - [`specs/15-llm-development/05-codex-execution-playbook.md`](specs/15-llm-development/05-codex-execution-playbook.md): complete phased prompt sequence
-- [`.env.example`](.env.example): documented local configuration through Phase 5.5
+- [`.env.example`](.env.example): documented local configuration through Phase 5.6
 
 ## Current state
 
@@ -38,4 +38,5 @@ Phase 5.2 adds fair competing PostgreSQL queue claims and expiring leases.
 Phase 5.3 adds explained tenant/user/resource/budget eligibility decisions.
 Phase 5.4 adds the validated, freshness-aware execution-cluster registry.
 Phase 5.5 adds deterministic least-loaded and region-affinity selection; see
+Phase 5.6 adds transactional capacity and budget reservations; see
 [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).

@@ -37,3 +37,12 @@ registry cost attributes, and scheduling weight. It records score components
 and applies stable cluster-ID tie-breaking. These registry signals guide a
 deterministic choice but do not replace reservation checks or Kubernetes
 admission.
+
+## Phase 5.6 reservation accounting
+
+An admitted attempt reserves its requested CPU and memory against the latest
+cluster snapshot and an explicit integer-minor-unit budget estimate against the
+tenant's UTC-day ledger. Exact retries reuse active reservation IDs. Release or
+expiry subtracts reserved budget; execution-start settlement moves it to spent.
+These estimates prevent Scheduler overcommit but Kubernetes admission and
+actual usage remain authoritative for execution and final billing.

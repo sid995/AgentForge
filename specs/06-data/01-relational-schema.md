@@ -141,3 +141,17 @@ Only the isolated Scheduler role can register/update clusters and capacity or
 manage allowlists. Candidate queries use the latest snapshot and require fresh
 cluster and capacity timestamps, active/non-maintenance state, compatible
 runtime/profile metadata, and an allowlist match for restricted clusters.
+
+## Phase 5.6 reservation boundary
+
+Migration `000008_scheduler_reservations` creates tenant/run/attempt-owned
+capacity and budget reservation ledgers. Partial unique indexes permit only one
+active reservation per run attempt. Cluster/expiry and tenant/expiry indexes
+support admission totals and bounded reclaim. Lifecycle checks require exactly
+the settlement or release timestamp appropriate to each state.
+
+The Scheduler role alone may create and transition reservations and adjust the
+reserved/spent columns of daily budget usage. Admission serializes on the
+tenant policy and cluster rows before checking latest capacity, existing active
+reservations, and locked daily usage. Historical released, expired, and settled
+records remain immutable evidence.

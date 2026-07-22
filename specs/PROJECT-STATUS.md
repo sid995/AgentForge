@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 5.6: Capacity and budget reservations
+Phase 5.7: Atomic scheduling intent
 
 ## Overall state
 
@@ -67,10 +67,13 @@ remain explicit dependencies for their corresponding command integrations.
 - Phase 5.5 replaceable least-loaded and region-affinity strategies with
   integer scoring, deterministic tie-breaking, temporary no-capacity deferral,
   bounded configuration, safe decision logging, and fallback tests
+- Phase 5.6 transactional, attempt-attached capacity and budget reservations
+  with locked admission, active-attempt uniqueness, exact-replay idempotency,
+  release/settlement, expired reclaim, and overbooking concurrency tests
 
 ## In progress
 
-- Phase 5.6 capacity and budget reservations
+- Phase 5.7 atomic scheduling intent and outbox event
 
 ## Not started
 
@@ -92,7 +95,7 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Implement Phase 5.6 capacity and budget reservations.
+1. Implement Phase 5.7 atomic scheduling intent and outbox event.
 2. Implement each remaining Scheduler sub-phase through Phase 5.8 with a clean
    commit boundary.
 3. Preserve the unresolved Phase 3 cancellation/retry command dependencies and

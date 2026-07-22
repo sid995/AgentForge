@@ -38,7 +38,7 @@ func TestMigrationsAreRepeatableAndProjectsAreTenantIsolated(t *testing.T) {
 		t.Fatalf("repeated migration application: %v", err)
 	}
 	version, dirty, err := migrations.Version(migrationURL, directory)
-	if err != nil || dirty || version != 7 {
+	if err != nil || dirty || version != 8 {
 		t.Fatalf("migration version = %d, dirty = %t, error = %v", version, dirty, err)
 	}
 

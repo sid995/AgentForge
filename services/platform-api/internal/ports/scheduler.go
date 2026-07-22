@@ -58,3 +58,23 @@ type ClusterRegistry interface {
 	Get(context.Context, string) (domain.ExecutionCluster, domain.ClusterCapacity, error)
 	ListCandidates(context.Context, uuid.UUID, string, string, time.Time, time.Duration) ([]domain.ClusterCandidate, error)
 }
+
+type ReservationRequest struct {
+	TenantID         uuid.UUID
+	RunID            uuid.UUID
+	AttemptID        uuid.UUID
+	AttemptNumber    int
+	ClusterID        string
+	CPUMillis        int64
+	MemoryMiB        int64
+	BudgetMinorUnits int64
+	Now              time.Time
+	TTL              time.Duration
+}
+
+type SchedulerReservationRepository interface {
+	Reserve(context.Context, ReservationRequest) (domain.ReservationBundle, error)
+	Release(context.Context, uuid.UUID, uuid.UUID, int, time.Time) error
+	Settle(context.Context, uuid.UUID, uuid.UUID, int, time.Time) error
+	ReclaimExpired(context.Context, time.Time, int) (int, error)
+}
