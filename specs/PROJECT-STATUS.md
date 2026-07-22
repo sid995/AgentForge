@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 6.3 reconciliation foundation complete; Phase 6.4 builders are next
+Phase 6.4 secure resource builders complete; Phase 6.5 prerequisites are next
 
 ## Overall state
 
@@ -92,17 +92,22 @@ remain explicit dependencies for their corresponding command integrations.
   finalizer policy, deterministic names, transient/permanent errors, bounded
   exponential retry, correlated logs, low-cardinality metrics, conflict-safe
   minimal status writes, self-update filtering, and envtest coverage
+- Phase 6.4 pure deterministic ServiceAccount, immutable ConfigMap, PVC,
+  NetworkPolicy, and Job builders with trusted placement profiles, optional
+  runtime class, secret/config projections, retained-storage ownership,
+  restricted egress validation, full restricted Pod/container security,
+  golden manifests, invalid-configuration tests, and security mutations
 
 ## In progress
 
-- Phase 6.4 secure resource builders
+- Phase 6.5 prerequisite resource reconciliation
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Phase 6.4 through 6.10 Operator resources, workload lifecycle,
+- Phase 6.5 through 6.10 Operator reconciliation, workload lifecycle,
   cancellation, retry, cleanup, and Scheduler handoff
 - Agent Runner
 - Model Gateway
@@ -116,7 +121,7 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Commit the validated Phase 6.3 reconciliation foundation.
-2. Implement and commit Phase 6.4 secure resource builders without API writes.
+1. Commit the validated Phase 6.4 secure resource builders.
+2. Implement and commit Phase 6.5 ordered prerequisite reconciliation.
 3. Preserve the unresolved Phase 3 cancellation/retry command dependencies and
    the Phase 6 no-Kubernetes boundary.

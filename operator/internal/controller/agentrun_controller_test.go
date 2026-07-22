@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
 	executionv1alpha1 "github.com/sid995/agentforge/operator/api/v1alpha1"
+	"github.com/sid995/agentforge/operator/internal/naming"
 )
 
 const controllerTestNamespace = "agentrun-controller"
@@ -222,11 +223,11 @@ func TestInvalidSpecIsPermanentAndRecorded(t *testing.T) {
 
 func TestDeterministicResourceNames(t *testing.T) {
 	run := validControllerAgentRun("names")
-	first, err := NamesForAgentRun(run)
+	first, err := naming.ForAgentRun(run)
 	if err != nil {
 		t.Fatalf("derive names: %v", err)
 	}
-	second, err := NamesForAgentRun(run.DeepCopy())
+	second, err := naming.ForAgentRun(run.DeepCopy())
 	if err != nil || first != second {
 		t.Fatalf("names are not deterministic: first=%#v second=%#v error=%v", first, second, err)
 	}
@@ -240,7 +241,7 @@ func TestDeterministicResourceNames(t *testing.T) {
 	}
 	run.Spec.RetryPolicy.MaxAttempts = 2
 	run.Status.Attempt = 2
-	nextAttempt, err := NamesForAgentRun(run)
+	nextAttempt, err := naming.ForAgentRun(run)
 	if err != nil {
 		t.Fatalf("derive retry names: %v", err)
 	}

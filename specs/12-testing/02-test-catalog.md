@@ -54,6 +54,12 @@
   invalid-spec terminal classification, deterministic names, bounded
   exponential backoff, self-update predicate suppression, and explicit proof
   that the foundation creates no execution resources;
+- golden isolated ServiceAccount/ConfigMap/PVC/NetworkPolicy/Job manifests;
+  trusted profile placement, tolerations, topology spread and runtime class;
+  exact resources/deadline/backoff/workspace/secret mounts; retained PVC
+  ownership; restricted-egress policy validation; configuration aliasing; and
+  mutations for privilege, escalation, writable root, host namespaces,
+  Kubernetes tokens, hostPath, Docker socket, and wildcard egress;
 - non-root Operator image and configured leader election, health, readiness,
   authenticated metrics, and structured logging foundation.
 

@@ -72,3 +72,17 @@ transient/permanent classes, and the queue applies bounded exponential retry.
 Only retained workspaces receive a finalizer; deletion exposes cleanup pending
 without pretending cleanup is implemented. Execution resource creation remains
 outside this sub-phase.
+
+## Phase 6.4 secure resource builders
+
+Focused pure builders now define the complete ServiceAccount, runner
+ConfigMap, PVC, NetworkPolicy, and Job manifests without creating them. Trusted
+execution profiles own node placement, tolerations, priority, topology spread,
+and optional runtime class; clients cannot directly set those fields. A
+defense-in-depth validator rejects workload security regressions and unsafe
+egress before any object reaches reconciliation.
+
+Golden manifests lock the complete isolated resource contract. Focused tests
+cover resource values, owner references, secret/config projections, retention,
+restricted egress, scheduling profiles, invalid configuration, and security
+mutations. Phase 6.5 owns API writes and conflict handling.

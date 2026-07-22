@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	executionv1alpha1 "github.com/sid995/agentforge/operator/api/v1alpha1"
+	"github.com/sid995/agentforge/operator/internal/naming"
 )
 
 func validateAgentRun(run *executionv1alpha1.AgentRun) error {
@@ -38,7 +39,7 @@ func validateAgentRun(run *executionv1alpha1.AgentRun) error {
 		{name: "attemptId", value: run.Spec.AttemptID},
 	}
 	for _, identifier := range identifiers {
-		if !isUUIDv7(string(identifier.value)) {
+		if !naming.IsUUIDv7(string(identifier.value)) {
 			return fmt.Errorf("%s must be a lowercase UUIDv7", identifier.name)
 		}
 	}
@@ -65,20 +66,10 @@ func validateAgentRun(run *executionv1alpha1.AgentRun) error {
 		run.Spec.DesiredState != executionv1alpha1.DesiredStateCancelled {
 		return fmt.Errorf("desiredState is not supported")
 	}
-	if _, err := NamesForAgentRun(run); err != nil {
+	if _, err := naming.ForAgentRun(run); err != nil {
 		return err
 	}
 	return nil
-}
-
-func isUUIDv7(value string) bool {
-	if len(value) != 36 || value[8] != '-' || value[13] != '-' || value[18] != '-' || value[23] != '-' || value[14] != '7' {
-		return false
-	}
-	if !strings.ContainsRune("89ab", rune(value[19])) {
-		return false
-	}
-	return isLowerHex(strings.ReplaceAll(value, "-", ""))
 }
 
 func isDigestImage(value string) bool {
@@ -86,7 +77,12 @@ func isDigestImage(value string) bool {
 	if separator < 1 || separator+8+64 != len(value) || strings.ContainsAny(value[:separator], " \t\r\n") {
 		return false
 	}
-	return isLowerHex(value[separator+8:])
+	for _, character := range value[separator+8:] {
+		if (character < '0' || character > '9') && (character < 'a' || character > 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 func isSecureReference(value string) bool {

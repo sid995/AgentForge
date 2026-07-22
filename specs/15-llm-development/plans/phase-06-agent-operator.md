@@ -78,6 +78,12 @@ Add pure builders and golden/security/mutation tests for ServiceAccount,
 ConfigMap, secret references, PVC, NetworkPolicy, and Job. Builders enforce the
 sandbox contract and perform no API writes.
 
+Status: implemented and validated. Pure builders produce deterministic owned
+resources, enforce trusted scheduling profiles and restricted egress, preserve
+retained PVCs, project configuration and secrets read-only, and apply the full
+Pod/container security contract. Golden, invalid-configuration, security, and
+mutation tests are checked in.
+
 ### 6.5 Prerequisite reconciliation
 
 Ensure resources in the specified order with server-side apply or an approved

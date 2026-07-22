@@ -54,3 +54,10 @@ status and conditions, uses deterministic names and bounded retry, suppresses
 self-update loops, and adds a finalizer only for retained workspaces. Envtest
 proves create/update/deletion/conflict/duplicate behavior and that no child
 execution resource is created. Phase 6.4 owns pure secure resource builders.
+
+Phase 6.4 adds pure builders for the tokenless ServiceAccount, immutable
+configuration, retained-or-owned workspace, deny-by-default network policy,
+and restricted Job. Trusted profiles provide dedicated-node placement,
+tolerations, topology spread, priority, and optional runtime class. Golden and
+security mutation tests lock the manifests; reconciliation does not create
+these resources until Phase 6.5.

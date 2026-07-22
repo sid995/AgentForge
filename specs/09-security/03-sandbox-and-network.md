@@ -21,3 +21,18 @@
 ## Build security
 
 Rootless builds, pinned builder digest, trusted base images, SBOM, vulnerability scan, provenance, and image signing.
+
+## Phase 6.4 enforced workload policy
+
+The Operator builders and defense-in-depth validator require UID/GID 65532,
+`runAsNonRoot`, `RuntimeDefault` seccomp, read-only root filesystem, no added
+capabilities, `ALL` capabilities dropped, privilege disabled, and privilege
+escalation disabled. Writable space is limited to the workspace and bounded
+`emptyDir` mounts for `/tmp` and `/home/agent`.
+
+Host networking, PID/IPC namespaces, `hostPath`, Docker socket mounts,
+projected Kubernetes API tokens, init containers, and ephemeral containers are
+rejected. ServiceAccount and Pod token automount are both false. Mutation tests
+prove each prohibited setting is detected. Network-policy tests prove deny-all
+isolation and reject wildcard, overly broad, link-local, and metadata-service
+egress.

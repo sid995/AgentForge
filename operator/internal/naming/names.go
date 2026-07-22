@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controller
+package naming
 
 import (
 	"fmt"
@@ -32,12 +32,12 @@ type ResourceNames struct {
 	Job            string
 }
 
-// NamesForAgentRun derives every child name from immutable run identity and attempt.
-func NamesForAgentRun(run *executionv1alpha1.AgentRun) (ResourceNames, error) {
-	if !isUUIDv7(string(run.Spec.RunID)) {
+// ForAgentRun derives every child name from immutable run identity and the observed attempt.
+func ForAgentRun(run *executionv1alpha1.AgentRun) (ResourceNames, error) {
+	if !IsUUIDv7(string(run.Spec.RunID)) {
 		return ResourceNames{}, fmt.Errorf("invalid immutable run identity")
 	}
-	attempt := currentAttempt(run)
+	attempt := CurrentAttempt(run)
 	if attempt < 1 || attempt > run.Spec.RetryPolicy.MaxAttempts || attempt > 10 {
 		return ResourceNames{}, fmt.Errorf("invalid current attempt")
 	}
@@ -52,11 +52,23 @@ func NamesForAgentRun(run *executionv1alpha1.AgentRun) (ResourceNames, error) {
 	}, nil
 }
 
-func currentAttempt(run *executionv1alpha1.AgentRun) int32 {
+// CurrentAttempt returns the controller-observed attempt or the scheduled attempt before status initialization.
+func CurrentAttempt(run *executionv1alpha1.AgentRun) int32 {
 	if run.Status.Attempt >= run.Spec.Attempt {
 		return run.Status.Attempt
 	}
 	return run.Spec.Attempt
+}
+
+// IsUUIDv7 reports whether value is a lowercase RFC 9562 UUID version 7.
+func IsUUIDv7(value string) bool {
+	if len(value) != 36 || value[8] != '-' || value[13] != '-' || value[18] != '-' || value[23] != '-' || value[14] != '7' {
+		return false
+	}
+	if !strings.ContainsRune("89ab", rune(value[19])) {
+		return false
+	}
+	return isLowerHex(strings.ReplaceAll(value, "-", ""))
 }
 
 func isLowerHex(value string) bool {

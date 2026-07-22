@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	executionv1alpha1 "github.com/sid995/agentforge/operator/api/v1alpha1"
+	"github.com/sid995/agentforge/operator/internal/naming"
 )
 
 const (
@@ -84,7 +85,7 @@ func (r *AgentRunReconciler) Reconcile(ctx context.Context, request ctrl.Request
 		"tenant_id", run.Spec.TenantID,
 		"project_id", run.Spec.ProjectID,
 		"run_id", run.Spec.RunID,
-		"attempt", currentAttempt(run),
+		"attempt", naming.CurrentAttempt(run),
 	)
 	ctx = ctrl.LoggerInto(ctx, log)
 
