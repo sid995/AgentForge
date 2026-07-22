@@ -94,7 +94,37 @@ func (router *Router) Route(ctx context.Context, source ports.ReceivedEvent, pro
 	}
 	permanent, code, reason := classify(processingError)
 	if !permanent && attempt <= len(retryTopics) && events.ValidateEnvelope(source.Envelope) == nil {
-		retry := events.OutboxEvent{Envelope: source.Envelope, Topic: retryTopics[attempt-1], PartitionKey: source.Envelope.AggregateID.String(), Serialized: source.Value, CreatedAt: source.Envelope.OccurredAt, Headers: []events.Header{{Key: "delivery-attempt", Value: strconv.Itoa(attempt)}, {Key: "retry-not-before", Value: now.Add(retryDelays[attempt-1]).UTC().Format(time.RFC3339Nano)}, {Key: "original-topic", Value: source.Topic}, {Key: "original-partition", Value: strconv.Itoa(int(source.Partition))}, {Key: "original-offset", Value: strconv.FormatInt(source.Offset, 10)}}}
+		eventHeaders := []events.Header{
+			{
+				Key:   "delivery-attempt",
+				Value: strconv.Itoa(attempt),
+			},
+			{
+				Key:   "retry-not-before",
+				Value: now.Add(retryDelays[attempt-1]).UTC().Format(time.RFC3339Nano),
+			},
+			{
+				Key:   "original-topic",
+				Value: source.Topic,
+			},
+			{
+				Key:   "original-partition",
+				Value: strconv.Itoa(int(source.Partition)),
+			},
+			{
+				Key:   "original-offset",
+				Value: strconv.FormatInt(source.Offset, 10),
+			},
+		}
+
+		retry := events.OutboxEvent{
+			Envelope:     source.Envelope,
+			Topic:        retryTopics[attempt-1],
+			PartitionKey: source.Envelope.AggregateID.String(),
+			Serialized:   source.Value,
+			CreatedAt:    source.Envelope.OccurredAt,
+			Headers:      eventHeaders,
+		}
 		if _, err := router.publisher.Publish(ctx, retry); err != nil {
 			router.metrics.RoutingFailed("RETRY_PUBLISH")
 			return "", fmt.Errorf("publish retry event: %w", err)
@@ -103,8 +133,10 @@ func (router *Router) Route(ctx context.Context, source ports.ReceivedEvent, pro
 		return RoutedRetry, nil
 	}
 	dlqSource := events.DeadLetterSource{Envelope: source.Envelope, Topic: source.Topic, Partition: source.Partition, Offset: source.Offset, Key: source.Key, Headers: source.Headers, Value: source.Value}
+
 	var deadLetter events.OutboxEvent
 	var err error
+
 	if events.ValidateEnvelope(source.Envelope) == nil {
 		deadLetter, err = events.NewDeadLetter(dlqSource, router.consumerIdentity, code, reason, attempt, firstFailedAt, now)
 	} else {
