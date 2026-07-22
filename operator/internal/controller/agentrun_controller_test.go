@@ -18,9 +18,12 @@ package controller
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -41,6 +44,7 @@ import (
 
 	executionv1alpha1 "github.com/sid995/agentforge/operator/api/v1alpha1"
 	"github.com/sid995/agentforge/operator/internal/naming"
+	"github.com/sid995/agentforge/operator/internal/resources"
 )
 
 const controllerTestNamespace = "agentrun-controller"
@@ -68,12 +72,18 @@ func TestAgentRunReconcilerFoundationEnvtest(t *testing.T) {
 		t.Fatalf("create envtest client: %v", err)
 	}
 	recording := &recordingClient{Client: baseClient}
-	reconciler := &AgentRunReconciler{Client: recording, Now: func() time.Time { return fixedReconcileTime }}
+	reconciler := &AgentRunReconciler{
+		Client: recording, ResourceBuilder: resources.NewDefaultBuilder(),
+		Now: func() time.Time { return fixedReconcileTime },
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := baseClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: controllerTestNamespace}}); err != nil {
 		t.Fatalf("create namespace: %v", err)
+	}
+	if err := baseClient.Create(ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "artifact-store", Namespace: controllerTestNamespace}}); err != nil {
+		t.Fatalf("create artifact destination: %v", err)
 	}
 
 	t.Run("not found is a successful no-op", func(t *testing.T) {
@@ -97,14 +107,160 @@ func TestAgentRunReconcilerFoundationEnvtest(t *testing.T) {
 			t.Fatalf("ordinary AgentRun received an unnecessary finalizer: %v", stored.Finalizers)
 		}
 		writesAfterFirst := recording.statusPatches
+		appliesAfterFirst := len(recording.appliedKinds)
 		if writesAfterFirst == 0 {
 			t.Fatal("first reconcile did not write initialized status")
+		}
+		if got, want := recording.appliedKinds, []string{"ServiceAccount", "ConfigMap", "PersistentVolumeClaim"}; !slices.Equal(got, want) {
+			t.Fatalf("prerequisite apply order: want %v, got %v", want, got)
 		}
 		if _, err := reconciler.Reconcile(ctx, requestFor(run.Name)); err != nil {
 			t.Fatalf("duplicate reconcile: %v", err)
 		}
 		if recording.statusPatches != writesAfterFirst {
 			t.Fatalf("duplicate reconcile wrote status: before=%d after=%d", writesAfterFirst, recording.statusPatches)
+		}
+		if len(recording.appliedKinds) != appliesAfterFirst {
+			t.Fatalf("duplicate reconcile reapplied matching resources: before=%d after=%d", appliesAfterFirst, len(recording.appliedKinds))
+		}
+		stored = getControllerAgentRun(t, ctx, baseClient, run.Name)
+		names, err := naming.ForAgentRun(stored)
+		if err != nil {
+			t.Fatalf("derive names: %v", err)
+		}
+		serviceAccount := &corev1.ServiceAccount{}
+		key := client.ObjectKey{Namespace: run.Namespace, Name: names.ServiceAccount}
+		if err := baseClient.Get(ctx, key, serviceAccount); err != nil {
+			t.Fatalf("get ServiceAccount: %v", err)
+		}
+		serviceAccount.Labels["external.example/trace"] = "preserve"
+		if err := baseClient.Update(ctx, serviceAccount); err != nil {
+			t.Fatalf("add external label: %v", err)
+		}
+		if _, err := reconciler.Reconcile(ctx, requestFor(run.Name)); err != nil {
+			t.Fatalf("reconcile external metadata: %v", err)
+		}
+		if err := baseClient.Get(ctx, key, serviceAccount); err != nil {
+			t.Fatalf("get ServiceAccount after reconcile: %v", err)
+		}
+		if serviceAccount.Labels["external.example/trace"] != "preserve" {
+			t.Fatal("reconcile overwrote externally owned metadata")
+		}
+		if len(recording.appliedKinds) != appliesAfterFirst {
+			t.Fatal("externally owned metadata caused an unnecessary apply")
+		}
+	})
+
+	t.Run("bound storage unlocks network policy and Job", func(t *testing.T) {
+		run := getControllerAgentRun(t, ctx, baseClient, "initialize")
+		names, err := naming.ForAgentRun(run)
+		if err != nil {
+			t.Fatalf("derive names: %v", err)
+		}
+		workspace := &corev1.PersistentVolumeClaim{}
+		key := client.ObjectKey{Namespace: run.Namespace, Name: names.Workspace}
+		if err := baseClient.Get(ctx, key, workspace); err != nil {
+			t.Fatalf("get workspace: %v", err)
+		}
+		workspace.Status.Phase = corev1.ClaimBound
+		if err := baseClient.Status().Update(ctx, workspace); err != nil {
+			t.Fatalf("bind workspace: %v", err)
+		}
+		if _, err := reconciler.Reconcile(ctx, requestFor(run.Name)); err != nil {
+			t.Fatalf("reconcile bound workspace: %v", err)
+		}
+		for _, object := range []client.Object{
+			&networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: names.NetworkPolicy, Namespace: run.Namespace}},
+			&batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: names.Job, Namespace: run.Namespace}},
+		} {
+			if err := baseClient.Get(ctx, client.ObjectKeyFromObject(object), object); err != nil {
+				t.Fatalf("get %T: %v", object, err)
+			}
+		}
+		stored := getControllerAgentRun(t, ctx, baseClient, run.Name)
+		if stored.Status.JobName != names.Job || stored.Status.Phase != executionv1alpha1.AgentRunPhaseProvisioning {
+			t.Fatalf("unexpected provisioned status: %#v", stored.Status)
+		}
+		for _, conditionType := range []string{
+			ConditionServiceAccountReady, ConditionConfigurationReady, ConditionWorkspaceReady,
+			ConditionNetworkPolicyReady, ConditionJobReady,
+		} {
+			condition := meta.FindStatusCondition(stored.Status.Conditions, conditionType)
+			if condition == nil || condition.Status != metav1.ConditionTrue {
+				t.Fatalf("condition %q is not ready: %#v", conditionType, condition)
+			}
+		}
+	})
+
+	t.Run("missing configuration reference requeues without later resources", func(t *testing.T) {
+		run := validControllerAgentRun("missing-reference")
+		run.Spec.ArtifactDestinationRef.Name = "missing-artifact-store"
+		if err := baseClient.Create(ctx, run); err != nil {
+			t.Fatalf("create AgentRun: %v", err)
+		}
+		result, err := reconciler.Reconcile(ctx, requestFor(run.Name))
+		if err != nil || result.RequeueAfter != prerequisiteRequeue {
+			t.Fatalf("missing-reference reconcile: result=%#v error=%v", result, err)
+		}
+		stored := getControllerAgentRun(t, ctx, baseClient, run.Name)
+		condition := meta.FindStatusCondition(stored.Status.Conditions, ConditionConfigurationReady)
+		if condition == nil || condition.Status != metav1.ConditionFalse || condition.Reason != "ReferenceNotFound" {
+			t.Fatalf("unexpected configuration condition: %#v", condition)
+		}
+		names, err := naming.ForAgentRun(stored)
+		if err != nil {
+			t.Fatalf("derive names: %v", err)
+		}
+		for _, object := range []client.Object{
+			&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: names.Workspace, Namespace: run.Namespace}},
+			&networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: names.NetworkPolicy, Namespace: run.Namespace}},
+			&batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: names.Job, Namespace: run.Namespace}},
+		} {
+			if getErr := baseClient.Get(ctx, client.ObjectKeyFromObject(object), object); !apierrors.IsNotFound(getErr) {
+				t.Fatalf("expected %T to be absent, got %v", object, getErr)
+			}
+		}
+	})
+
+	t.Run("missing Secret reference is reported", func(t *testing.T) {
+		run := validControllerAgentRun("missing-secret")
+		run.Spec.SecretRefs = []executionv1alpha1.LocalObjectReference{{Name: "missing-credential"}}
+		if err := baseClient.Create(ctx, run); err != nil {
+			t.Fatalf("create AgentRun: %v", err)
+		}
+		result, err := reconciler.Reconcile(ctx, requestFor(run.Name))
+		if err != nil || result.RequeueAfter != prerequisiteRequeue {
+			t.Fatalf("missing-secret reconcile: result=%#v error=%v", result, err)
+		}
+		stored := getControllerAgentRun(t, ctx, baseClient, run.Name)
+		condition := meta.FindStatusCondition(stored.Status.Conditions, ConditionConfigurationReady)
+		if condition == nil || condition.Status != metav1.ConditionFalse || condition.Reason != "ReferenceNotFound" ||
+			condition.Message != "Required Secret \"missing-credential\" is not available" {
+			t.Fatalf("unexpected Secret condition: %#v", condition)
+		}
+	})
+
+	t.Run("conflicting pre-existing resource is permanent", func(t *testing.T) {
+		run := validControllerAgentRun("resource-conflict")
+		if err := baseClient.Create(ctx, run); err != nil {
+			t.Fatalf("create AgentRun: %v", err)
+		}
+		stored := getControllerAgentRun(t, ctx, baseClient, run.Name)
+		names, err := naming.ForAgentRun(stored)
+		if err != nil {
+			t.Fatalf("derive names: %v", err)
+		}
+		if err := baseClient.Create(ctx, &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: names.ServiceAccount, Namespace: run.Namespace}}); err != nil {
+			t.Fatalf("create conflicting ServiceAccount: %v", err)
+		}
+		_, err = reconciler.Reconcile(ctx, requestFor(run.Name))
+		var reconcileErr *ReconcileError
+		if !errors.As(err, &reconcileErr) || reconcileErr.Class != ErrorClassPermanent || reconcileErr.Reason != "ServiceAccountReconcileFailed" {
+			t.Fatalf("expected permanent ServiceAccount conflict, got %v", err)
+		}
+		stored = getControllerAgentRun(t, ctx, baseClient, run.Name)
+		if stored.Status.FailureCategory != executionv1alpha1.FailureCategoryConflict {
+			t.Fatalf("unexpected conflict status: %#v", stored.Status)
 		}
 	})
 
@@ -183,7 +339,10 @@ func TestAgentRunReconcilerFoundationEnvtest(t *testing.T) {
 			t.Fatalf("create AgentRun: %v", err)
 		}
 		conflicting := &conflictOnceClient{Client: baseClient, remainingStatusConflicts: 1}
-		conflictReconciler := &AgentRunReconciler{Client: conflicting, Now: func() time.Time { return fixedReconcileTime }}
+		conflictReconciler := &AgentRunReconciler{
+			Client: conflicting, ResourceBuilder: resources.NewDefaultBuilder(),
+			Now: func() time.Time { return fixedReconcileTime },
+		}
 		if _, err := conflictReconciler.Reconcile(ctx, requestFor(run.Name)); !apierrors.IsConflict(err) {
 			t.Fatalf("expected transient status conflict, got %v", err)
 		}
@@ -193,9 +352,6 @@ func TestAgentRunReconcilerFoundationEnvtest(t *testing.T) {
 		assertInitializedStatus(t, getControllerAgentRun(t, ctx, baseClient, run.Name))
 	})
 
-	t.Run("foundation creates no execution resources", func(t *testing.T) {
-		assertNoExecutionResources(t, ctx, baseClient)
-	})
 }
 
 func TestInvalidSpecIsPermanentAndRecorded(t *testing.T) {
@@ -204,7 +360,10 @@ func TestInvalidSpecIsPermanentAndRecorded(t *testing.T) {
 	run.Generation = 1
 	run.Spec.RunID = "invalid"
 	fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&executionv1alpha1.AgentRun{}).WithObjects(run).Build()
-	reconciler := &AgentRunReconciler{Client: fakeClient, Now: func() time.Time { return fixedReconcileTime }}
+	reconciler := &AgentRunReconciler{
+		Client: fakeClient, ResourceBuilder: resources.NewDefaultBuilder(),
+		Now: func() time.Time { return fixedReconcileTime },
+	}
 
 	_, err := reconciler.Reconcile(context.Background(), requestFor(run.Name))
 	var reconcileErr *ReconcileError
@@ -316,13 +475,16 @@ func controllerTestScheme(t *testing.T) *runtime.Scheme {
 }
 
 func validControllerAgentRun(name string) *executionv1alpha1.AgentRun {
+	digest := sha256.Sum256([]byte(name))
+	runSuffix := hex.EncodeToString(digest[:6])
+	attemptSuffix := hex.EncodeToString(digest[6:12])
 	return &executionv1alpha1.AgentRun{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: controllerTestNamespace},
 		Spec: executionv1alpha1.AgentRunSpec{
 			TenantID:         "019b0000-0000-7000-8000-000000000002",
 			ProjectID:        "019b0000-0000-7000-8000-000000000003",
-			RunID:            "019b0000-0000-7000-8000-000000000004",
-			AttemptID:        "019b0000-0000-7000-8000-000000000005",
+			RunID:            executionv1alpha1.UUIDv7("019b0000-0000-7000-8000-" + runSuffix),
+			AttemptID:        executionv1alpha1.UUIDv7("019b0000-0000-7000-8000-" + attemptSuffix),
 			Attempt:          1,
 			RunnerImage:      "ghcr.io/agentforge/runner@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			Runtime:          "python-3.12",
@@ -363,7 +525,7 @@ func getControllerAgentRun(t *testing.T, ctx context.Context, kubernetesClient c
 
 func assertInitializedStatus(t *testing.T, run *executionv1alpha1.AgentRun) {
 	t.Helper()
-	if run.Status.Phase != executionv1alpha1.AgentRunPhasePending || run.Status.Attempt != run.Spec.Attempt ||
+	if run.Status.Phase != executionv1alpha1.AgentRunPhaseProvisioning || run.Status.Attempt != run.Spec.Attempt ||
 		run.Status.Namespace != run.Namespace || run.Status.ObservedGeneration != run.Generation {
 		t.Fatalf("unexpected initialized status: %#v", run.Status)
 	}
@@ -372,31 +534,11 @@ func assertInitializedStatus(t *testing.T, run *executionv1alpha1.AgentRun) {
 	if specValid == nil || specValid.Status != metav1.ConditionTrue || specValid.Reason != "Accepted" {
 		t.Fatalf("unexpected SpecValid condition: %#v", specValid)
 	}
-	if ready == nil || ready.Status != metav1.ConditionFalse || ready.Reason != "ReconciliationPending" {
+	if ready == nil || ready.Status != metav1.ConditionFalse || ready.Reason != "StoragePending" {
 		t.Fatalf("unexpected Ready condition: %#v", ready)
 	}
 	if !specValid.LastTransitionTime.Equal(&metav1.Time{Time: fixedReconcileTime}) {
 		t.Fatalf("condition did not use injected clock: %s", specValid.LastTransitionTime)
-	}
-}
-
-func assertNoExecutionResources(t *testing.T, ctx context.Context, kubernetesClient client.Client) {
-	t.Helper()
-	lists := []client.ObjectList{
-		&batchv1.JobList{}, &corev1.ServiceAccountList{}, &corev1.ConfigMapList{},
-		&corev1.PersistentVolumeClaimList{}, &networkingv1.NetworkPolicyList{},
-	}
-	for _, list := range lists {
-		if err := kubernetesClient.List(ctx, list, client.InNamespace(controllerTestNamespace)); err != nil {
-			t.Fatalf("list %T: %v", list, err)
-		}
-		items, err := meta.ExtractList(list)
-		if err != nil {
-			t.Fatalf("extract %T: %v", list, err)
-		}
-		if len(items) != 0 {
-			t.Fatalf("foundation unexpectedly created %d %T objects", len(items), list)
-		}
 	}
 }
 
@@ -413,10 +555,15 @@ type recordingClient struct {
 	client.Client
 	metadataPatches int
 	statusPatches   int
+	appliedKinds    []string
 }
 
 func (c *recordingClient) Patch(ctx context.Context, object client.Object, patch client.Patch, options ...client.PatchOption) error {
-	c.metadataPatches++
+	if _, ok := object.(*executionv1alpha1.AgentRun); ok {
+		c.metadataPatches++
+	} else if patch.Type() == types.ApplyPatchType {
+		c.appliedKinds = append(c.appliedKinds, resourceKind(object))
+	}
 	return c.Client.Patch(ctx, object, patch, options...)
 }
 

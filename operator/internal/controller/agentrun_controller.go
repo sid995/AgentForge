@@ -21,6 +21,9 @@ import (
 	"errors"
 	"time"
 
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -37,31 +40,42 @@ import (
 
 	executionv1alpha1 "github.com/sid995/agentforge/operator/api/v1alpha1"
 	"github.com/sid995/agentforge/operator/internal/naming"
+	"github.com/sid995/agentforge/operator/internal/resources"
 )
 
 const (
 	// RetainedResourcesFinalizer gates cleanup only when the desired workspace is explicitly retained.
 	RetainedResourcesFinalizer = "execution.agentforge.dev/retained-resources"
 
-	ConditionSpecValid      = "SpecValid"
-	ConditionReady          = "Ready"
-	ConditionCleanupPending = "CleanupPending"
+	ConditionSpecValid           = "SpecValid"
+	ConditionServiceAccountReady = "ServiceAccountReady"
+	ConditionConfigurationReady  = "ConfigurationReady"
+	ConditionWorkspaceReady      = "WorkspaceReady"
+	ConditionNetworkPolicyReady  = "NetworkPolicyReady"
+	ConditionJobReady            = "JobReady"
+	ConditionReady               = "Ready"
+	ConditionCleanupPending      = "CleanupPending"
 
 	minimumRetryDelay = time.Second
 	maximumRetryDelay = 2 * time.Minute
 )
 
-// AgentRunReconciler initializes the durable controller contract without creating child resources.
+// AgentRunReconciler projects durable AgentRun intent into namespaced execution resources.
 type AgentRunReconciler struct {
 	client.Client
-	Now func() time.Time
+	ResourceBuilder *resources.Builder
+	Now             func() time.Time
 }
 
 // +kubebuilder:rbac:groups=execution.agentforge.dev,resources=agentruns,verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups=execution.agentforge.dev,resources=agentruns/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=execution.agentforge.dev,resources=agentruns/finalizers,verbs=update;patch
+// +kubebuilder:rbac:groups="",resources=serviceaccounts;configmaps;persistentvolumeclaims,verbs=get;list;watch;create;patch
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+// +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;patch
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;patch
 
-// Reconcile fetches an AgentRun, validates it, establishes cleanup ownership, and initializes status.
+// Reconcile fetches an AgentRun, validates it, establishes cleanup ownership, and ensures prerequisites.
 func (r *AgentRunReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
 	started := time.Now()
 	outcome := "success"
@@ -132,18 +146,23 @@ func (r *AgentRunReconciler) Reconcile(ctx context.Context, request ctrl.Request
 
 	beforeStatus := run.DeepCopy()
 	r.initializeAcceptedStatus(run)
+	result, prerequisiteErr := r.reconcilePrerequisites(ctx, run)
 	changed, err := r.patchStatusIfChanged(ctx, beforeStatus, run)
 	if err != nil {
 		reconcileErr := classifyAPIError("StatusWriteFailed", err)
 		outcome = string(reconcileErr.Class) + "_error"
 		return ctrl.Result{}, terminalIfPermanent(reconcileErr)
 	}
+	if prerequisiteErr != nil {
+		outcome = string(errorClass(prerequisiteErr)) + "_error"
+		return result, terminalIfPermanent(prerequisiteErr)
+	}
 	if changed {
-		log.Info("Initialized AgentRun reconciliation status", "observed_generation", run.Status.ObservedGeneration)
+		log.Info("Updated AgentRun reconciliation status", "observed_generation", run.Status.ObservedGeneration)
 	} else {
 		outcome = "unchanged"
 	}
-	return ctrl.Result{}, nil
+	return result, nil
 }
 
 func (r *AgentRunReconciler) initializeAcceptedStatus(run *executionv1alpha1.AgentRun) {
@@ -157,8 +176,21 @@ func (r *AgentRunReconciler) initializeAcceptedStatus(run *executionv1alpha1.Age
 		run.Status.Namespace = run.Namespace
 	}
 	run.Status.ObservedGeneration = run.Generation
+	run.Status.FailureCategory = ""
+	run.Status.FailureReason = ""
 	r.setCondition(run, ConditionSpecValid, metav1.ConditionTrue, "Accepted", "AgentRun desired state is valid")
 	r.setCondition(run, ConditionReady, metav1.ConditionFalse, "ReconciliationPending", "Execution resources have not been reconciled")
+	for _, conditionType := range []string{
+		ConditionServiceAccountReady,
+		ConditionConfigurationReady,
+		ConditionWorkspaceReady,
+		ConditionNetworkPolicyReady,
+		ConditionJobReady,
+	} {
+		if meta.FindStatusCondition(run.Status.Conditions, conditionType) == nil {
+			r.setCondition(run, conditionType, metav1.ConditionFalse, "ReconciliationPending", "Prerequisite has not been reconciled")
+		}
+	}
 }
 
 func (r *AgentRunReconciler) initializeInvalidStatus(run *executionv1alpha1.AgentRun) {
@@ -246,8 +278,16 @@ func (r *AgentRunReconciler) SetupWithManager(manager ctrl.Manager) error {
 	if r.Client == nil {
 		return errors.New("AgentRun reconciler client is required")
 	}
+	if r.ResourceBuilder == nil {
+		return errors.New("AgentRun reconciler resource builder is required")
+	}
 	return ctrl.NewControllerManagedBy(manager).
 		For(&executionv1alpha1.AgentRun{}, builder.WithPredicates(reconciliationPredicate())).
+		Owns(&corev1.ServiceAccount{}).
+		Owns(&corev1.ConfigMap{}).
+		Owns(&corev1.PersistentVolumeClaim{}).
+		Owns(&networkingv1.NetworkPolicy{}).
+		Owns(&batchv1.Job{}).
 		WithOptions(controlleroptions.Options{
 			MaxConcurrentReconciles: 4,
 			RateLimiter:             newRateLimiter(),

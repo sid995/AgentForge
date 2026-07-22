@@ -49,3 +49,28 @@ the workspace explicitly requests `Retain`. Ordinary cluster-local ownership
 does not receive a finalizer. During deletion, retained objects expose a
 `CleanupPending=True` condition and remain for the Phase 6.9 cleanup contract.
 Phase 6.3 creates no child resources.
+
+## Phase 6.5 prerequisite reconciliation
+
+The reconciler now resolves a trusted resource builder and ensures execution
+prerequisites in a fixed order: tokenless ServiceAccount, same-namespace
+ConfigMap and Secret references plus the owned immutable runner ConfigMap,
+workspace PVC, deny-by-default NetworkPolicy, then Job. The Job is not created
+until the PVC reports `Bound`; pending storage produces a five-second polling
+requeue and explicit conditions instead of an error retry.
+
+Child writes use server-side apply with field manager `agentforge-operator`
+and never force ownership. Existing objects must already belong to the same
+AgentRun (or carry the retained PVC owner-UID marker), and matching managed
+state is a no-op. Externally owned labels and annotations are preserved.
+Mismatched ownership and server-side-apply field conflicts are terminal,
+bounded `CONFLICT` diagnostics rather than silent adoption or forced
+overwrite.
+
+`ServiceAccountReady`, `ConfigurationReady`, `WorkspaceReady`,
+`NetworkPolicyReady`, and `JobReady` conditions expose the exact blocked
+prerequisite. Missing configuration references requeue without creating later
+resources. API transport and availability failures retain transient retry
+classification; invalid or forbidden writes are permanent. Owned-resource
+watches provide event-driven reconciliation while status patches remain
+semantic and optimistic-lock protected.

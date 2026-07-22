@@ -37,6 +37,7 @@ import (
 
 	executionv1alpha1 "github.com/sid995/agentforge/operator/api/v1alpha1"
 	"github.com/sid995/agentforge/operator/internal/controller"
+	"github.com/sid995/agentforge/operator/internal/resources"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -171,7 +172,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := (&controller.AgentRunReconciler{Client: mgr.GetClient()}).SetupWithManager(mgr); err != nil {
+	if err := (&controller.AgentRunReconciler{
+		Client:          mgr.GetClient(),
+		ResourceBuilder: resources.NewDefaultBuilder(),
+	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create AgentRun controller")
 		os.Exit(1)
 	}

@@ -90,6 +90,12 @@ Ensure resources in the specified order with server-side apply or an approved
 ownership model, safe comparison/conflict behavior, storage-pending conditions,
 and envtest coverage.
 
+Status: implemented and validated. Reconciliation now uses non-forced
+server-side apply with a stable field owner, verifies existing ownership,
+preserves external metadata, stops on missing references or pending storage,
+and creates NetworkPolicy and Job only after the PVC is bound. Kubernetes 1.36
+envtest covers order, idempotency, conditions, conflicts, and storage gating.
+
 ### 6.6 Job lifecycle
 
 Derive status and failure classification from observed Job/Pod state, preserve

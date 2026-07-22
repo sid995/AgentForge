@@ -51,13 +51,18 @@ columns, and status-subresource isolation.
 
 Phase 6.3 registers the reconciliation foundation. It initializes observed
 status and conditions, uses deterministic names and bounded retry, suppresses
-self-update loops, and adds a finalizer only for retained workspaces. Envtest
-proves create/update/deletion/conflict/duplicate behavior and that no child
-execution resource is created. Phase 6.4 owns pure secure resource builders.
+self-update loops, and adds a finalizer only for retained workspaces. Phase 6.4
+owns pure secure resource builders.
 
 Phase 6.4 adds pure builders for the tokenless ServiceAccount, immutable
 configuration, retained-or-owned workspace, deny-by-default network policy,
 and restricted Job. Trusted profiles provide dedicated-node placement,
 tolerations, topology spread, priority, and optional runtime class. Golden and
-security mutation tests lock the manifests; reconciliation does not create
-these resources until Phase 6.5.
+security mutation tests lock the manifests.
+
+Phase 6.5 creates prerequisites in the strict ServiceAccount, references and
+configuration, PVC, NetworkPolicy, Job order. It uses non-forced server-side
+apply, rejects conflicting ownership, preserves unrelated metadata, requeues
+missing references and pending storage, and exposes one condition per gate.
+Envtest proves matching-resource no-ops and that NetworkPolicy and Job creation
+remain blocked until workspace storage is bound.

@@ -97,17 +97,21 @@ remain explicit dependencies for their corresponding command integrations.
   runtime class, secret/config projections, retained-storage ownership,
   restricted egress validation, full restricted Pod/container security,
   golden manifests, invalid-configuration tests, and security mutations
+- Phase 6.5 ordered prerequisite reconciliation with non-forced server-side
+  apply, explicit owner validation, matching-object no-ops, external metadata
+  preservation, reference and storage gating, per-prerequisite conditions,
+  owned-resource watches, conflict diagnostics, and Kubernetes 1.36 envtest
 
 ## In progress
 
-- Phase 6.5 prerequisite resource reconciliation
+- Phase 6.6 Job and Pod lifecycle observation
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Phase 6.5 through 6.10 Operator reconciliation, workload lifecycle,
+- Phase 6.6 through 6.10 Operator workload lifecycle,
   cancellation, retry, cleanup, and Scheduler handoff
 - Agent Runner
 - Model Gateway
@@ -121,7 +125,7 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Commit the validated Phase 6.4 secure resource builders.
-2. Implement and commit Phase 6.5 ordered prerequisite reconciliation.
+1. Commit the validated Phase 6.5 prerequisite reconciliation.
+2. Implement and commit Phase 6.6 Job and Pod lifecycle observation.
 3. Preserve the unresolved Phase 3 cancellation/retry command dependencies and
    the Phase 6 no-Kubernetes boundary.

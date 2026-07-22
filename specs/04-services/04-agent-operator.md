@@ -86,3 +86,18 @@ Golden manifests lock the complete isolated resource contract. Focused tests
 cover resource values, owner references, secret/config projections, retention,
 restricted egress, scheduling profiles, invalid configuration, and security
 mutations. Phase 6.5 owns API writes and conflict handling.
+
+## Phase 6.5 prerequisite reconciliation
+
+The manager injects the trusted builder and reconciles ServiceAccount,
+configuration references and immutable configuration, PVC, NetworkPolicy, and
+Job in that order. Server-side apply uses a stable field owner without forced
+ownership. Objects controlled by another resource are rejected, matching
+objects are not rewritten, and unrelated external metadata is preserved.
+
+The controller stops before network or compute creation while storage is not
+bound and polls at a bounded interval. Missing ConfigMaps or Secrets expose a
+specific pending condition and likewise prevent later resources. Five
+prerequisite conditions, bounded failure categories, and Job name projection
+make progress and conflicts diagnosable without copying secret data into the
+CR, logs, or generated configuration.

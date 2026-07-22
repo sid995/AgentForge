@@ -427,6 +427,7 @@ func annotationsForRun(run *executionv1alpha1.AgentRun) map[string]string {
 		"execution.agentforge.dev/attempt-id":        string(run.Spec.AttemptID),
 		"execution.agentforge.dev/execution-profile": run.Spec.ExecutionProfile,
 		"execution.agentforge.dev/network-profile":   string(run.Spec.Network.Profile),
+		"execution.agentforge.dev/owner-uid":         string(run.UID),
 	}
 }
 

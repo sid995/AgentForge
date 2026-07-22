@@ -6,6 +6,7 @@ metadata:
     execution.agentforge.dev/attempt-id: 019b0000-0000-7000-8000-000000000005
     execution.agentforge.dev/execution-profile: standard
     execution.agentforge.dev/network-profile: Isolated
+    execution.agentforge.dev/owner-uid: 11111111-2222-3333-4444-555555555555
   labels:
     app.kubernetes.io/managed-by: agentforge-operator
     app.kubernetes.io/name: agentforge-runner
@@ -35,6 +36,7 @@ metadata:
     execution.agentforge.dev/attempt-id: 019b0000-0000-7000-8000-000000000005
     execution.agentforge.dev/execution-profile: standard
     execution.agentforge.dev/network-profile: Isolated
+    execution.agentforge.dev/owner-uid: 11111111-2222-3333-4444-555555555555
   labels:
     app.kubernetes.io/managed-by: agentforge-operator
     app.kubernetes.io/name: agentforge-runner
@@ -61,6 +63,7 @@ metadata:
     execution.agentforge.dev/attempt-id: 019b0000-0000-7000-8000-000000000005
     execution.agentforge.dev/execution-profile: standard
     execution.agentforge.dev/network-profile: Isolated
+    execution.agentforge.dev/owner-uid: 11111111-2222-3333-4444-555555555555
   labels:
     app.kubernetes.io/managed-by: agentforge-operator
     app.kubernetes.io/name: agentforge-runner
@@ -95,6 +98,7 @@ metadata:
     execution.agentforge.dev/attempt-id: 019b0000-0000-7000-8000-000000000005
     execution.agentforge.dev/execution-profile: standard
     execution.agentforge.dev/network-profile: Isolated
+    execution.agentforge.dev/owner-uid: 11111111-2222-3333-4444-555555555555
   labels:
     app.kubernetes.io/managed-by: agentforge-operator
     app.kubernetes.io/name: agentforge-runner
@@ -129,6 +133,7 @@ metadata:
     execution.agentforge.dev/attempt-id: 019b0000-0000-7000-8000-000000000005
     execution.agentforge.dev/execution-profile: standard
     execution.agentforge.dev/network-profile: Isolated
+    execution.agentforge.dev/owner-uid: 11111111-2222-3333-4444-555555555555
   labels:
     app.kubernetes.io/managed-by: agentforge-operator
     app.kubernetes.io/name: agentforge-runner
@@ -158,6 +163,7 @@ spec:
         execution.agentforge.dev/attempt-id: 019b0000-0000-7000-8000-000000000005
         execution.agentforge.dev/execution-profile: standard
         execution.agentforge.dev/network-profile: Isolated
+        execution.agentforge.dev/owner-uid: 11111111-2222-3333-4444-555555555555
       labels:
         app.kubernetes.io/managed-by: agentforge-operator
         app.kubernetes.io/name: agentforge-runner
