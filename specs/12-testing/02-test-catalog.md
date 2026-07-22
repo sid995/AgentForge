@@ -45,6 +45,10 @@
 - reproducible CRD, RBAC, and deepcopy generation with pinned tools;
 - manager scheme registration for `execution.agentforge.dev/v1alpha1`;
 - envtest installation and create/get behavior for the AgentRun CRD;
+- AgentRun required schema, safe defaults, enum/range/reference validation,
+  prohibited resource/network/retry combinations, set-list uniqueness,
+  immutable execution intent, one-way cancellation, printer columns, and
+  status-subresource isolation against Kubernetes 1.36 envtest;
 - non-root Operator image and configured leader election, health, readiness,
   authenticated metrics, and structured logging foundation.
 

@@ -1,9 +1,9 @@
 # AgentForge Agent Operator
 
 The Agent Operator translates `execution.agentforge.dev/v1alpha1` `AgentRun`
-desired state into reconciled Kubernetes resources. Phase 6.1 provides only
-the API/CRD and controller-manager foundation; it deliberately creates no
-execution resources.
+desired state into reconciled Kubernetes resources. Phase 6.1 provides the
+controller-manager foundation. Phase 6.2 adds the complete validated CRD
+contract, but deliberately creates no execution resources.
 
 ## Pinned toolchain
 
@@ -44,5 +44,8 @@ make install
 make deploy IMG=<registry>/agentforge-operator:<immutable-tag>
 ```
 
-The Phase 6.1 sample contains only the empty bootstrap schema. Phase 6.2 owns
-the complete desired-state and status contract.
+The checked-in sample demonstrates the complete Phase 6.2 desired-state
+contract. Kubernetes 1.36 envtest verifies defaults, validation and prohibited
+combinations, immutable execution intent, one-way cancellation, printer
+columns, and status-subresource isolation. Phase 6.3 owns reconciliation
+behavior; no execution Job is created at this stage.

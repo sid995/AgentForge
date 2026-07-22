@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 6.1 Operator bootstrap complete; Phase 6.2 CRD contract is next
+Phase 6.2 AgentRun CRD contract complete; Phase 6.3 reconciliation is next
 
 ## Overall state
 
@@ -83,17 +83,21 @@ remain explicit dependencies for their corresponding command integrations.
   scheme registration, leader-election deployment, health/readiness,
   authenticated metrics, structured logging, pinned generation/envtest tools,
   root Make/CI integration, and non-root image
+- Phase 6.2 complete AgentRun desired/status contract, immutable Scheduler
+  intent and one-way cancellation, structural validation and safe defaults,
+  printer columns, status subresource, generated artifacts, full sample, future
+  conversion strategy, and Kubernetes 1.36 envtest schema coverage
 
 ## In progress
 
-- Phase 6.2 complete AgentRun CRD desired-state and status contract
+- Phase 6.3 reconciliation foundation
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Phase 6.2 through 6.10 Operator contract, reconciliation, workload lifecycle,
+- Phase 6.3 through 6.10 Operator reconciliation, workload lifecycle,
   cancellation, retry, cleanup, and Scheduler handoff
 - Agent Runner
 - Model Gateway
@@ -107,6 +111,8 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Implement and commit Phase 6.2 AgentRun CRD contract and schema tests.
-2. Preserve the unresolved Phase 3 cancellation/retry command dependencies and
+1. Commit the validated Phase 6.2 AgentRun CRD contract.
+2. Implement and commit Phase 6.3 reconciliation foundation without child
+   resource creation.
+3. Preserve the unresolved Phase 3 cancellation/retry command dependencies and
    the Phase 6 no-Kubernetes boundary.

@@ -55,6 +55,11 @@ safe defaults, cross-field CEL rules, printer columns, status subresource,
 samples, schema tests, and future conversion strategy notes. This sub-phase
 changes only the API contract and generated artifacts.
 
+Status: implemented and validated against Kubernetes 1.36 envtest. The
+sub-phase includes immutable Scheduler intent, one-way cancellation, bounded
+attempt history, a complete sample, and generated structural schema/deepcopy
+artifacts. No reconciler or child-resource creation is present.
+
 ### 6.3 Reconciliation foundation
 
 Add fetch/not-found handling, generation validation, status initialization,

@@ -41,3 +41,18 @@ installs, serves, persists, and reads the generated custom resource.
 The trusted manager explicitly automounts its ServiceAccount token because API
 reconciliation requires it; this does not relax the prohibition on token
 automount for untrusted execution Pods.
+
+## Phase 6.2 API contract
+
+The generated `v1alpha1` CRD now defines the full Scheduler-to-Operator desired
+state and controller-owned observed status described in
+`08-kubernetes/01-crd-agent-run.md`. API-server validation enforces immutable
+execution identity and configuration, digest-qualified images, bounded
+resources, timeouts and retries, approved retry categories, and coherent
+egress profiles. Only the one-way `Running` to `Cancelled` desired-state
+transition is mutable.
+
+The `status` subresource is optional on creation and isolated from ordinary
+updates. It contains bounded current and historical attempt observations and
+standard conditions. Phase 6.2 still registers no reconciler and creates no
+ServiceAccount, storage, network, configuration, or Job resources.
