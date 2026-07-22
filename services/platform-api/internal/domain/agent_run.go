@@ -237,19 +237,22 @@ func (run AgentRun) CanRetry() bool {
 
 // AgentRunAttempt is one durable, monotonic execution history entry.
 type AgentRunAttempt struct {
-	ID                uuid.UUID
-	TenantID          uuid.UUID
-	RunID             uuid.UUID
-	AttemptNumber     int
-	Status            AgentRunAttemptStatus
-	FailureCategory   FailureCategory
-	Version           int64
-	SelectedCluster   string
-	WorkloadReference string
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-	StartedAt         *time.Time
-	CompletedAt       *time.Time
+	ID                    uuid.UUID
+	TenantID              uuid.UUID
+	RunID                 uuid.UUID
+	AttemptNumber         int
+	Status                AgentRunAttemptStatus
+	FailureCategory       FailureCategory
+	Version               int64
+	SelectedCluster       string
+	ExecutionProfile      string
+	CapacityReservationID uuid.UUID
+	BudgetReservationID   uuid.UUID
+	WorkloadReference     string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	StartedAt             *time.Time
+	CompletedAt           *time.Time
 }
 
 // NewAgentRunAttempt creates the pending attempt for a validated run number.

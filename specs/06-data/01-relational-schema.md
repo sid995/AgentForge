@@ -155,3 +155,16 @@ reserved/spent columns of daily budget usage. Admission serializes on the
 tenant policy and cluster rows before checking latest capacity, existing active
 reservations, and locked daily usage. Historical released, expired, and settled
 records remain immutable evidence.
+
+## Phase 5.7 atomic intent boundary
+
+Migration `000009_atomic_scheduling_intent` attaches the selected execution
+profile and capacity/budget reservation IDs to an attempt and stores bounded
+strategy/score evidence on its run. Assignment fields are all-null or all-set.
+The Scheduler receives only the additional column reads/updates and outbox
+insert access required by the transaction.
+
+The transaction uses explicit tenant/run predicates and optimistic versions,
+and clears its lease only with the state transition. Assignment, reservations,
+daily-budget accounting, and the matching outbox envelope therefore commit or
+roll back together.

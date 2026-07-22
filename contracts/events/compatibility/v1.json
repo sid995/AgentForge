@@ -4,8 +4,34 @@
     {
       "schema": "agent-run.requested.v1.schema.json",
       "required": {
-        "/required": ["aggregateId", "aggregateType", "aggregateVersion", "causationId", "correlationId", "eventId", "eventType", "occurredAt", "payload", "producer", "projectId", "runId", "schemaVersion", "tenantId"],
-        "/properties/payload/required": ["attemptNumber", "cpuMillis", "maxAttempts", "memoryMiB", "projectId", "promptReference", "runId", "runtime", "status", "timeoutSeconds"]
+        "/required": [
+          "aggregateId",
+          "aggregateType",
+          "aggregateVersion",
+          "causationId",
+          "correlationId",
+          "eventId",
+          "eventType",
+          "occurredAt",
+          "payload",
+          "producer",
+          "projectId",
+          "runId",
+          "schemaVersion",
+          "tenantId"
+        ],
+        "/properties/payload/required": [
+          "attemptNumber",
+          "cpuMillis",
+          "maxAttempts",
+          "memoryMiB",
+          "projectId",
+          "promptReference",
+          "runId",
+          "runtime",
+          "status",
+          "timeoutSeconds"
+        ]
       },
       "fields": {
         "/properties/eventId": "ref:#/$defs/uuidV7",
@@ -38,11 +64,152 @@
       }
     },
     {
+      "schema": "agent-run.scheduled.v1.schema.json",
+      "required": {
+        "/required": [
+          "aggregateId",
+          "aggregateType",
+          "aggregateVersion",
+          "causationId",
+          "correlationId",
+          "eventId",
+          "eventType",
+          "occurredAt",
+          "payload",
+          "producer",
+          "projectId",
+          "runId",
+          "schemaVersion",
+          "tenantId"
+        ],
+        "/properties/payload/required": [
+          "attemptId",
+          "attemptNumber",
+          "budgetReservationId",
+          "capacityReservationId",
+          "clusterId",
+          "cpuMillis",
+          "executionProfile",
+          "memoryMiB",
+          "projectId",
+          "runId",
+          "status"
+        ]
+      },
+      "fields": {
+        "/properties/eventId": "ref:#/$defs/uuidV7",
+        "/properties/eventType": "const:string:agent-run.scheduled.v1",
+        "/properties/schemaVersion": "const:number:1",
+        "/properties/occurredAt": "type:string",
+        "/properties/producer": "const:string:scheduler",
+        "/properties/tenantId": "ref:#/$defs/uuidV7",
+        "/properties/projectId": "ref:#/$defs/uuidV7",
+        "/properties/runId": "ref:#/$defs/uuidV7",
+        "/properties/aggregateType": "const:string:AgentRun",
+        "/properties/aggregateId": "ref:#/$defs/uuidV7",
+        "/properties/aggregateVersion": "type:integer",
+        "/properties/correlationId": "type:string",
+        "/properties/causationId": "type:string",
+        "/properties/payload": "type:object",
+        "/properties/payload/properties/projectId": "ref:#/$defs/uuidV7",
+        "/properties/payload/properties/runId": "ref:#/$defs/uuidV7",
+        "/properties/payload/properties/status": "const:string:PROVISIONING",
+        "/properties/payload/properties/attemptId": "ref:#/$defs/uuidV7",
+        "/properties/payload/properties/attemptNumber": "type:integer",
+        "/properties/payload/properties/clusterId": "type:string",
+        "/properties/payload/properties/executionProfile": "type:string",
+        "/properties/payload/properties/capacityReservationId": "ref:#/$defs/uuidV7",
+        "/properties/payload/properties/budgetReservationId": "ref:#/$defs/uuidV7",
+        "/properties/payload/properties/cpuMillis": "type:integer",
+        "/properties/payload/properties/memoryMiB": "type:integer"
+      }
+    },
+    {
+      "schema": "agent-run.capacity-wait.v1.schema.json",
+      "required": {
+        "/required": [
+          "aggregateId",
+          "aggregateType",
+          "aggregateVersion",
+          "causationId",
+          "correlationId",
+          "eventId",
+          "eventType",
+          "occurredAt",
+          "payload",
+          "producer",
+          "projectId",
+          "runId",
+          "schemaVersion",
+          "tenantId"
+        ],
+        "/properties/payload/required": [
+          "attemptNumber",
+          "nextEligibleAt",
+          "projectId",
+          "reason",
+          "reasonCode",
+          "runId",
+          "status"
+        ]
+      },
+      "fields": {
+        "/properties/eventId": "ref:#/$defs/uuidV7",
+        "/properties/eventType": "const:string:agent-run.capacity-wait.v1",
+        "/properties/schemaVersion": "const:number:1",
+        "/properties/occurredAt": "type:string",
+        "/properties/producer": "const:string:scheduler",
+        "/properties/tenantId": "ref:#/$defs/uuidV7",
+        "/properties/projectId": "ref:#/$defs/uuidV7",
+        "/properties/runId": "ref:#/$defs/uuidV7",
+        "/properties/aggregateType": "const:string:AgentRun",
+        "/properties/aggregateId": "ref:#/$defs/uuidV7",
+        "/properties/aggregateVersion": "type:integer",
+        "/properties/correlationId": "type:string",
+        "/properties/causationId": "type:string",
+        "/properties/payload": "type:object",
+        "/properties/payload/properties/projectId": "ref:#/$defs/uuidV7",
+        "/properties/payload/properties/runId": "ref:#/$defs/uuidV7",
+        "/properties/payload/properties/status": "const:string:CAPACITY_WAIT",
+        "/properties/payload/properties/attemptNumber": "type:integer",
+        "/properties/payload/properties/reasonCode": "type:string",
+        "/properties/payload/properties/reason": "type:string",
+        "/properties/payload/properties/nextEligibleAt": "type:string"
+      }
+    },
+    {
       "schema": "event-delivery.dead-lettered.v1.schema.json",
       "required": {
-        "/required": ["aggregateId", "aggregateType", "aggregateVersion", "causationId", "correlationId", "eventId", "eventType", "occurredAt", "payload", "producer", "schemaVersion", "tenantId"],
-        "/properties/payload/required": ["attempts", "consumerIdentity", "failureCode", "failureReason", "firstFailedAt", "lastFailedAt", "originalOffset", "originalPartition", "originalTopic", "replayDisposition"],
-        "/properties/payload/properties/originalHeaders/items/required": ["key", "value"]
+        "/required": [
+          "aggregateId",
+          "aggregateType",
+          "aggregateVersion",
+          "causationId",
+          "correlationId",
+          "eventId",
+          "eventType",
+          "occurredAt",
+          "payload",
+          "producer",
+          "schemaVersion",
+          "tenantId"
+        ],
+        "/properties/payload/required": [
+          "attempts",
+          "consumerIdentity",
+          "failureCode",
+          "failureReason",
+          "firstFailedAt",
+          "lastFailedAt",
+          "originalOffset",
+          "originalPartition",
+          "originalTopic",
+          "replayDisposition"
+        ],
+        "/properties/payload/properties/originalHeaders/items/required": [
+          "key",
+          "value"
+        ]
       },
       "fields": {
         "/properties/eventId": "ref:#/$defs/uuidV7",

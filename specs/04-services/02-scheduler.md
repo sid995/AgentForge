@@ -115,3 +115,19 @@ release and expiry return them to availability. Scheduler reservations remain
 estimates and do not replace Kubernetes ResourceQuota, admission, or observed
 node capacity. Phase 5.7 composes this admission into the run transition and
 outbox transaction.
+
+## Phase 5.7 implementation
+
+The scheduling-intent transaction locks and revalidates the owned run and
+pending attempt, tenant policy and statuses, cluster health/support/allowlist,
+capacity reservations, and UTC-day budget usage. It creates both reservations,
+assigns the attempt as `STARTING`, moves the run to `PROVISIONING`, clears the
+lease, records the strategy/score/reason, and inserts
+`agent-run.scheduled.v1` into the outbox before one commit.
+
+Exact replay returns the original assignment, reservation IDs, aggregate
+versions, and event ID. Any changed cluster, profile, resource, budget, TTL,
+strategy, or score conflicts. No-capacity handling independently moves an
+owned run to `CAPACITY_WAIT`, records a bounded next-eligible decision, clears
+the lease, and inserts `agent-run.capacity-wait.v1` atomically. Neither path
+creates a Kubernetes resource.

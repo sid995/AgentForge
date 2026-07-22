@@ -16,13 +16,17 @@ import (
 )
 
 const (
-	AgentRunRequestedType = "agent-run.requested.v1"
-	maxHeaderValueLength  = 512
-	maxHeaderCount        = 32
-	maxHeaderBytes        = 4096
+	AgentRunRequestedType    = "agent-run.requested.v1"
+	AgentRunScheduledType    = "agent-run.scheduled.v1"
+	AgentRunCapacityWaitType = "agent-run.capacity-wait.v1"
+	maxHeaderValueLength     = 512
+	maxHeaderCount           = 32
+	maxHeaderBytes           = 4096
 )
 
 var traceparentPattern = regexp.MustCompile(`^[\da-f]{2}-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$`)
+var clusterIDPatternForEvent = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{2,62}$`)
+var policyValuePatternForEvent = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,62}$`)
 
 // Header is provider-independent Kafka routing and correlation metadata.
 type Header struct {
@@ -79,6 +83,10 @@ func ValidateEnvelope(envelope Envelope) error {
 	switch envelope.EventType {
 	case AgentRunRequestedType:
 		return validateAgentRunRequested(envelope)
+	case AgentRunScheduledType:
+		return validateAgentRunScheduled(envelope)
+	case AgentRunCapacityWaitType:
+		return validateAgentRunCapacityWait(envelope)
 	case DeliveryDeadLetteredType:
 		return validateDeadLetter(envelope)
 	default:
@@ -89,7 +97,7 @@ func ValidateEnvelope(envelope Envelope) error {
 // TopicAccepts reports whether an event type may be published to a physical topic.
 func TopicAccepts(eventType, topic string) bool {
 	switch eventType {
-	case AgentRunRequestedType:
+	case AgentRunRequestedType, AgentRunScheduledType, AgentRunCapacityWaitType:
 		return topic == AgentRunLifecycleTopic || topic == "agentforge.agent-run.lifecycle.retry.1m.v1" || topic == "agentforge.agent-run.lifecycle.retry.5m.v1" || topic == "agentforge.agent-run.lifecycle.retry.30m.v1"
 	case DeliveryDeadLetteredType:
 		return topic == AgentRunDLQTopic
@@ -101,7 +109,7 @@ func TopicAccepts(eventType, topic string) bool {
 // ExpectedPartitionKey derives the contract key without provider-specific types.
 func ExpectedPartitionKey(envelope Envelope) (string, error) {
 	switch envelope.EventType {
-	case AgentRunRequestedType:
+	case AgentRunRequestedType, AgentRunScheduledType, AgentRunCapacityWaitType:
 		return envelope.AggregateID.String(), nil
 	case DeliveryDeadLetteredType:
 		var payload DeadLetterPayload
@@ -119,6 +127,51 @@ func ExpectedPartitionKey(envelope Envelope) (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported event type %q", envelope.EventType)
 	}
+}
+
+func validateRunEventMetadata(envelope Envelope) error {
+	if envelope.AggregateType != "AgentRun" || envelope.RunID == nil || envelope.ProjectID == nil || *envelope.RunID != envelope.AggregateID {
+		return fmt.Errorf("run event aggregate metadata is invalid")
+	}
+	return nil
+}
+
+func validateAgentRunScheduled(envelope Envelope) error {
+	if err := validateRunEventMetadata(envelope); err != nil {
+		return err
+	}
+	var payload AgentRunScheduledPayload
+	decoder := json.NewDecoder(bytes.NewReader(envelope.Payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&payload); err != nil {
+		return fmt.Errorf("decode scheduled payload: %w", err)
+	}
+	if err := requireEOF(decoder); err != nil {
+		return err
+	}
+	if payload.ProjectID != *envelope.ProjectID || payload.RunID != *envelope.RunID || payload.Status != domain.AgentRunProvisioning || payload.AttemptNumber < 1 || !validV7(payload.AttemptID) || !validV7(payload.CapacityReservationID) || !validV7(payload.BudgetReservationID) || !clusterIDPatternForEvent.MatchString(payload.ClusterID) || !policyValuePatternForEvent.MatchString(payload.ExecutionProfile) || payload.CPUMillis < 1 || payload.CPUMillis > 128000 || payload.MemoryMiB < 1 || payload.MemoryMiB > 524288 {
+		return fmt.Errorf("scheduled payload constraints are invalid")
+	}
+	return nil
+}
+
+func validateAgentRunCapacityWait(envelope Envelope) error {
+	if err := validateRunEventMetadata(envelope); err != nil {
+		return err
+	}
+	var payload AgentRunCapacityWaitPayload
+	decoder := json.NewDecoder(bytes.NewReader(envelope.Payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&payload); err != nil {
+		return fmt.Errorf("decode capacity-wait payload: %w", err)
+	}
+	if err := requireEOF(decoder); err != nil {
+		return err
+	}
+	if payload.ProjectID != *envelope.ProjectID || payload.RunID != *envelope.RunID || payload.Status != domain.AgentRunCapacityWait || payload.AttemptNumber < 1 || strings.TrimSpace(payload.ReasonCode) == "" || len(payload.ReasonCode) > 80 || strings.TrimSpace(payload.Reason) == "" || len(payload.Reason) > 500 || payload.NextEligibleAt.IsZero() || !payload.NextEligibleAt.After(envelope.OccurredAt) {
+		return fmt.Errorf("capacity-wait payload constraints are invalid")
+	}
+	return nil
 }
 
 // HeadersForEnvelope returns the bounded headers repeated from the body.

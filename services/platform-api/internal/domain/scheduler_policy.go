@@ -78,6 +78,13 @@ type EligibilityDecision struct {
 	NextEligibleAt *time.Time
 }
 
+// EligibilityDeniedError reports a changed policy snapshot during final admission.
+type EligibilityDeniedError struct{ Decision EligibilityDecision }
+
+func (err EligibilityDeniedError) Error() string {
+	return "scheduling eligibility changed: " + err.Decision.Code
+}
+
 type eligibilityRule func(EligibilityInput) *EligibilityDecision
 
 var schedulerPolicyValuePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,119}$`)

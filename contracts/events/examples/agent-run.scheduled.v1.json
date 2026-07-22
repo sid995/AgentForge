@@ -1,0 +1,28 @@
+{
+  "eventId": "019b0000-0000-7000-8000-000000000011",
+  "eventType": "agent-run.scheduled.v1",
+  "schemaVersion": 1,
+  "occurredAt": "2026-07-22T16:00:00Z",
+  "producer": "scheduler",
+  "tenantId": "019b0000-0000-7000-8000-000000000002",
+  "projectId": "019b0000-0000-7000-8000-000000000003",
+  "runId": "019b0000-0000-7000-8000-000000000004",
+  "aggregateType": "AgentRun",
+  "aggregateId": "019b0000-0000-7000-8000-000000000004",
+  "aggregateVersion": 3,
+  "correlationId": "run-example",
+  "causationId": "claim-example",
+  "payload": {
+    "projectId": "019b0000-0000-7000-8000-000000000003",
+    "runId": "019b0000-0000-7000-8000-000000000004",
+    "status": "PROVISIONING",
+    "attemptId": "019b0000-0000-7000-8000-000000000005",
+    "attemptNumber": 1,
+    "clusterId": "cluster-east",
+    "executionProfile": "standard",
+    "capacityReservationId": "019b0000-0000-7000-8000-000000000006",
+    "budgetReservationId": "019b0000-0000-7000-8000-000000000007",
+    "cpuMillis": 1000,
+    "memoryMiB": 2048
+  }
+}

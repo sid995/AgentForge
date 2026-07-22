@@ -62,6 +62,30 @@ type AgentRunRequestedPayload struct {
 	PromptReference string                `json:"promptReference"`
 }
 
+type AgentRunScheduledPayload struct {
+	ProjectID             uuid.UUID             `json:"projectId"`
+	RunID                 uuid.UUID             `json:"runId"`
+	Status                domain.AgentRunStatus `json:"status"`
+	AttemptID             uuid.UUID             `json:"attemptId"`
+	AttemptNumber         int                   `json:"attemptNumber"`
+	ClusterID             string                `json:"clusterId"`
+	ExecutionProfile      string                `json:"executionProfile"`
+	CapacityReservationID uuid.UUID             `json:"capacityReservationId"`
+	BudgetReservationID   uuid.UUID             `json:"budgetReservationId"`
+	CPUMillis             int                   `json:"cpuMillis"`
+	MemoryMiB             int                   `json:"memoryMiB"`
+}
+
+type AgentRunCapacityWaitPayload struct {
+	ProjectID      uuid.UUID             `json:"projectId"`
+	RunID          uuid.UUID             `json:"runId"`
+	Status         domain.AgentRunStatus `json:"status"`
+	AttemptNumber  int                   `json:"attemptNumber"`
+	ReasonCode     string                `json:"reasonCode"`
+	Reason         string                `json:"reason"`
+	NextEligibleAt time.Time             `json:"nextEligibleAt"`
+}
+
 // newEvent constructs and serializes a typed event before its business transaction begins.
 func newEvent(
 	eventType string,
@@ -131,4 +155,14 @@ func NewAgentRunRequested(run domain.AgentRun, attempt domain.AgentRunAttempt) (
 		run.IdempotencyKey,
 		payload,
 	)
+}
+
+func NewAgentRunScheduled(run domain.AgentRun, attempt domain.AgentRunAttempt, capacityReservationID, budgetReservationID uuid.UUID, correlationID, causationID string) (OutboxEvent, error) {
+	payload := AgentRunScheduledPayload{ProjectID: run.ProjectID, RunID: run.ID, Status: run.Status, AttemptID: attempt.ID, AttemptNumber: attempt.AttemptNumber, ClusterID: attempt.SelectedCluster, ExecutionProfile: attempt.ExecutionProfile, CapacityReservationID: capacityReservationID, BudgetReservationID: budgetReservationID, CPUMillis: run.CPUMillis, MemoryMiB: run.MemoryMiB}
+	return newEvent(AgentRunScheduledType, 1, run.UpdatedAt, "scheduler", run.TenantID, &run.ProjectID, &run.ID, "AgentRun", run.ID, run.Version, correlationID, causationID, payload)
+}
+
+func NewAgentRunCapacityWait(run domain.AgentRun, reasonCode, reason string, nextEligibleAt time.Time, correlationID, causationID string) (OutboxEvent, error) {
+	payload := AgentRunCapacityWaitPayload{ProjectID: run.ProjectID, RunID: run.ID, Status: run.Status, AttemptNumber: run.AttemptCount, ReasonCode: reasonCode, Reason: reason, NextEligibleAt: nextEligibleAt.UTC()}
+	return newEvent(AgentRunCapacityWaitType, 1, run.UpdatedAt, "scheduler", run.TenantID, &run.ProjectID, &run.ID, "AgentRun", run.ID, run.Version, correlationID, causationID, payload)
 }

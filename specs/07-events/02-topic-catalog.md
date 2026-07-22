@@ -26,6 +26,12 @@ with the `PROVISIONING` transition, not a temporary claim notification.
 `agent-run.provisioning-requested.v1` remains reserved and unimplemented until
 the Phase 6 Operator input boundary is approved.
 
+Phase 5.7 publishes executable v1 schemas, examples, compatibility baselines,
+producer validation, and consumer fixtures for `agent-run.scheduled.v1` and
+`agent-run.capacity-wait.v1`. Both are transactionally inserted with their
+matching aggregate transition and contain only allowlisted assignment or safe
+deferral metadata.
+
 Partition key: run ID.
 
 Physical topic: `agentforge.agent-run.lifecycle.v1`.

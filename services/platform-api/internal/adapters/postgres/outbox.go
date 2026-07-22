@@ -21,7 +21,11 @@ func NewOutboxRepository(pool *database.Pool) *OutboxRepository {
 	return &OutboxRepository{database: pool}
 }
 
-func insertOutboxEvent(ctx context.Context, tx *database.TenantTx, event events.OutboxEvent) error {
+type contextExecer interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}
+
+func insertOutboxEvent(ctx context.Context, tx contextExecer, event events.OutboxEvent) error {
 	_, err := tx.ExecContext(ctx, `
 		insert into outbox_events (event_id, tenant_id, project_id, run_id, event_type, schema_version, aggregate_type, aggregate_id, aggregate_version, topic, partition_key, envelope, next_attempt_at, created_at)
 		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14)`,

@@ -36,7 +36,12 @@ tests.
 Phase 5.6 is now implemented and verified by migration 000008, attempt-attached
 capacity/budget reservations, locked capacity and daily-budget admission,
 idempotent exact replay/release/settlement/reclaim, and concurrent overbooking
-tests. Phase 5.7 is next.
+tests.
+
+Phase 5.7 is now implemented and verified by migration 000009, strict scheduled
+and capacity-wait event contracts, atomic revalidation/reservation/assignment/
+state/outbox transactions, exact replay, rollback, and competing-finalizer
+tests. Phase 5.8 is next.
 
 ## Process boundary
 

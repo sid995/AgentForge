@@ -78,3 +78,44 @@ type SchedulerReservationRepository interface {
 	Settle(context.Context, uuid.UUID, uuid.UUID, int, time.Time) error
 	ReclaimExpired(context.Context, time.Time, int) (int, error)
 }
+
+type SchedulingIntentRequest struct {
+	Claim            ClaimedRun
+	LeaseOwner       string
+	AttemptID        uuid.UUID
+	AttemptVersion   int64
+	ClusterID        string
+	ClusterFreshness time.Duration
+	Strategy         string
+	SelectionScore   int64
+	BudgetMinorUnits int64
+	ReservationTTL   time.Duration
+	CorrelationID    string
+	CausationID      string
+	Now              time.Time
+}
+
+type CapacityWaitRequest struct {
+	Claim          ClaimedRun
+	LeaseOwner     string
+	ReasonCode     string
+	Reason         string
+	NextEligibleAt time.Time
+	CorrelationID  string
+	CausationID    string
+	Now            time.Time
+}
+
+type SchedulingIntentResult struct {
+	RunVersion            int64
+	AttemptVersion        int64
+	CapacityReservationID uuid.UUID
+	BudgetReservationID   uuid.UUID
+	EventID               uuid.UUID
+	Replayed              bool
+}
+
+type SchedulingIntentRepository interface {
+	Schedule(context.Context, SchedulingIntentRequest) (SchedulingIntentResult, error)
+	DeferCapacity(context.Context, CapacityWaitRequest) (SchedulingIntentResult, error)
+}
