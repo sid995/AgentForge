@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	executionv1alpha1 "github.com/sid995/agentforge/operator/api/v1alpha1"
+	"github.com/sid995/agentforge/operator/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -50,8 +51,6 @@ func init() {
 	utilruntime.Must(executionv1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
-
-// +kubebuilder:rbac:groups=execution.agentforge.dev,resources=agentruns,verbs=get;list;watch
 
 // nolint:gocyclo
 func main() {
@@ -169,6 +168,11 @@ func main() {
 	})
 	if err != nil {
 		setupLog.Error(err, "Failed to start manager")
+		os.Exit(1)
+	}
+
+	if err := (&controller.AgentRunReconciler{Client: mgr.GetClient()}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Failed to create AgentRun controller")
 		os.Exit(1)
 	}
 

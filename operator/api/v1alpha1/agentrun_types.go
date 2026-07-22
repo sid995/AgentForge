@@ -67,6 +67,19 @@ const (
 // +kubebuilder:validation:Enum=VALIDATION;AUTHENTICATION;AUTHORIZATION;QUOTA;CONFLICT;TRANSIENT_DEPENDENCY;PERMANENT_DEPENDENCY;EXECUTION;POLICY;INTERNAL
 type FailureCategory string
 
+const (
+	FailureCategoryValidation          FailureCategory = "VALIDATION"
+	FailureCategoryAuthentication      FailureCategory = "AUTHENTICATION"
+	FailureCategoryAuthorization       FailureCategory = "AUTHORIZATION"
+	FailureCategoryQuota               FailureCategory = "QUOTA"
+	FailureCategoryConflict            FailureCategory = "CONFLICT"
+	FailureCategoryTransientDependency FailureCategory = "TRANSIENT_DEPENDENCY"
+	FailureCategoryPermanentDependency FailureCategory = "PERMANENT_DEPENDENCY"
+	FailureCategoryExecution           FailureCategory = "EXECUTION"
+	FailureCategoryPolicy              FailureCategory = "POLICY"
+	FailureCategoryInternal            FailureCategory = "INTERNAL"
+)
+
 // AgentRunPhase is the observed Kubernetes execution phase.
 // +kubebuilder:validation:Enum=Pending;Provisioning;Running;Succeeded;Failed;Cancelling;Cancelled
 type AgentRunPhase string
@@ -170,7 +183,7 @@ type NetworkSpec struct {
 // +kubebuilder:validation:XValidation:rule="self.tenantId == oldSelf.tenantId && self.projectId == oldSelf.projectId && self.runId == oldSelf.runId && self.attemptId == oldSelf.attemptId && self.attempt == oldSelf.attempt",message="execution identity is immutable"
 // +kubebuilder:validation:XValidation:rule="self.runnerImage == oldSelf.runnerImage && self.runtime == oldSelf.runtime && self.executionProfile == oldSelf.executionProfile && self.taskRef == oldSelf.taskRef && self.timeoutSeconds == oldSelf.timeoutSeconds",message="execution configuration is immutable"
 // +kubebuilder:validation:XValidation:rule="self.retryPolicy == oldSelf.retryPolicy && self.resources == oldSelf.resources && self.workspace == oldSelf.workspace && self.network == oldSelf.network",message="execution policy is immutable"
-// +kubebuilder:validation:XValidation:rule="self.artifactDestinationRef == oldSelf.artifactDestinationRef && self.configurationRefs == oldSelf.configurationRefs && self.secretRefs == oldSelf.secretRefs && self.deployOnSuccess == oldSelf.deployOnSuccess",message="execution references are immutable"
+// +kubebuilder:validation:XValidation:rule="self.artifactDestinationRef == oldSelf.artifactDestinationRef && has(self.configurationRefs) == has(oldSelf.configurationRefs) && (!has(self.configurationRefs) || self.configurationRefs == oldSelf.configurationRefs) && has(self.secretRefs) == has(oldSelf.secretRefs) && (!has(self.secretRefs) || self.secretRefs == oldSelf.secretRefs) && self.deployOnSuccess == oldSelf.deployOnSuccess",message="execution references are immutable"
 type AgentRunSpec struct {
 	TenantID  UUIDv7 `json:"tenantId"`
 	ProjectID UUIDv7 `json:"projectId"`

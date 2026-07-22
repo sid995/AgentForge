@@ -1,0 +1,257 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package controller
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"k8s.io/apimachinery/pkg/api/equality"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/util/workqueue"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	controlleroptions "sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	executionv1alpha1 "github.com/sid995/agentforge/operator/api/v1alpha1"
+)
+
+const (
+	// RetainedResourcesFinalizer gates cleanup only when the desired workspace is explicitly retained.
+	RetainedResourcesFinalizer = "execution.agentforge.dev/retained-resources"
+
+	ConditionSpecValid      = "SpecValid"
+	ConditionReady          = "Ready"
+	ConditionCleanupPending = "CleanupPending"
+
+	minimumRetryDelay = time.Second
+	maximumRetryDelay = 2 * time.Minute
+)
+
+// AgentRunReconciler initializes the durable controller contract without creating child resources.
+type AgentRunReconciler struct {
+	client.Client
+	Now func() time.Time
+}
+
+// +kubebuilder:rbac:groups=execution.agentforge.dev,resources=agentruns,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=execution.agentforge.dev,resources=agentruns/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=execution.agentforge.dev,resources=agentruns/finalizers,verbs=update;patch
+
+// Reconcile fetches an AgentRun, validates it, establishes cleanup ownership, and initializes status.
+func (r *AgentRunReconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
+	started := time.Now()
+	outcome := "success"
+	defer func() {
+		agentRunReconciliations.WithLabelValues(outcome).Inc()
+		agentRunReconcileDuration.Observe(time.Since(started).Seconds())
+	}()
+
+	run := &executionv1alpha1.AgentRun{}
+	if err := r.Get(ctx, request.NamespacedName, run); err != nil {
+		if apierrors.IsNotFound(err) {
+			outcome = "not_found"
+			return ctrl.Result{}, nil
+		}
+		reconcileErr := classifyAPIError("FetchFailed", err)
+		outcome = string(reconcileErr.Class) + "_error"
+		return ctrl.Result{}, terminalIfPermanent(reconcileErr)
+	}
+
+	log := ctrl.LoggerFrom(ctx).WithValues(
+		"tenant_id", run.Spec.TenantID,
+		"project_id", run.Spec.ProjectID,
+		"run_id", run.Spec.RunID,
+		"attempt", currentAttempt(run),
+	)
+	ctx = ctrl.LoggerInto(ctx, log)
+
+	if !run.DeletionTimestamp.IsZero() {
+		outcome = "deleting"
+		if !controllerutil.ContainsFinalizer(run, RetainedResourcesFinalizer) {
+			return ctrl.Result{}, nil
+		}
+		beforeStatus := run.DeepCopy()
+		r.initializeDeletingStatus(run)
+		if _, err := r.patchStatusIfChanged(ctx, beforeStatus, run); err != nil {
+			reconcileErr := classifyAPIError("DeletionStatusWriteFailed", err)
+			outcome = string(reconcileErr.Class) + "_error"
+			return ctrl.Result{}, terminalIfPermanent(reconcileErr)
+		}
+		log.Info("Retained AgentRun is awaiting cleanup reconciliation")
+		return ctrl.Result{}, nil
+	}
+
+	if err := validateAgentRun(run); err != nil {
+		beforeStatus := run.DeepCopy()
+		r.initializeInvalidStatus(run)
+		if _, statusErr := r.patchStatusIfChanged(ctx, beforeStatus, run); statusErr != nil {
+			reconcileErr := classifyAPIError("InvalidSpecStatusWriteFailed", statusErr)
+			outcome = string(reconcileErr.Class) + "_error"
+			return ctrl.Result{}, terminalIfPermanent(reconcileErr)
+		}
+		outcome = "permanent_error"
+		return ctrl.Result{}, reconcile.TerminalError(newReconcileError(ErrorClassPermanent, "InvalidSpec", err))
+	}
+
+	if run.Spec.Workspace.RetentionPolicy == executionv1alpha1.WorkspaceRetentionRetain &&
+		!controllerutil.ContainsFinalizer(run, RetainedResourcesFinalizer) {
+		beforeMetadata := run.DeepCopy()
+		controllerutil.AddFinalizer(run, RetainedResourcesFinalizer)
+		patch := client.MergeFromWithOptions(beforeMetadata, client.MergeFromWithOptimisticLock{})
+		if err := r.Patch(ctx, run, patch); err != nil {
+			reconcileErr := classifyAPIError("FinalizerWriteFailed", err)
+			outcome = string(reconcileErr.Class) + "_error"
+			return ctrl.Result{}, terminalIfPermanent(reconcileErr)
+		}
+		log.Info("Added retained-resource finalizer")
+	}
+
+	beforeStatus := run.DeepCopy()
+	r.initializeAcceptedStatus(run)
+	changed, err := r.patchStatusIfChanged(ctx, beforeStatus, run)
+	if err != nil {
+		reconcileErr := classifyAPIError("StatusWriteFailed", err)
+		outcome = string(reconcileErr.Class) + "_error"
+		return ctrl.Result{}, terminalIfPermanent(reconcileErr)
+	}
+	if changed {
+		log.Info("Initialized AgentRun reconciliation status", "observed_generation", run.Status.ObservedGeneration)
+	} else {
+		outcome = "unchanged"
+	}
+	return ctrl.Result{}, nil
+}
+
+func (r *AgentRunReconciler) initializeAcceptedStatus(run *executionv1alpha1.AgentRun) {
+	if run.Status.Phase == "" {
+		run.Status.Phase = executionv1alpha1.AgentRunPhasePending
+	}
+	if run.Status.Attempt == 0 {
+		run.Status.Attempt = run.Spec.Attempt
+	}
+	if run.Status.Namespace == "" {
+		run.Status.Namespace = run.Namespace
+	}
+	run.Status.ObservedGeneration = run.Generation
+	r.setCondition(run, ConditionSpecValid, metav1.ConditionTrue, "Accepted", "AgentRun desired state is valid")
+	r.setCondition(run, ConditionReady, metav1.ConditionFalse, "ReconciliationPending", "Execution resources have not been reconciled")
+}
+
+func (r *AgentRunReconciler) initializeInvalidStatus(run *executionv1alpha1.AgentRun) {
+	run.Status.Phase = executionv1alpha1.AgentRunPhaseFailed
+	run.Status.ObservedGeneration = run.Generation
+	run.Status.Attempt = run.Spec.Attempt
+	run.Status.Namespace = run.Namespace
+	run.Status.FailureCategory = executionv1alpha1.FailureCategoryValidation
+	run.Status.FailureReason = "AgentRun desired state failed controller validation"
+	r.setCondition(run, ConditionSpecValid, metav1.ConditionFalse, "InvalidSpec", "AgentRun desired state is invalid")
+	r.setCondition(run, ConditionReady, metav1.ConditionFalse, "InvalidSpec", "Execution resources will not be reconciled")
+}
+
+func (r *AgentRunReconciler) initializeDeletingStatus(run *executionv1alpha1.AgentRun) {
+	run.Status.ObservedGeneration = run.Generation
+	r.setCondition(run, ConditionReady, metav1.ConditionFalse, "Deleting", "AgentRun deletion is in progress")
+	r.setCondition(run, ConditionCleanupPending, metav1.ConditionTrue, "RetainedResources", "Retained resources require cleanup reconciliation")
+}
+
+func (r *AgentRunReconciler) setCondition(run *executionv1alpha1.AgentRun, conditionType string, status metav1.ConditionStatus, reason, message string) {
+	meta.SetStatusCondition(&run.Status.Conditions, metav1.Condition{
+		Type:               conditionType,
+		Status:             status,
+		ObservedGeneration: run.Generation,
+		LastTransitionTime: metav1.NewTime(r.now()),
+		Reason:             reason,
+		Message:            message,
+	})
+}
+
+func (r *AgentRunReconciler) patchStatusIfChanged(ctx context.Context, before, after *executionv1alpha1.AgentRun) (bool, error) {
+	if equality.Semantic.DeepEqual(before.Status, after.Status) {
+		agentRunStatusWrites.WithLabelValues("unchanged").Inc()
+		return false, nil
+	}
+	patch := client.MergeFromWithOptions(before, client.MergeFromWithOptimisticLock{})
+	if err := r.Status().Patch(ctx, after, patch); err != nil {
+		if apierrors.IsConflict(err) {
+			agentRunStatusWrites.WithLabelValues("conflict").Inc()
+		} else {
+			agentRunStatusWrites.WithLabelValues("error").Inc()
+		}
+		return false, err
+	}
+	agentRunStatusWrites.WithLabelValues("updated").Inc()
+	return true, nil
+}
+
+func (r *AgentRunReconciler) now() time.Time {
+	if r.Now != nil {
+		return r.Now().UTC()
+	}
+	return time.Now().UTC()
+}
+
+func terminalIfPermanent(err error) error {
+	if errorClass(err) == ErrorClassPermanent {
+		return reconcile.TerminalError(err)
+	}
+	return err
+}
+
+func newRateLimiter() workqueue.TypedRateLimiter[reconcile.Request] {
+	return workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](minimumRetryDelay, maximumRetryDelay)
+}
+
+func reconciliationPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		CreateFunc:  func(event.CreateEvent) bool { return true },
+		DeleteFunc:  func(event.DeleteEvent) bool { return false },
+		GenericFunc: func(event.GenericEvent) bool { return false },
+		UpdateFunc: func(update event.UpdateEvent) bool {
+			if update.ObjectOld == nil || update.ObjectNew == nil {
+				return false
+			}
+			generationChanged := update.ObjectOld.GetGeneration() != update.ObjectNew.GetGeneration()
+			deletionStarted := update.ObjectOld.GetDeletionTimestamp().IsZero() && !update.ObjectNew.GetDeletionTimestamp().IsZero()
+			return generationChanged || deletionStarted
+		},
+	}
+}
+
+// SetupWithManager registers the AgentRun watch with bounded retry behavior.
+func (r *AgentRunReconciler) SetupWithManager(manager ctrl.Manager) error {
+	if r.Client == nil {
+		return errors.New("AgentRun reconciler client is required")
+	}
+	return ctrl.NewControllerManagedBy(manager).
+		For(&executionv1alpha1.AgentRun{}, builder.WithPredicates(reconciliationPredicate())).
+		WithOptions(controlleroptions.Options{
+			MaxConcurrentReconciles: 4,
+			RateLimiter:             newRateLimiter(),
+			ReconciliationTimeout:   30 * time.Second,
+		}).
+		Named("agentrun").
+		Complete(r)
+}

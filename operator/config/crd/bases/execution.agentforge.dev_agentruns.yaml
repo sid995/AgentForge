@@ -370,8 +370,11 @@ spec:
                 && self.workspace == oldSelf.workspace && self.network == oldSelf.network
             - message: execution references are immutable
               rule: self.artifactDestinationRef == oldSelf.artifactDestinationRef
-                && self.configurationRefs == oldSelf.configurationRefs && self.secretRefs
-                == oldSelf.secretRefs && self.deployOnSuccess == oldSelf.deployOnSuccess
+                && has(self.configurationRefs) == has(oldSelf.configurationRefs) &&
+                (!has(self.configurationRefs) || self.configurationRefs == oldSelf.configurationRefs)
+                && has(self.secretRefs) == has(oldSelf.secretRefs) && (!has(self.secretRefs)
+                || self.secretRefs == oldSelf.secretRefs) && self.deployOnSuccess
+                == oldSelf.deployOnSuccess
           status:
             description: AgentRunStatus defines observed Kubernetes state.
             properties:

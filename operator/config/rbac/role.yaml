@@ -11,4 +11,21 @@ rules:
   verbs:
   - get
   - list
+  - patch
+  - update
   - watch
+- apiGroups:
+  - execution.agentforge.dev
+  resources:
+  - agentruns/finalizers
+  verbs:
+  - patch
+  - update
+- apiGroups:
+  - execution.agentforge.dev
+  resources:
+  - agentruns/status
+  verbs:
+  - get
+  - patch
+  - update

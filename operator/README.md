@@ -47,5 +47,10 @@ make deploy IMG=<registry>/agentforge-operator:<immutable-tag>
 The checked-in sample demonstrates the complete Phase 6.2 desired-state
 contract. Kubernetes 1.36 envtest verifies defaults, validation and prohibited
 combinations, immutable execution intent, one-way cancellation, printer
-columns, and status-subresource isolation. Phase 6.3 owns reconciliation
-behavior; no execution Job is created at this stage.
+columns, and status-subresource isolation.
+
+Phase 6.3 registers the reconciliation foundation. It initializes observed
+status and conditions, uses deterministic names and bounded retry, suppresses
+self-update loops, and adds a finalizer only for retained workspaces. Envtest
+proves create/update/deletion/conflict/duplicate behavior and that no child
+execution resource is created. Phase 6.4 owns pure secure resource builders.

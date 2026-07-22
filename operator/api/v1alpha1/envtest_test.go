@@ -281,6 +281,18 @@ func assertTransitionRules(t *testing.T, ctx context.Context, kubernetesClient c
 	if err := kubernetesClient.Update(ctx, stored); !apierrors.IsInvalid(err) {
 		t.Fatalf("expected cancellation reversal to be Invalid, got %v", err)
 	}
+
+	sparse := validAgentRun("sparse-transitions")
+	sparse.Spec.ConfigurationRefs = nil
+	sparse.Spec.SecretRefs = nil
+	if err := kubernetesClient.Create(ctx, sparse); err != nil {
+		t.Fatalf("create sparse AgentRun: %v", err)
+	}
+	sparse = getAgentRun(t, ctx, kubernetesClient, sparse.Name)
+	sparse.Spec.DesiredState = executionv1alpha1.DesiredStateCancelled
+	if err := kubernetesClient.Update(ctx, sparse); err != nil {
+		t.Fatalf("update AgentRun with absent optional references: %v", err)
+	}
 }
 
 func validAgentRun(name string) *executionv1alpha1.AgentRun {

@@ -67,6 +67,11 @@ conditions, observed generation, finalizer policy, deterministic naming,
 bounded error classification/backoff, metrics/log context, idempotency, and
 status-conflict behavior without creating child resources.
 
+Status: implemented and validated. The controller uses generation/deletion
+predicates, semantic status comparison, optimistic status patches, bounded
+error classification and rate limiting, deterministic names, low-cardinality
+metrics, correlated logs, and a finalizer only for retained workspaces.
+
 ### 6.4 Resource builders
 
 Add pure builders and golden/security/mutation tests for ServiceAccount,

@@ -56,3 +56,19 @@ The `status` subresource is optional on creation and isolated from ordinary
 updates. It contains bounded current and historical attempt observations and
 standard conditions. Phase 6.2 still registers no reconciler and creates no
 ServiceAccount, storage, network, configuration, or Job resources.
+
+## Phase 6.3 reconciliation foundation
+
+The manager now registers the AgentRun controller with least-privilege
+get/list/watch/update/patch access to the CR, status, and finalizer
+subresources. The controller initializes status and conditions, advances
+observed generation, validates desired state defensively, derives deterministic
+future child names, and uses optimistic status patches that skip unchanged
+state.
+
+Structured reconciliation logs carry tenant, project, run, and attempt
+correlation values without using them as metric labels. Errors have explicit
+transient/permanent classes, and the queue applies bounded exponential retry.
+Only retained workspaces receive a finalizer; deletion exposes cleanup pending
+without pretending cleanup is implemented. Execution resource creation remains
+outside this sub-phase.

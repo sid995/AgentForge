@@ -49,6 +49,11 @@
   prohibited resource/network/retry combinations, set-list uniqueness,
   immutable execution intent, one-way cancellation, printer columns, and
   status-subresource isolation against Kubernetes 1.36 envtest;
+- reconciler not-found, create, generation update, conditional finalizer,
+  deletion timestamp, optimistic status conflict/retry, duplicate reconcile,
+  invalid-spec terminal classification, deterministic names, bounded
+  exponential backoff, self-update predicate suppression, and explicit proof
+  that the foundation creates no execution resources;
 - non-root Operator image and configured leader election, health, readiness,
   authenticated metrics, and structured logging foundation.
 
