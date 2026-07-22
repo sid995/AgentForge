@@ -12,6 +12,9 @@
 - concurrent Scheduler claims, active/expired leases, priority and age order,
   fairness rounds, optimistic renewal conflicts, empty queues, transient
   database errors, and Scheduler-role tenant/data isolation.
+- eligibility outcome/explanation coverage at tenant/user concurrency, queue,
+  CPU, memory, budget, runtime/profile, and tenant/project-status boundaries;
+  concurrent decision persistence and noisy-neighbour tenant isolation.
 
 ## Messaging
 

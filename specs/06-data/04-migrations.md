@@ -33,6 +33,12 @@ local down migration restores the earlier queue index and removes the added
 columns. It retains the Scheduler role because another database in the same
 PostgreSQL cluster may depend on that role.
 
+Phase 5.3 adds `000006_scheduler_eligibility_quotas`. It expands tenant/project
+status, creates validated policy, daily-budget usage, and eligibility-decision
+tables, and adds partial aggregate-query indexes. Its local down migration
+drops those new tables/indexes before removing the status columns. Production
+rollback preserves decision history and uses a corrective forward migration.
+
 ## Naming and ordering
 
 Migration files use a six-digit, increasing version and a kebab-case purpose:

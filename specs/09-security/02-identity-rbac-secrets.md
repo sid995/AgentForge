@@ -61,6 +61,14 @@ renewal predicates both `tenant_id` and run ID. Integration tests prove a
 foreign tenant renewal is not found and the Scheduler credential cannot read a
 prompt reference. Logs replace raw database errors with a bounded category.
 
+Phase 5.3 extends the Scheduler role only with tenant/project status, validated
+policy and budget usage reads, a narrow policy-row lock permission, and
+eligibility-decision inserts. Eligibility explanations are allowlisted and
+bounded; they never include prompts, repository details, database errors, or
+credentials. The trusted `created_by` value is used as the temporary user quota
+key until the identity tables replace it; clients cannot supply it directly at
+the Scheduler boundary.
+
 ## Secrets
 
 Store secrets in a cloud secret manager or Vault. Database rows hold references only. The agent accesses approved capabilities through brokers or scoped credentials. Every secret access is audited.

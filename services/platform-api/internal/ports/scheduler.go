@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/sid995/agentforge/services/platform-api/internal/domain"
 )
 
 // SchedulerClaimRequest bounds one competing queue-claim transaction.
@@ -42,4 +44,9 @@ type ClaimedRun struct {
 type SchedulerQueueRepository interface {
 	Claim(context.Context, SchedulerClaimRequest) ([]ClaimedRun, error)
 	Renew(context.Context, uuid.UUID, uuid.UUID, string, int64, time.Time, time.Duration) (int64, error)
+}
+
+// SchedulerEligibilityRepository evaluates and persists one explained policy decision.
+type SchedulerEligibilityRepository interface {
+	Evaluate(context.Context, ClaimedRun, time.Time) (domain.EligibilityDecision, error)
 }

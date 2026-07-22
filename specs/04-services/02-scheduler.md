@@ -54,3 +54,19 @@ tenant ID, run ID, owner, an unexpired lease, and the expected version. The
 application claimer emits bounded result/queue-age metrics and structured logs
 without raw database errors. No quota or cluster decision exists in this
 sub-phase.
+
+## Phase 5.3 implementation
+
+Focused domain rules return `ELIGIBLE`, temporary `DEFER`, or permanent
+`REJECT` with a stable code and bounded explanation. Tenant/project suspension
+and unsupported runtime/profile reject. Tenant/user concurrency, queue excess,
+CPU, memory, missing policy, and exhausted daily budget defer with a bounded
+next-eligibility time.
+
+The PostgreSQL adapter locks the tenant policy row, reads tenant/project status,
+computes active/waiting counts and resource totals with indexed aggregate SQL,
+reads current-day budget usage, evaluates the domain policy, and inserts an
+append-only decision in one transaction. Resource equality is allowed; a limit
+is blocked only when the candidate would exceed it. Queue equality is allowed
+because the claimed candidate is already included in the waiting count. Final
+quota admission is re-evaluated with reservations in Phase 5.7.

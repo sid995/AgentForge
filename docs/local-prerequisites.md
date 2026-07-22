@@ -1,6 +1,6 @@
 # Local Prerequisites
 
-## Required during Phases 0 through 5.2
+## Required during Phases 0 through 5.3
 
 - Git
 - GNU Make or a compatible `make`
@@ -19,7 +19,7 @@ Copy [`.env.example`](../.env.example) to `.env` before running the local
 PostgreSQL dependency. The example documents every environment variable used
 by the Platform API, migration command, Compose configuration, and supported
 build metadata, relay, Scheduler database role, Kafka client, and Redpanda
-inputs through Phase 5.2.
+inputs through Phase 5.3.
 `.env` is ignored by Git; its included passwords are development-only defaults
 and must not be used outside a local machine.
 
@@ -44,7 +44,7 @@ The local environment specification adds PostgreSQL, Redis, Redpanda or Kafka,
 MinIO, Argo CD, and observability dependencies only in their respective
 implementation phases. Do not add them during Phase 0.
 
-## Phase 1 through Phase 5.2 commands
+## Phase 1 through Phase 5.3 commands
 
 ```bash
 make help

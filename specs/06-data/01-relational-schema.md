@@ -111,3 +111,19 @@ attempt scheduling metadata and cannot select prompt references, request
 hashes, or cancellation text. Claims use `FOR UPDATE SKIP LOCKED`, short
 transactions, expected aggregate versions, and expiring leases. Every returned
 record retains its tenant ID for explicit tenant/run predicates downstream.
+
+## Phase 5.3 eligibility and quota boundary
+
+Migration `000006_scheduler_eligibility_quotas` adds explicit `ACTIVE` or
+`SUSPENDED` tenant/project status, tenant scheduling policies, daily budget
+usage, and append-only explained eligibility decisions. Policies bound tenant
+and user concurrency, queue depth, aggregate CPU/memory, daily integer-minor-
+unit budget, allowed runtimes/profiles, and deferral duration. Missing policy
+fails closed as a temporary deferral.
+
+Eligibility uses indexed aggregate SQL over active and waiting status sets; it
+does not load run collections. The tenant policy row is locked during snapshot
+evaluation and decision insertion. Decision rows preserve bounded outcome,
+reason, explanation, aggregate counts, resource/budget usage, run version, and
+next-eligibility time. Forced RLS remains enabled; only the isolated Scheduler
+role receives the required cross-tenant reads and decision insert.

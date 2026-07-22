@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 5.3: Scheduler eligibility and quotas
+Phase 5.4: Execution-cluster registry
 
 ## Overall state
 
@@ -57,18 +57,22 @@ remain explicit dependencies for their corresponding command integrations.
 - Phase 5.2 bounded fair queue claims, `FOR UPDATE SKIP LOCKED`, expiring and
   renewable Scheduler leases, least-privilege cross-tenant role, queue-age
   telemetry hooks, safe structured logs, and concurrency/isolation tests
+- Phase 5.3 explained eligibility policies for tenant/project state, supported
+  runtime/profile, tenant/user concurrency, queue, CPU, memory, and daily
+  budget; indexed locked evaluation, persisted decisions, and noisy-neighbour
+  concurrency tests
 
 ## In progress
 
-- Phase 5.3 eligibility decisions and quota evaluation
+- Phase 5.4 validated execution-cluster registry
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Scheduler cluster registry/selection, reservations, scheduling intent, and
-  process lifecycle after the current eligibility sub-phase
+- Scheduler cluster selection, reservations, scheduling intent, and process
+  lifecycle after the current registry sub-phase
 - Kubernetes Operator
 - Agent Runner
 - Model Gateway
@@ -82,7 +86,7 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Implement Phase 5.3 eligibility decisions and quota evaluation.
+1. Implement Phase 5.4 execution-cluster registry and health rules.
 2. Implement each remaining Scheduler sub-phase through Phase 5.8 with a clean
    commit boundary.
 3. Preserve the unresolved Phase 3 cancellation/retry command dependencies and

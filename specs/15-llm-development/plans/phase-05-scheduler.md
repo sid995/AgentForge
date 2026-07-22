@@ -16,7 +16,12 @@ only Compose definition and will be extended in place in Phase 5.8.
 
 Phase 5.2 is now implemented and verified by migration 000005, the isolated
 Scheduler role, queue port/PostgreSQL adapter, observable application claimer,
-and concurrent PostgreSQL integration tests. Phase 5.3 is next.
+and concurrent PostgreSQL integration tests.
+
+Phase 5.3 is now implemented and verified by migration 000006, focused domain
+policy specifications, indexed/locked PostgreSQL evaluation, append-only
+decision history, bounded telemetry, boundary tests, and concurrent saturated-
+versus-unrelated tenant integration tests. Phase 5.4 is next.
 
 ## Process boundary
 
