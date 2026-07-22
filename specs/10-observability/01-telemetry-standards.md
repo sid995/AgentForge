@@ -18,3 +18,13 @@ OpenTelemetry propagation across HTTP, Kafka headers, controller actions, model 
 ## Correlation
 
 Every API command receives a request ID and trace ID. Events preserve correlation and causation. Kubernetes resources include run identifiers as labels and trace identifiers as annotations where safe.
+
+## Phase 5 Scheduler telemetry
+
+The Scheduler exposes `/health/live`, PostgreSQL/schema-backed
+`/health/ready`, and Prometheus text at `/metrics`. Metrics use bounded
+strategy/outcome/reason dimensions and never tenant or run IDs. Structured
+decision logs may contain tenant/run correlation fields but never prompts,
+source, credentials, authorization, or raw database/broker errors. Kafka wake
+hints retain correlation and `traceparent`; authoritative polling uses the run
+ID as correlation when no request trace exists.

@@ -168,3 +168,10 @@ The transaction uses explicit tenant/run predicates and optimistic versions,
 and clears its lease only with the state transition. Assignment, reservations,
 daily-budget accounting, and the matching outbox envelope therefore commit or
 roll back together.
+
+Migration `000010_scheduler_policy_rejection` grants only the run failure and
+completion columns plus attempt completion time needed to atomically finalize
+a permanent scheduling policy rejection. The transaction completes the run as
+`POLICY_REJECTED`, completes its current pending attempt as `CANCELLED`, and
+inserts the failed-event outbox row. No schema object from an already committed
+sub-phase is rewritten.

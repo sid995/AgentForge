@@ -7,11 +7,11 @@ BUILD_VERSION ?= development
 BUILD_COMMIT ?= unknown
 BUILD_TIME ?= unknown
 
-.PHONY: help check-tools format lint test verify-event-contracts test-integration test-events-integration test-controller migrate bootstrap-topics build-platform-api verify
+.PHONY: help check-tools format lint test verify-event-contracts test-integration test-events-integration test-controller migrate bootstrap-topics build-platform-api build-scheduler verify
 
 help:
 	@printf '%s\n' 'AgentForge development targets:'
-	@printf '%s\n' '  check-tools       Check Phase 0 through Phase 4 prerequisites'
+	@printf '%s\n' '  check-tools       Check Phase 0 through Phase 5 prerequisites'
 	@printf '%s\n' '  format            Format tracked Go source'
 	@printf '%s\n' '  lint              Run Platform API static analysis'
 	@printf '%s\n' '  test              Run Platform API unit tests'
@@ -22,6 +22,7 @@ help:
 	@printf '%s\n' '  migrate           Apply checked-in PostgreSQL migrations'
 	@printf '%s\n' '  bootstrap-topics  Create/update local Redpanda topics'
 	@printf '%s\n' '  build-platform-api Build the Platform API container image (BUILD_VERSION, BUILD_COMMIT, BUILD_TIME are supported)'
+	@printf '%s\n' '  build-scheduler    Build the Scheduler container image (BUILD_VERSION, BUILD_COMMIT, BUILD_TIME are supported)'
 	@printf '%s\n' '  verify            Validate repository controls and documentation inventory'
 
 check-tools:
@@ -68,11 +69,11 @@ test-events-integration:
 		AGENTFORGE_TEST_KAFKA_BROKERS='127.0.0.1:29092' go test -count=1 -tags=brokerintegration ./services/platform-api/internal/adapters/kafka
 
 test-controller:
-	@echo 'Controller tests are unavailable: Phase 1 has no Kubernetes operator.' >&2
+	@echo 'Controller tests are unavailable: Phase 5 has no Kubernetes operator.' >&2
 	@exit 1
 
 migrate:
-	@go run ./services/platform-api/cmd/migrate
+	@if [[ -f .env ]]; then set -a; source .env; set +a; fi; go run ./services/platform-api/cmd/migrate
 
 bootstrap-topics:
 	@scripts/bootstrap-topics.sh
@@ -84,6 +85,14 @@ build-platform-api:
 		--build-arg BUILD_TIME="$(BUILD_TIME)" \
 		--tag agentforge/platform-api:dev \
 		--file services/platform-api/Dockerfile .
+
+build-scheduler:
+	@docker build \
+		--build-arg BUILD_VERSION="$(BUILD_VERSION)" \
+		--build-arg BUILD_COMMIT="$(BUILD_COMMIT)" \
+		--build-arg BUILD_TIME="$(BUILD_TIME)" \
+		--tag agentforge/scheduler:dev \
+		--file services/platform-api/Scheduler.Dockerfile .
 
 verify:
 	@scripts/verify-repository.sh

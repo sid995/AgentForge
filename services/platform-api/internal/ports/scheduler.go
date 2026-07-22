@@ -32,6 +32,8 @@ type ClaimedRun struct {
 	MemoryMiB            int
 	TimeoutSeconds       int
 	AttemptNumber        int
+	AttemptID            uuid.UUID
+	AttemptVersion       int64
 	Priority             int
 	EffectivePriority    int
 	Version              int64
@@ -106,6 +108,16 @@ type CapacityWaitRequest struct {
 	Now            time.Time
 }
 
+type SchedulingRejectRequest struct {
+	Claim         ClaimedRun
+	LeaseOwner    string
+	ReasonCode    string
+	Reason        string
+	CorrelationID string
+	CausationID   string
+	Now           time.Time
+}
+
 type SchedulingIntentResult struct {
 	RunVersion            int64
 	AttemptVersion        int64
@@ -118,4 +130,5 @@ type SchedulingIntentResult struct {
 type SchedulingIntentRepository interface {
 	Schedule(context.Context, SchedulingIntentRequest) (SchedulingIntentResult, error)
 	DeferCapacity(context.Context, CapacityWaitRequest) (SchedulingIntentResult, error)
+	Reject(context.Context, SchedulingRejectRequest) (SchedulingIntentResult, error)
 }

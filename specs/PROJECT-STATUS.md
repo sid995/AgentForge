@@ -4,12 +4,12 @@
 
 ## Current milestone
 
-Phase 5.8: Scheduler process lifecycle and completion audit
+Phase 5 Scheduler complete; awaiting the next approved phase
 
 ## Overall state
 
 Phase 2, the Phase 3.1/3.2 state-machine and persistence foundation, and Phase
-4 are complete. At the user's direction, work has moved to Phase 5 Scheduler
+4 and 5 are complete. At the user's direction, Phase 5 Scheduler was completed
 before Phase 3.3 through 3.5 API, cancellation, and retry commands. Those gaps
 remain explicit dependencies for their corresponding command integrations.
 
@@ -73,18 +73,20 @@ remain explicit dependencies for their corresponding command integrations.
 - Phase 5.7 atomic lease/policy/cluster revalidation, capacity and budget
   reservation, attempt assignment, `PROVISIONING` transition, versioned
   scheduled/capacity-wait outbox contracts, exact replay, and concurrency tests
+- Phase 5.8 independently runnable Scheduler with bounded workers/backpressure,
+  authoritative polling, optional Kafka wake hints, bounded jitter/backoff,
+  graceful shutdown, PostgreSQL readiness, liveness/metrics, non-root image,
+  root Compose integration, service tests, and Phase 5 completion audit
 
 ## In progress
 
-- Phase 5.8 Scheduler process lifecycle, backpressure, and completion audit
+- None
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Scheduler cluster selection, reservations, scheduling intent, and process
-  lifecycle after the current registry sub-phase
 - Kubernetes Operator
 - Agent Runner
 - Model Gateway
@@ -98,8 +100,7 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Implement Phase 5.8 Scheduler process lifecycle and completion audit.
-2. Implement each remaining Scheduler sub-phase through Phase 5.8 with a clean
-   commit boundary.
-3. Preserve the unresolved Phase 3 cancellation/retry command dependencies and
+1. Select the next approved milestone: resume Phase 3.3 command/API work or
+   begin Phase 6 Operator integration.
+2. Preserve the unresolved Phase 3 cancellation/retry command dependencies and
    the Phase 6 no-Kubernetes boundary.

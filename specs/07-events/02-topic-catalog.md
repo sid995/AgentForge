@@ -32,6 +32,11 @@ producer validation, and consumer fixtures for `agent-run.scheduled.v1` and
 matching aggregate transition and contain only allowlisted assignment or safe
 deferral metadata.
 
+Phase 5.8 activates `agent-run.failed.v1` for atomic Scheduler policy
+rejections. Its v1 contract supports the existing terminal failure taxonomy so
+later lifecycle producers do not need to weaken or reinterpret a policy-only
+published schema.
+
 Partition key: run ID.
 
 Physical topic: `agentforge.agent-run.lifecycle.v1`.

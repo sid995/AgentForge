@@ -19,7 +19,7 @@ This repository contains the complete specification and GPT-5.6 Codex execution 
 - [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md): current implementation status
 - [`specs/TRACEABILITY.md`](specs/TRACEABILITY.md): requirement-to-code-and-test mapping
 - [`specs/15-llm-development/05-codex-execution-playbook.md`](specs/15-llm-development/05-codex-execution-playbook.md): complete phased prompt sequence
-- [`.env.example`](.env.example): documented local configuration through Phase 5.7
+- [`.env.example`](.env.example): documented local configuration through Phase 5
 
 ## Current state
 
@@ -40,5 +40,24 @@ Phase 5.4 adds the validated, freshness-aware execution-cluster registry.
 Phase 5.5 adds deterministic least-loaded and region-affinity selection; see
 Phase 5.6 adds transactional capacity and budget reservations; see
 Phase 5.7 atomically commits assignments, reservations, state, and outbox
-events; see
+events. Phase 5.8 adds the bounded Scheduler process, optional Kafka wake
+hints, authoritative polling, health/metrics, and the root-Compose image; see
 [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).
+
+## Local Scheduler
+
+```bash
+cp .env.example .env
+docker compose up --detach postgres redpanda
+make migrate
+docker compose up --detach scheduler
+curl --fail http://127.0.0.1:18081/health/ready
+curl --fail http://127.0.0.1:18081/metrics
+```
+
+`make migrate` sources and exports `.env` in its recipe when the file exists;
+otherwise it uses the caller's exported environment. `docker compose`
+reads `.env` for interpolation and explicitly supplies the Scheduler's isolated
+database URL; it does not export `.env` into the caller's shell. Run
+`clusterctl` with an explicitly exported Scheduler database URL before testing
+real scheduling; tenant policies must likewise exist for admitted tenants.

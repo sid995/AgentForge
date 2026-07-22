@@ -138,4 +138,28 @@ func TestSchedulingIntentAtomicallyAssignsReservesAndEmits(t *testing.T) {
 	if err := adminPool.Raw().QueryRowContext(ctx, `select event_type from outbox_events where run_id=$1 and event_type=$2`, waitRun.ID, events.AgentRunCapacityWaitType).Scan(&eventType); err != nil {
 		t.Fatal(err)
 	}
+
+	rejectRun, rejectAttempt := mustRunAndAttempt(t, tenant.ID, project.ID, "reject-"+uuid.NewString(), now.Add(6*time.Second))
+	if err := postgresadapter.NewAgentRunRepository(appPool).Create(ctx, rejectRun, rejectAttempt); err != nil {
+		t.Fatal(err)
+	}
+	claimed, err = queue.Claim(ctx, ports.SchedulerClaimRequest{Owner: "scheduler-reject", Now: now.Add(7 * time.Second), LeaseDuration: time.Minute, BatchSize: 1, AgingInterval: time.Minute, MaximumAgingBoost: 10})
+	if err != nil || len(claimed) != 1 {
+		t.Fatalf("reject claim=%#v err=%v", claimed, err)
+	}
+	rejected, err := repository.Reject(ctx, ports.SchedulingRejectRequest{Claim: claimed[0], LeaseOwner: "scheduler-reject", ReasonCode: "TENANT_SUSPENDED", Reason: "tenant is suspended", CorrelationID: rejectRun.ID.String(), CausationID: "claim-reject", Now: now.Add(8 * time.Second)})
+	if err != nil || rejected.EventID == uuid.Nil {
+		t.Fatalf("rejected=%#v err=%v", rejected, err)
+	}
+	if err := adminPool.Raw().QueryRowContext(ctx, `select status,event.event_type from agent_runs run join outbox_events event on event.run_id=run.id and event.event_type=$2 where run.id=$1`, rejectRun.ID, events.AgentRunFailedType).Scan(&runStatus, &eventType); err != nil || runStatus != "POLICY_REJECTED" {
+		t.Fatalf("reject state=%s event=%s err=%v", runStatus, eventType, err)
+	}
+	var attemptVersion int64
+	if err := adminPool.Raw().QueryRowContext(ctx, `select status,version from agent_run_attempts where id=$1`, rejectAttempt.ID).Scan(&attemptStatus, &attemptVersion); err != nil || attemptStatus != "CANCELLED" || attemptVersion != rejected.AttemptVersion {
+		t.Fatalf("reject attempt status=%s version=%d result=%#v err=%v", attemptStatus, attemptVersion, rejected, err)
+	}
+	replayed, err = repository.Reject(ctx, ports.SchedulingRejectRequest{Claim: claimed[0], LeaseOwner: "scheduler-reject", ReasonCode: "TENANT_SUSPENDED", Reason: "tenant is suspended", CorrelationID: rejectRun.ID.String(), CausationID: "claim-reject", Now: now.Add(8 * time.Second)})
+	if err != nil || !replayed.Replayed || replayed.EventID != rejected.EventID || replayed.RunVersion != rejected.RunVersion || replayed.AttemptVersion != rejected.AttemptVersion {
+		t.Fatalf("replayed rejection=%#v err=%v", replayed, err)
+	}
 }

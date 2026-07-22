@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentforge.dev/contracts/events/agent-run.failed.v1.schema.json",
+  "title": "AgentRun failed event v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["eventId","eventType","schemaVersion","occurredAt","producer","tenantId","projectId","runId","aggregateType","aggregateId","aggregateVersion","correlationId","causationId","payload"],
+  "properties": {
+    "eventId": { "$ref": "#/$defs/uuidV7" }, "eventType": { "const": "agent-run.failed.v1" },
+    "schemaVersion": { "const": 1 }, "occurredAt": { "type": "string", "format": "date-time" },
+    "producer": { "type": "string", "minLength": 1, "maxLength": 128 }, "tenantId": { "$ref": "#/$defs/uuidV7" },
+    "projectId": { "$ref": "#/$defs/uuidV7" }, "runId": { "$ref": "#/$defs/uuidV7" },
+    "aggregateType": { "const": "AgentRun" }, "aggregateId": { "$ref": "#/$defs/uuidV7" },
+    "aggregateVersion": { "type": "integer", "minimum": 2 },
+    "requestId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "traceparent": { "type": "string", "pattern": "^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$" },
+    "tracestate": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "correlationId": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "causationId": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "payload": { "type": "object", "additionalProperties": false,
+      "required": ["projectId","runId","status","failureCategory","attemptNumber","reasonCode","reason"],
+      "properties": {
+        "projectId": { "$ref": "#/$defs/uuidV7" }, "runId": { "$ref": "#/$defs/uuidV7" },
+        "status": { "type": "string", "enum": ["PROVISIONING_FAILED","EXECUTION_FAILED","BUILD_FAILED","POLICY_REJECTED","DEPLOYMENT_FAILED","TIMED_OUT"] },
+        "failureCategory": { "type": "string", "enum": ["VALIDATION","AUTHENTICATION","AUTHORIZATION","QUOTA","CONFLICT","TRANSIENT_DEPENDENCY","PERMANENT_DEPENDENCY","EXECUTION","POLICY","INTERNAL"] },
+        "attemptNumber": { "type": "integer", "minimum": 1 },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    }
+  },
+  "$defs": { "uuidV7": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$" } }
+}

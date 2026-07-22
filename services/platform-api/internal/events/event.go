@@ -86,6 +86,16 @@ type AgentRunCapacityWaitPayload struct {
 	NextEligibleAt time.Time             `json:"nextEligibleAt"`
 }
 
+type AgentRunFailedPayload struct {
+	ProjectID       uuid.UUID              `json:"projectId"`
+	RunID           uuid.UUID              `json:"runId"`
+	Status          domain.AgentRunStatus  `json:"status"`
+	FailureCategory domain.FailureCategory `json:"failureCategory"`
+	AttemptNumber   int                    `json:"attemptNumber"`
+	ReasonCode      string                 `json:"reasonCode"`
+	Reason          string                 `json:"reason"`
+}
+
 // newEvent constructs and serializes a typed event before its business transaction begins.
 func newEvent(
 	eventType string,
@@ -165,4 +175,9 @@ func NewAgentRunScheduled(run domain.AgentRun, attempt domain.AgentRunAttempt, c
 func NewAgentRunCapacityWait(run domain.AgentRun, reasonCode, reason string, nextEligibleAt time.Time, correlationID, causationID string) (OutboxEvent, error) {
 	payload := AgentRunCapacityWaitPayload{ProjectID: run.ProjectID, RunID: run.ID, Status: run.Status, AttemptNumber: run.AttemptCount, ReasonCode: reasonCode, Reason: reason, NextEligibleAt: nextEligibleAt.UTC()}
 	return newEvent(AgentRunCapacityWaitType, 1, run.UpdatedAt, "scheduler", run.TenantID, &run.ProjectID, &run.ID, "AgentRun", run.ID, run.Version, correlationID, causationID, payload)
+}
+
+func NewAgentRunSchedulingRejected(run domain.AgentRun, reasonCode, reason, correlationID, causationID string) (OutboxEvent, error) {
+	payload := AgentRunFailedPayload{ProjectID: run.ProjectID, RunID: run.ID, Status: run.Status, FailureCategory: run.FailureCategory, AttemptNumber: run.AttemptCount, ReasonCode: reasonCode, Reason: reason}
+	return newEvent(AgentRunFailedType, 1, run.UpdatedAt, "scheduler", run.TenantID, &run.ProjectID, &run.ID, "AgentRun", run.ID, run.Version, correlationID, causationID, payload)
 }

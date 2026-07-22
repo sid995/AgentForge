@@ -41,7 +41,12 @@ tests.
 Phase 5.7 is now implemented and verified by migration 000009, strict scheduled
 and capacity-wait event contracts, atomic revalidation/reservation/assignment/
 state/outbox transactions, exact replay, rollback, and competing-finalizer
-tests. Phase 5.8 is next.
+tests.
+
+Phase 5.8 is now implemented and verified by the independent process, bounded
+workers and queue backpressure, polling with jitter/backoff, optional Kafka
+wake hints, graceful shutdown, health/readiness/metrics, non-root image, root
+Compose service, nested instructions, service tests, and completion audit.
 
 ## Process boundary
 
@@ -211,6 +216,10 @@ the prior result. A changed assignment or stale version conflicts. If no cluster
 is available, an owned transaction moves the run to `CAPACITY_WAIT`, clears the
 lease, records a bounded reason/next eligibility, and emits
 `agent-run.capacity-wait.v1` atomically. No path creates Kubernetes resources.
+Permanent admission rejection instead atomically completes the run as
+`POLICY_REJECTED`, cancels and completes the current pending attempt, clears
+the lease, and writes `agent-run.failed.v1`; exact replay returns the original
+versions and event ID.
 
 ## Phase 5.8: process lifecycle and backpressure
 

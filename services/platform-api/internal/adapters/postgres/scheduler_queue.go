@@ -72,12 +72,14 @@ func (repository *SchedulerQueueRepository) Claim(ctx context.Context, request p
 				run.priority::integer, locked.effective_priority, run.version, run.created_at,
 				run.scheduler_lease_owner, run.scheduler_lease_expires_at, locked.tenant_rank
 		)
-		select id, tenant_id, project_id, runtime, execution_profile, preferred_region,
-			created_by, cpu_millis, memory_mib, timeout_seconds, attempt_count, priority,
-			effective_priority, version, created_at, scheduler_lease_owner,
-			scheduler_lease_expires_at
-		from updated
-		order by tenant_rank asc, effective_priority desc, created_at asc, tenant_id asc, id asc`,
+		select updated.id, updated.tenant_id, updated.project_id, updated.runtime, updated.execution_profile, updated.preferred_region,
+			updated.created_by, updated.cpu_millis, updated.memory_mib, updated.timeout_seconds, updated.attempt_count, updated.priority,
+			updated.effective_priority, updated.version, updated.created_at, updated.scheduler_lease_owner,
+			updated.scheduler_lease_expires_at, attempt.id, attempt.version
+		from updated join agent_run_attempts attempt
+		  on attempt.tenant_id=updated.tenant_id and attempt.run_id=updated.id
+		 and attempt.attempt_number=updated.attempt_count
+		order by updated.tenant_rank asc, updated.effective_priority desc, updated.created_at asc, updated.tenant_id asc, updated.id asc`,
 		now, request.Owner, now.Add(request.LeaseDuration), request.BatchSize, request.AgingInterval.Seconds(), request.MaximumAgingBoost)
 	if err != nil {
 		return nil, fmt.Errorf("claim scheduler queue: %w", err)
@@ -86,7 +88,7 @@ func (repository *SchedulerQueueRepository) Claim(ctx context.Context, request p
 	claimed := make([]ports.ClaimedRun, 0, request.BatchSize)
 	for rows.Next() {
 		var run ports.ClaimedRun
-		if err := rows.Scan(&run.ID, &run.TenantID, &run.ProjectID, &run.Runtime, &run.ExecutionProfile, &run.PreferredRegion, &run.CreatedBy, &run.CPUMillis, &run.MemoryMiB, &run.TimeoutSeconds, &run.AttemptNumber, &run.Priority, &run.EffectivePriority, &run.Version, &run.CreatedAt, &run.SchedulerLeaseOwner, &run.SchedulerLeaseExpiry); err != nil {
+		if err := rows.Scan(&run.ID, &run.TenantID, &run.ProjectID, &run.Runtime, &run.ExecutionProfile, &run.PreferredRegion, &run.CreatedBy, &run.CPUMillis, &run.MemoryMiB, &run.TimeoutSeconds, &run.AttemptNumber, &run.Priority, &run.EffectivePriority, &run.Version, &run.CreatedAt, &run.SchedulerLeaseOwner, &run.SchedulerLeaseExpiry, &run.AttemptID, &run.AttemptVersion); err != nil {
 			return nil, fmt.Errorf("scan scheduler claim: %w", err)
 		}
 		claimed = append(claimed, run)

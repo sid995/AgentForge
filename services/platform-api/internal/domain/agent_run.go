@@ -171,7 +171,7 @@ func (run AgentRun) CanTransition(target AgentRunStatus) bool {
 	case AgentRunQueued:
 		return target == AgentRunScheduling
 	case AgentRunScheduling:
-		return target == AgentRunCapacityWait || target == AgentRunProvisioning || target == AgentRunTimedOut
+		return target == AgentRunCapacityWait || target == AgentRunProvisioning || target == AgentRunPolicyRejected || target == AgentRunTimedOut
 	case AgentRunCapacityWait:
 		return target == AgentRunScheduling || target == AgentRunTimedOut
 	case AgentRunProvisioning:

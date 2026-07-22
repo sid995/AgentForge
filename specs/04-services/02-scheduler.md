@@ -131,3 +131,27 @@ strategy, or score conflicts. No-capacity handling independently moves an
 owned run to `CAPACITY_WAIT`, records a bounded next-eligible decision, clears
 the lease, and inserts `agent-run.capacity-wait.v1` atomically. Neither path
 creates a Kubernetes resource.
+
+A permanent admission rejection follows the authoritative
+`SCHEDULING -> POLICY_REJECTED` transition. The same transaction clears the
+lease, records the bounded policy decision and completion, changes the current
+`PENDING` attempt to completed `CANCELLED`, and inserts
+`agent-run.failed.v1`. Exact replay returns the original run, attempt, and
+event versions; changed rejection input conflicts.
+
+## Phase 5.8 implementation
+
+The independent Scheduler executable composes the claim, eligibility,
+registry, strategy, and atomic-intent adapters. A fixed worker pool consumes a
+bounded channel; scans claim no more than available queue slots. PostgreSQL
+polling remains authoritative. Optional manual-ack Kafka consumption coalesces
+validated requested-event wake hints and preserves safe correlation/trace
+fields without making broker health a readiness dependency.
+
+Transient scan failures use bounded exponential delay with stable per-instance
+jitter. Shutdown marks readiness false, cancels hints/scans/in-flight database
+work, closes the consumer and database, and bounds HTTP drain time. Liveness is
+process-local; readiness verifies PostgreSQL and required Scheduler tables.
+Prometheus text metrics cover claims, oldest claimed queue age, eligibility,
+selection, processing results, backpressure, lease outcomes, and in-flight
+work without tenant/run labels.

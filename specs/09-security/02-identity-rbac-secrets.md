@@ -69,6 +69,14 @@ credentials. The trusted `created_by` value is used as the temporary user quota
 key until the identity tables replace it; clients cannot supply it directly at
 the Scheduler boundary.
 
+Phases 5.4 through 5.8 extend that role incrementally with registry,
+reservation, assignment, safe decision, and outbox columns only. The role can
+insert events but cannot relay or delete them, and cannot read prompt/source or
+authentication data. The non-root Scheduler image receives its isolated URL
+through Compose/runtime configuration. Kafka is an optional hint channel; its
+tenant and correlation metadata are accepted only after strict envelope,
+header, topic, and key validation.
+
 ## Secrets
 
 Store secrets in a cloud secret manager or Vault. Database rows hold references only. The agent accesses approved capabilities through brokers or scoped credentials. Every secret access is audited.

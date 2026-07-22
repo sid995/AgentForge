@@ -199,6 +199,81 @@ func (repository *SchedulingIntentRepository) DeferCapacity(ctx context.Context,
 	return ports.SchedulingIntentResult{RunVersion: run.Version, EventID: event.Envelope.EventID}, nil
 }
 
+func (repository *SchedulingIntentRepository) Reject(ctx context.Context, request ports.SchedulingRejectRequest) (ports.SchedulingIntentResult, error) {
+	if request.Claim.TenantID == uuid.Nil || request.Claim.ID == uuid.Nil || request.Claim.Version < 1 || strings.TrimSpace(request.LeaseOwner) == "" || request.Now.IsZero() || strings.TrimSpace(request.ReasonCode) == "" || len(request.ReasonCode) > 80 || strings.TrimSpace(request.Reason) == "" || len(request.Reason) > 500 || strings.TrimSpace(request.CorrelationID) == "" || strings.TrimSpace(request.CausationID) == "" {
+		return ports.SchedulingIntentResult{}, fmt.Errorf("scheduling rejection request is invalid")
+	}
+	tx, err := repository.database.Raw().BeginTx(ctx, nil)
+	if err != nil {
+		return ports.SchedulingIntentResult{}, translateError(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	run, owner, expiry, _, err := lockSchedulingRun(ctx, tx, request.Claim.TenantID, request.Claim.ID)
+	if err != nil {
+		return ports.SchedulingIntentResult{}, err
+	}
+	if run.Status == domain.AgentRunPolicyRejected {
+		var code, reason string
+		if err := tx.QueryRowContext(ctx, `select scheduler_decision_code,scheduler_decision_reason from agent_runs where tenant_id=$1 and id=$2`, run.TenantID, run.ID).Scan(&code, &reason); err != nil {
+			return ports.SchedulingIntentResult{}, translateError(err)
+		}
+		if run.Version != request.Claim.Version+1 || code != request.ReasonCode || reason != request.Reason {
+			return ports.SchedulingIntentResult{}, domain.ErrConflict
+		}
+		var eventID uuid.UUID
+		if err := tx.QueryRowContext(ctx, `select event_id from outbox_events where tenant_id=$1 and run_id=$2 and event_type=$3 and aggregate_version=$4`, run.TenantID, run.ID, events.AgentRunFailedType, run.Version).Scan(&eventID); err != nil {
+			return ports.SchedulingIntentResult{}, translateError(err)
+		}
+		var attemptVersion int64
+		if err := tx.QueryRowContext(ctx, `select version from agent_run_attempts where tenant_id=$1 and run_id=$2 and attempt_number=$3 and status='CANCELLED'`, run.TenantID, run.ID, run.AttemptCount).Scan(&attemptVersion); err != nil {
+			return ports.SchedulingIntentResult{}, translateError(err)
+		}
+		if err := tx.Commit(); err != nil {
+			return ports.SchedulingIntentResult{}, translateError(err)
+		}
+		return ports.SchedulingIntentResult{RunVersion: run.Version, AttemptVersion: attemptVersion, EventID: eventID, Replayed: true}, nil
+	}
+	if run.Status != domain.AgentRunScheduling || owner != request.LeaseOwner || expiry == nil || !expiry.After(request.Now.UTC()) || run.Version != request.Claim.Version {
+		return ports.SchedulingIntentResult{}, domain.ErrVersionConflict
+	}
+	attempt, err := lockPendingAttempt(ctx, tx, run, request.Claim.AttemptID, request.Claim.AttemptVersion)
+	if err != nil {
+		return ports.SchedulingIntentResult{}, err
+	}
+	completedAttempt := request.Now.UTC()
+	result, err := tx.ExecContext(ctx, `update agent_run_attempts set status='CANCELLED',version=version+1,updated_at=$1,completed_at=$1 where tenant_id=$2 and id=$3 and version=$4`, completedAttempt, attempt.TenantID, attempt.ID, attempt.Version)
+	if err != nil {
+		return ports.SchedulingIntentResult{}, translateError(err)
+	}
+	if count, _ := result.RowsAffected(); count != 1 {
+		return ports.SchedulingIntentResult{}, domain.ErrVersionConflict
+	}
+	run.Status = domain.AgentRunPolicyRejected
+	run.FailureCategory = domain.FailurePolicy
+	run.Version++
+	run.UpdatedAt = request.Now.UTC()
+	completed := run.UpdatedAt
+	run.CompletedAt = &completed
+	result, err = tx.ExecContext(ctx, `update agent_runs set status='POLICY_REJECTED',failure_category='POLICY',completed_at=$1,version=version+1,updated_at=$1,scheduler_lease_owner=null,scheduler_lease_expires_at=null,scheduler_next_eligible_at=null,scheduler_decision_code=$2,scheduler_decision_reason=$3 where tenant_id=$4 and id=$5 and version=$6`, run.UpdatedAt, request.ReasonCode, request.Reason, run.TenantID, run.ID, request.Claim.Version)
+	if err != nil {
+		return ports.SchedulingIntentResult{}, translateError(err)
+	}
+	if count, _ := result.RowsAffected(); count != 1 {
+		return ports.SchedulingIntentResult{}, domain.ErrVersionConflict
+	}
+	event, err := events.NewAgentRunSchedulingRejected(run, request.ReasonCode, request.Reason, request.CorrelationID, request.CausationID)
+	if err != nil {
+		return ports.SchedulingIntentResult{}, err
+	}
+	if err := insertOutboxEvent(ctx, tx, event); err != nil {
+		return ports.SchedulingIntentResult{}, translateError(err)
+	}
+	if err := tx.Commit(); err != nil {
+		return ports.SchedulingIntentResult{}, translateError(err)
+	}
+	return ports.SchedulingIntentResult{RunVersion: run.Version, AttemptVersion: attempt.Version + 1, EventID: event.Envelope.EventID}, nil
+}
+
 func validateSchedulingIntent(request ports.SchedulingIntentRequest) error {
 	if request.Claim.TenantID == uuid.Nil || request.Claim.ID == uuid.Nil || request.AttemptID == uuid.Nil || request.Claim.Version < 1 || request.AttemptVersion < 1 || strings.TrimSpace(request.LeaseOwner) == "" || request.ClusterID == "" || request.ClusterFreshness <= 0 || request.Strategy == "" || request.SelectionScore < 0 || request.BudgetMinorUnits < 0 || request.ReservationTTL <= 0 || request.ReservationTTL > 24*time.Hour || request.Now.IsZero() || strings.TrimSpace(request.CorrelationID) == "" || strings.TrimSpace(request.CausationID) == "" {
 		return fmt.Errorf("scheduling intent request is invalid")

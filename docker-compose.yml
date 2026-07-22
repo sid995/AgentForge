@@ -47,6 +47,29 @@ services:
     volumes:
       - redpanda-data:/var/lib/redpanda/data
 
+  scheduler:
+    build:
+      context: .
+      dockerfile: services/platform-api/Scheduler.Dockerfile
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-development}
+        BUILD_COMMIT: ${BUILD_COMMIT:-unknown}
+        BUILD_TIME: ${BUILD_TIME:-unknown}
+    environment:
+      AGENTFORGE_ENVIRONMENT: ${AGENTFORGE_ENVIRONMENT:-development}
+      AGENTFORGE_DATABASE_URL: postgres://agentforge_scheduler:${POSTGRES_SCHEDULER_PASSWORD:-agentforge-scheduler}@postgres:5432/${POSTGRES_DB:-agentforge}?sslmode=disable
+      AGENTFORGE_SCHEDULER_HTTP_ADDR: :8081
+      AGENTFORGE_SCHEDULER_OWNER: ${AGENTFORGE_SCHEDULER_OWNER:-scheduler-local}
+      AGENTFORGE_SCHEDULER_STRATEGY: ${AGENTFORGE_SCHEDULER_STRATEGY:-least-loaded}
+      AGENTFORGE_SCHEDULER_KAFKA_HINTS_ENABLED: ${AGENTFORGE_SCHEDULER_KAFKA_HINTS_ENABLED:-false}
+      AGENTFORGE_KAFKA_BROKERS: redpanda:9092
+    ports:
+      - "${SCHEDULER_HOST_PORT:-18081}:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   redpanda-data:
