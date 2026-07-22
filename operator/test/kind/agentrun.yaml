@@ -1,0 +1,36 @@
+apiVersion: execution.agentforge.dev/v1alpha1
+kind: AgentRun
+metadata:
+  name: lifecycle-missing-evidence
+  namespace: agentforge-kind-lifecycle
+spec:
+  tenantId: 019b0000-0000-7000-8000-000000000011
+  projectId: 019b0000-0000-7000-8000-000000000012
+  runId: 019b0000-0000-7000-8000-000000000013
+  attemptId: 019b0000-0000-7000-8000-000000000014
+  attempt: 1
+  runnerImage: docker.io/library/busybox@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028
+  runtime: shell-1.0
+  executionProfile: standard
+  taskRef: vault://tasks/kind-lifecycle
+  timeoutSeconds: 120
+  retryPolicy:
+    maxAttempts: 1
+    initialBackoffSeconds: 5
+    maxBackoffSeconds: 30
+  resources:
+    requests:
+      cpuMillis: 100
+      memoryMiB: 64
+    limits:
+      cpuMillis: 200
+      memoryMiB: 128
+  workspace:
+    sizeGiB: 1
+    storageClassName: standard
+    retentionPolicy: Delete
+  network:
+    profile: Isolated
+  artifactDestinationRef:
+    name: artifact-store
+  desiredState: Running

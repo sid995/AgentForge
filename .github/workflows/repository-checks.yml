@@ -42,6 +42,8 @@ jobs:
           git diff --exit-code
       - name: Test Operator with envtest
         run: make test-controller
+      - name: Integration-test Operator lifecycle with kind
+        run: make test-controller-kind
       - name: Integration-test PostgreSQL persistence
         run: make test-integration
       - name: Integration-test Kafka contracts

@@ -64,6 +64,15 @@
   missing-reference and storage-pending requeues; PVC-bound NetworkPolicy and
   Job creation; conflicting pre-existing ownership; and prerequisite status
   conditions against Kubernetes 1.36 envtest;
+- Job/Pod pending, scheduled, unschedulable, container-creating, active,
+  succeeded, failed, deadline, OOM, eviction, node-loss, image-pull,
+  configuration, nonzero-exit, missing-evidence, and missing-Job projections;
+  ownership-filtered Pod observation; strict result-evidence parsing; bounded
+  attempt history; terminal no-ops;
+  `WaitForFirstConsumer` binding; and no duplicate Job creation;
+- a pinned kind 0.32.0 two-node cluster using Kubernetes 1.36.1 by digest,
+  proving real scheduling, PVC binding, Pod completion, missing-evidence
+  failure, attempt projection, and one-Job idempotency;
 - non-root Operator image and configured leader election, health, readiness,
   authenticated metrics, and structured logging foundation.
 

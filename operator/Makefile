@@ -63,6 +63,10 @@ vet: ## Run go vet against code.
 test: manifests generate fmt vet setup-envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell "$(ENVTEST)" use $(ENVTEST_K8S_VERSION) --bin-dir "$(LOCALBIN)" -p path)" GOWORK=off go test $$(GOWORK=off go list ./...) -coverprofile cover.out
 
+.PHONY: test-kind
+test-kind: manifests generate build kind ## Run the lifecycle integration gate on pinned kind and Kubernetes versions.
+	KIND_BIN="$(KIND)" KUBECTL_BIN="$(KUBECTL)" KIND_NODE_IMAGE="$(KIND_NODE_IMAGE)" ./test/kind/lifecycle.sh
+
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
 	GOWORK=off "$(GOLANGCI_LINT)" run
@@ -157,6 +161,7 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
+KIND ?= $(LOCALBIN)/kind
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.8.1
@@ -169,6 +174,8 @@ ENVTEST_VERSION ?= v0.24.1
 ENVTEST_K8S_VERSION ?= 1.36.0
 
 GOLANGCI_LINT_VERSION ?= v2.11.4
+KIND_VERSION ?= v0.32.0
+KIND_NODE_IMAGE ?= kindest/node:v1.36.1@sha256:3489c7674813ba5d8b1a9977baea8a6e553784dab7b84759d1014dbd78f7ebd5
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
 $(KUSTOMIZE): $(LOCALBIN)
@@ -201,6 +208,11 @@ $(GOLANGCI_LINT): $(LOCALBIN)
 		$(GOLANGCI_LINT) custom --destination $(LOCALBIN) --name golangci-lint-custom && \
 		mv -f $(LOCALBIN)/golangci-lint-custom $(GOLANGCI_LINT); \
 	} || true
+
+.PHONY: kind
+kind: $(KIND) ## Download the pinned kind binary locally if necessary.
+$(KIND): $(LOCALBIN)
+	$(call go-install-tool,$(KIND),sigs.k8s.io/kind,$(KIND_VERSION))
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary

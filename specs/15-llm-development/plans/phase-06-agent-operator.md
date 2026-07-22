@@ -102,6 +102,14 @@ Derive status and failure classification from observed Job/Pod state, preserve
 terminal stability and mandatory result evidence, and prove duplicate-safe
 creation with envtest and a pinned kind integration gate.
 
+Status: implemented and validated. Observed Job/Pod state now projects pending,
+scheduled, container-creating, running, success, and normalized failure states
+plus bounded attempt history and timestamps. Success requires strict versioned
+termination evidence. Terminal attempts are stable, deleted observed Jobs are
+not recreated, and `WaitForFirstConsumer` storage safely triggers binding.
+Unit, Kubernetes 1.36 envtest, and digest-pinned kind 0.32/Kubernetes 1.36.1
+integration gates cover the lifecycle.
+
 ### 6.7 Cancellation
 
 Stop new work, gracefully terminate active work within a bounded deadline,

@@ -95,9 +95,25 @@ Job in that order. Server-side apply uses a stable field owner without forced
 ownership. Objects controlled by another resource are rejected, matching
 objects are not rewritten, and unrelated external metadata is preserved.
 
-The controller stops before network or compute creation while storage is not
-bound and polls at a bounded interval. Missing ConfigMaps or Secrets expose a
-specific pending condition and likewise prevent later resources. Five
+The controller stops before network or compute creation while ordinary storage
+is not bound and polls at a bounded interval. A `WaitForFirstConsumer`
+StorageClass safely allows the Job consumer needed to trigger PVC binding.
+Missing ConfigMaps or Secrets expose a specific pending condition and prevent
+later resources. Five
 prerequisite conditions, bounded failure categories, and Job name projection
 make progress and conflicts diagnosable without copying secret data into the
 CR, logs, or generated configuration.
+
+## Phase 6.6 lifecycle observation
+
+The reconciler lists Pods for the deterministic Job and projects observed
+scheduling, container, Job, and termination state into current and per-attempt
+status. Retry-relevant infrastructure failures are separated from permanent
+dependency, policy, and execution failures. Externally deleted observed Jobs
+fail the attempt without duplicate recreation, and terminal current-attempt
+status is stable.
+
+Success requires a completed Job and strict bounded runner termination evidence
+containing a versioned artifact-manifest reference. Exit zero without that
+evidence is an execution failure. Raw Pod messages, termination output, and
+secret data are never copied into AgentRun status or logs.

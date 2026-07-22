@@ -27,6 +27,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -98,27 +99,70 @@ func (r *AgentRunReconciler) reconcilePrerequisites(ctx context.Context, run *ex
 	}
 	if workspace.Status.Phase != corev1.ClaimBound {
 		run.Status.Phase = executionv1alpha1.AgentRunPhaseProvisioning
-		r.setCondition(run, ConditionWorkspaceReady, metav1.ConditionFalse, "StoragePending", "Workspace storage is not bound")
-		r.setCondition(run, ConditionNetworkPolicyReady, metav1.ConditionFalse, "WorkspacePending", "Network policy waits for workspace storage")
-		r.setCondition(run, ConditionJobReady, metav1.ConditionFalse, "WorkspacePending", "Execution Job waits for workspace storage")
-		r.setCondition(run, ConditionReady, metav1.ConditionFalse, "StoragePending", "Execution is waiting for workspace storage")
-		return ctrl.Result{RequeueAfter: prerequisiteRequeue}, nil
+		waitForConsumer, err := r.workspaceWaitsForFirstConsumer(ctx, workspace)
+		if err != nil {
+			return ctrl.Result{}, r.handlePrerequisiteError(run, ConditionWorkspaceReady, "StorageClassReadFailed", err)
+		}
+		if !waitForConsumer {
+			r.setCondition(run, ConditionWorkspaceReady, metav1.ConditionFalse, "StoragePending", "Workspace storage is not bound")
+			r.setCondition(run, ConditionNetworkPolicyReady, metav1.ConditionFalse, "WorkspacePending", "Network policy waits for workspace storage")
+			r.setCondition(run, ConditionJobReady, metav1.ConditionFalse, "WorkspacePending", "Execution Job waits for workspace storage")
+			r.setCondition(run, ConditionReady, metav1.ConditionFalse, "StoragePending", "Execution is waiting for workspace storage")
+			return ctrl.Result{RequeueAfter: prerequisiteRequeue}, nil
+		}
+		r.setCondition(run, ConditionWorkspaceReady, metav1.ConditionFalse, "FirstConsumerPending", "Workspace binding requires an execution Pod consumer")
+	} else {
+		r.recordPrerequisiteReady(run, ConditionWorkspaceReady, "WorkspaceReady", "Workspace storage is bound")
 	}
-	r.recordPrerequisiteReady(run, ConditionWorkspaceReady, "WorkspaceReady", "Workspace storage is bound")
 
 	if err := r.ensureObject(ctx, run, desired.NetworkPolicy); err != nil {
 		return ctrl.Result{}, r.handlePrerequisiteError(run, ConditionNetworkPolicyReady, "NetworkPolicyReconcileFailed", err)
 	}
 	r.recordPrerequisiteReady(run, ConditionNetworkPolicyReady, "NetworkPolicyReady", "Workload network policy is ready")
 
+	if run.Status.JobName != "" {
+		if run.Status.JobName != desired.Job.Name {
+			reconcileErr := newReconcileError(ErrorClassPermanent, "JobIdentityConflict", errors.New("status Job identity does not match the current attempt"))
+			r.recordPrerequisiteFailure(run, ConditionJobReady, reconcileErr, executionv1alpha1.FailureCategoryInternal)
+			return ctrl.Result{}, reconcileErr
+		}
+		existingJob := &batchv1.Job{}
+		if err := r.Get(ctx, client.ObjectKeyFromObject(desired.Job), existingJob); err != nil {
+			if apierrors.IsNotFound(err) {
+				r.recordMissingJob(run, desired.Job.Name)
+				return ctrl.Result{}, nil
+			}
+			return ctrl.Result{}, r.handlePrerequisiteError(run, ConditionJobReady, "JobReadFailed", err)
+		}
+		if !existingJob.DeletionTimestamp.IsZero() {
+			r.recordMissingJob(run, desired.Job.Name)
+			return ctrl.Result{}, nil
+		}
+	}
 	if err := r.ensureObject(ctx, run, desired.Job); err != nil {
 		return ctrl.Result{}, r.handlePrerequisiteError(run, ConditionJobReady, "JobReconcileFailed", err)
 	}
-	run.Status.Phase = executionv1alpha1.AgentRunPhaseProvisioning
 	run.Status.JobName = desired.Job.Name
 	r.recordPrerequisiteReady(run, ConditionJobReady, "JobReady", "Execution Job is created")
-	r.setCondition(run, ConditionReady, metav1.ConditionFalse, "ExecutionPending", "Execution Job lifecycle has not completed")
-	return ctrl.Result{}, nil
+	job := &batchv1.Job{}
+	if err := r.Get(ctx, client.ObjectKeyFromObject(desired.Job), job); err != nil {
+		return ctrl.Result{}, r.handlePrerequisiteError(run, ConditionJobReady, "JobReadFailed", err)
+	}
+	return r.observeJob(ctx, run, job)
+}
+
+func (r *AgentRunReconciler) workspaceWaitsForFirstConsumer(ctx context.Context, workspace *corev1.PersistentVolumeClaim) (bool, error) {
+	if workspace.Spec.StorageClassName == nil || *workspace.Spec.StorageClassName == "" {
+		return false, nil
+	}
+	storageClass := &storagev1.StorageClass{}
+	if err := r.Get(ctx, client.ObjectKey{Name: *workspace.Spec.StorageClassName}, storageClass); err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return storageClass.VolumeBindingMode != nil && *storageClass.VolumeBindingMode == storagev1.VolumeBindingWaitForFirstConsumer, nil
 }
 
 func (r *AgentRunReconciler) configurationReferencesReady(ctx context.Context, run *executionv1alpha1.AgentRun) (bool, error) {

@@ -55,9 +55,11 @@ Phase 6.3 creates no child resources.
 The reconciler now resolves a trusted resource builder and ensures execution
 prerequisites in a fixed order: tokenless ServiceAccount, same-namespace
 ConfigMap and Secret references plus the owned immutable runner ConfigMap,
-workspace PVC, deny-by-default NetworkPolicy, then Job. The Job is not created
-until the PVC reports `Bound`; pending storage produces a five-second polling
-requeue and explicit conditions instead of an error retry.
+workspace PVC, deny-by-default NetworkPolicy, then Job. Ordinary pending PVCs
+produce a five-second polling requeue before network or compute creation.
+`WaitForFirstConsumer` storage is detected from the trusted StorageClass and
+permits Job creation because scheduling the consumer is required to bind the
+claim; the workspace remains explicitly pending until binding completes.
 
 Child writes use server-side apply with field manager `agentforge-operator`
 and never force ownership. Existing objects must already belong to the same
@@ -74,3 +76,33 @@ resources. API transport and availability failures retain transient retry
 classification; invalid or forbidden writes are permanent. Owned-resource
 watches provide event-driven reconciliation while status patches remain
 semantic and optimistic-lock protected.
+
+## Phase 6.6 Job and Pod lifecycle
+
+After deterministic Job creation, status is derived only from observed Job and
+Pods whose controller owner UID matches that Job; label-only spoofed Pods are
+ignored. The projector distinguishes unscheduled, scheduled,
+container-creating, active, successful, and failed states. Stable bounded
+reasons classify eviction, node loss, image-pull failure, invalid images,
+container configuration/start failures, deadline expiry, OOM termination, and
+nonzero process exit without copying raw Kubernetes messages into status.
+
+`TRANSIENT_DEPENDENCY` marks eviction, node loss, and ordinary image-pull
+failures; invalid image and container start failures are
+`PERMANENT_DEPENDENCY`; rejected container configuration is `POLICY`; process,
+memory, deadline, and result failures are `EXECUTION`. Phase 6.8 consumes this
+taxonomy for retry decisions.
+
+Runner exit zero is necessary but insufficient for success. The runner must
+write a bounded strict JSON termination message with `schemaVersion: 1` and a
+valid `artifactManifestRef`. The Operator never projects raw termination text.
+Only a completed Job plus valid evidence becomes `Succeeded`; missing or
+invalid evidence becomes `ResultEvidenceInvalid`.
+
+Current Job and Pod names, start/completion timestamps, normalized failure,
+artifact reference, conditions, and one bounded attempt-history entry are
+projected with semantic optimistic status patches. Terminal current-attempt
+status is stable across repeated reconciliation. If an already observed Job is
+deleted, the attempt becomes `INTERNAL`/`JobMissing` and the same Job is not
+recreated. Active states poll every five seconds, while owned Job events also
+enqueue reconciliation.

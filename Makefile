@@ -7,11 +7,11 @@ BUILD_VERSION ?= development
 BUILD_COMMIT ?= unknown
 BUILD_TIME ?= unknown
 
-.PHONY: help check-tools format lint lint-controller test verify-event-contracts test-integration test-events-integration test-controller operator-manifests operator-generate migrate bootstrap-topics build-platform-api build-scheduler build-operator verify
+.PHONY: help check-tools format lint lint-controller test verify-event-contracts test-integration test-events-integration test-controller test-controller-kind operator-manifests operator-generate migrate bootstrap-topics build-platform-api build-scheduler build-operator verify
 
 help:
 	@printf '%s\n' 'AgentForge development targets:'
-	@printf '%s\n' '  check-tools       Check Phase 0 through Phase 6.5 prerequisites'
+	@printf '%s\n' '  check-tools       Check Phase 0 through Phase 6.6 prerequisites'
 	@printf '%s\n' '  format            Format tracked Go source'
 	@printf '%s\n' '  lint              Run Platform API and Operator static analysis'
 	@printf '%s\n' '  lint-controller   Run Operator static analysis'
@@ -20,6 +20,7 @@ help:
 	@printf '%s\n' '  test-integration  Run PostgreSQL integration tests in Docker Compose'
 	@printf '%s\n' '  test-events-integration Run Kafka contract tests against isolated Redpanda'
 	@printf '%s\n' '  test-controller   Generate manifests and run Operator envtest coverage'
+	@printf '%s\n' '  test-controller-kind Run the pinned Operator kind lifecycle gate'
 	@printf '%s\n' '  operator-manifests Regenerate Operator CRD and RBAC manifests'
 	@printf '%s\n' '  operator-generate Regenerate Operator Go code'
 	@printf '%s\n' '  migrate           Apply checked-in PostgreSQL migrations'
@@ -78,6 +79,9 @@ test-events-integration:
 
 test-controller:
 	@$(MAKE) -C operator test
+
+test-controller-kind:
+	@$(MAKE) -C operator test-kind
 
 operator-manifests:
 	@$(MAKE) -C operator manifests

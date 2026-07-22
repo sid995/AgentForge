@@ -101,17 +101,22 @@ remain explicit dependencies for their corresponding command integrations.
   apply, explicit owner validation, matching-object no-ops, external metadata
   preservation, reference and storage gating, per-prerequisite conditions,
   owned-resource watches, conflict diagnostics, and Kubernetes 1.36 envtest
+- Phase 6.6 observed Job/Pod lifecycle projection, normalized retry/permanent
+  failure taxonomy, strict mandatory result evidence, current and per-attempt
+  timestamps/status, terminal stability, deleted-Job no-recreation, first
+  consumer PVC binding, exhaustive unit/envtest coverage, and digest-pinned
+  kind 0.32.0/Kubernetes 1.36.1 integration
 
 ## In progress
 
-- Phase 6.6 Job and Pod lifecycle observation
+- Phase 6.7 cancellation reconciliation
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Phase 6.6 through 6.10 Operator workload lifecycle,
+- Phase 6.7 through 6.10 Operator cancellation, retry, cleanup,
   cancellation, retry, cleanup, and Scheduler handoff
 - Agent Runner
 - Model Gateway
@@ -125,7 +130,7 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Commit the validated Phase 6.5 prerequisite reconciliation.
-2. Implement and commit Phase 6.6 Job and Pod lifecycle observation.
+1. Commit the validated Phase 6.6 Job and Pod lifecycle observation.
+2. Implement and commit Phase 6.7 cancellation reconciliation.
 3. Preserve the unresolved Phase 3 cancellation/retry command dependencies and
    the Phase 6 no-Kubernetes boundary.

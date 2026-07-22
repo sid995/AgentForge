@@ -3,7 +3,7 @@
 AgentForge is a Kubernetes-native infrastructure platform for running autonomous coding-agent workloads in isolated environments, tracking their execution and cost, building validated container artifacts, and deploying generated applications through GitOps.
 
 This repository contains the complete specification and GPT-5.6 Codex execution
-playbook plus the implemented control-plane foundations through Phase 6.5.
+playbook plus the implemented control-plane foundations through Phase 6.6.
 Production implementation proceeds through validated, committed sub-phases.
 
 ## Start here
@@ -50,7 +50,9 @@ foundation. Phase 6.2 adds the complete validated
 CRD, full sample, and Kubernetes 1.36 schema tests. Phase 6.3 adds the
 idempotent reconciliation/status/finalizer foundation without creating child
 resources. Phase 6.4 adds pure secure workload-resource builders, and Phase
-6.5 reconciles them in dependency order with safe ownership and storage gates; see
+6.5 reconciles them in dependency order with safe ownership and storage gates.
+Phase 6.6 adds observed Job/Pod lifecycle, strict result evidence, and a pinned
+Kubernetes 1.36 kind gate; see
 [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).
 
 ## Agent Operator development
@@ -61,12 +63,13 @@ points delegate to its module:
 ```bash
 make operator-manifests operator-generate
 make test-controller
+make test-controller-kind
 make lint-controller
 make build-operator
 ```
 
 Generation downloads version-pinned tools into ignored `operator/bin/` paths.
-Phase 6.5 creates child resources only after references and bound storage are ready.
+Phase 6.6 also handles `WaitForFirstConsumer` binding and observed lifecycle.
 
 ## Local Scheduler
 

@@ -36,3 +36,9 @@ rejected. ServiceAccount and Pod token automount are both false. Mutation tests
 prove each prohibited setting is detected. Network-policy tests prove deny-all
 isolation and reject wildcard, overly broad, link-local, and metadata-service
 egress.
+
+Phase 6.6 treats runner termination output as untrusted. It accepts only a
+strict, versioned, 4096-byte result-evidence object, validates the artifact
+reference against the CR status contract, and emits only normalized bounded
+reasons. Raw termination messages and Kubernetes diagnostic text are not
+copied into status, logs, or metric labels.

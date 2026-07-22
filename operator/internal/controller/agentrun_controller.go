@@ -72,6 +72,8 @@ type AgentRunReconciler struct {
 // +kubebuilder:rbac:groups=execution.agentforge.dev,resources=agentruns/finalizers,verbs=update;patch
 // +kubebuilder:rbac:groups="",resources=serviceaccounts;configmaps;persistentvolumeclaims,verbs=get;list;watch;create;patch
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups=storage.k8s.io,resources=storageclasses,verbs=get;list;watch
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;patch
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;patch
 
@@ -145,6 +147,23 @@ func (r *AgentRunReconciler) Reconcile(ctx context.Context, request ctrl.Request
 	}
 
 	beforeStatus := run.DeepCopy()
+	if currentAttemptTerminal(run) {
+		run.Status.ObservedGeneration = run.Generation
+		for index := range run.Status.Conditions {
+			run.Status.Conditions[index].ObservedGeneration = run.Generation
+		}
+		r.setCondition(run, ConditionSpecValid, metav1.ConditionTrue, "Accepted", "AgentRun desired state is valid")
+		changed, err := r.patchStatusIfChanged(ctx, beforeStatus, run)
+		if err != nil {
+			reconcileErr := classifyAPIError("TerminalStatusWriteFailed", err)
+			outcome = string(reconcileErr.Class) + "_error"
+			return ctrl.Result{}, terminalIfPermanent(reconcileErr)
+		}
+		if !changed {
+			outcome = "unchanged"
+		}
+		return ctrl.Result{}, nil
+	}
 	r.initializeAcceptedStatus(run)
 	result, prerequisiteErr := r.reconcilePrerequisites(ctx, run)
 	changed, err := r.patchStatusIfChanged(ctx, beforeStatus, run)

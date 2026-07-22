@@ -64,5 +64,24 @@ Phase 6.5 creates prerequisites in the strict ServiceAccount, references and
 configuration, PVC, NetworkPolicy, Job order. It uses non-forced server-side
 apply, rejects conflicting ownership, preserves unrelated metadata, requeues
 missing references and pending storage, and exposes one condition per gate.
-Envtest proves matching-resource no-ops and that NetworkPolicy and Job creation
-remain blocked until workspace storage is bound.
+Envtest proves matching-resource no-ops and that ordinary pending storage blocks
+network and compute creation. `WaitForFirstConsumer` storage is detected and
+permits the Job consumer required to trigger binding.
+
+Phase 6.6 projects observed Job and Pod lifecycle into current and per-attempt
+status, including scheduling, active execution, timestamps, normalized failure
+taxonomy, and stable terminal state. A completed Job succeeds only when its
+runner termination message contains strict versioned artifact-manifest
+evidence; raw messages are never projected. An externally deleted observed Job
+fails without recreation.
+
+Run the real lifecycle gate with:
+
+```bash
+make test-kind
+```
+
+The target downloads kind 0.32.0 into `bin/` and creates a disposable two-node
+Kubernetes 1.36.1 cluster from a digest-pinned image. It proves PVC consumer
+binding, real Pod completion, mandatory-evidence enforcement, attempt status,
+and duplicate-safe Job creation.

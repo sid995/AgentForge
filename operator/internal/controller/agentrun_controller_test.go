@@ -30,6 +30,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -192,6 +193,149 @@ func TestAgentRunReconcilerFoundationEnvtest(t *testing.T) {
 		}
 	})
 
+	t.Run("observed Job and Pod state projects running and successful attempts", func(t *testing.T) {
+		run := getControllerAgentRun(t, ctx, baseClient, "initialize")
+		names, err := naming.ForAgentRun(run)
+		if err != nil {
+			t.Fatalf("derive names: %v", err)
+		}
+		job := &batchv1.Job{}
+		jobKey := client.ObjectKey{Namespace: run.Namespace, Name: names.Job}
+		if err := baseClient.Get(ctx, jobKey, job); err != nil {
+			t.Fatalf("get Job: %v", err)
+		}
+		pod := &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: names.Job + "-pod", Namespace: run.Namespace,
+				Labels:          map[string]string{batchv1.JobNameLabel: job.Name},
+				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(job, batchv1.SchemeGroupVersion.WithKind("Job"))},
+			},
+			Spec: corev1.PodSpec{
+				RestartPolicy: corev1.RestartPolicyNever,
+				Containers:    []corev1.Container{{Name: "runner", Image: "example.invalid/runner:test"}},
+			},
+		}
+		if err := baseClient.Create(ctx, pod); err != nil {
+			t.Fatalf("create Pod: %v", err)
+		}
+		started := metav1.NewTime(fixedReconcileTime.Add(time.Minute))
+		pod.Status.Phase = corev1.PodRunning
+		pod.Status.StartTime = &started
+		pod.Status.ContainerStatuses = []corev1.ContainerStatus{{
+			Name: "runner", State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: started}},
+		}}
+		if err := baseClient.Status().Update(ctx, pod); err != nil {
+			t.Fatalf("set running Pod status: %v", err)
+		}
+		job.Status.Active = 1
+		job.Status.StartTime = &started
+		if err := baseClient.Status().Update(ctx, job); err != nil {
+			t.Fatalf("set active Job status: %v", err)
+		}
+		if _, err := reconciler.Reconcile(ctx, requestFor(run.Name)); err != nil {
+			t.Fatalf("reconcile running Job: %v", err)
+		}
+		stored := getControllerAgentRun(t, ctx, baseClient, run.Name)
+		if stored.Status.Phase != executionv1alpha1.AgentRunPhaseRunning || stored.Status.PodName != pod.Name || len(stored.Status.Attempts) != 1 {
+			t.Fatalf("running lifecycle was not projected: %#v", stored.Status)
+		}
+
+		completion := metav1.NewTime(started.Add(2 * time.Minute))
+		if err := baseClient.Get(ctx, client.ObjectKeyFromObject(pod), pod); err != nil {
+			t.Fatalf("refresh Pod: %v", err)
+		}
+		pod.Status.Phase = corev1.PodSucceeded
+		pod.Status.ContainerStatuses = []corev1.ContainerStatus{{
+			Name: "runner", State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{
+				ExitCode: 0, Reason: "Completed", FinishedAt: completion,
+				Message: `{"schemaVersion":1,"artifactManifestRef":"s3://agentforge/results/initialize.json"}`,
+			}},
+		}}
+		if err := baseClient.Status().Update(ctx, pod); err != nil {
+			t.Fatalf("set completed Pod status: %v", err)
+		}
+		if err := baseClient.Get(ctx, jobKey, job); err != nil {
+			t.Fatalf("refresh Job: %v", err)
+		}
+		job.Status.Active = 0
+		job.Status.Succeeded = 1
+		job.Status.CompletionTime = &completion
+		job.Status.Conditions = []batchv1.JobCondition{
+			{Type: batchv1.JobSuccessCriteriaMet, Status: corev1.ConditionTrue, Reason: "CompletionsReached", LastTransitionTime: completion},
+			{Type: batchv1.JobComplete, Status: corev1.ConditionTrue, Reason: "CompletionsReached", LastTransitionTime: completion},
+		}
+		if err := baseClient.Status().Update(ctx, job); err != nil {
+			t.Fatalf("set completed Job status: %v", err)
+		}
+		if _, err := reconciler.Reconcile(ctx, requestFor(run.Name)); err != nil {
+			t.Fatalf("reconcile completed Job: %v", err)
+		}
+		stored = getControllerAgentRun(t, ctx, baseClient, run.Name)
+		if stored.Status.Phase != executionv1alpha1.AgentRunPhaseSucceeded ||
+			stored.Status.ArtifactManifestRef != "s3://agentforge/results/initialize.json" ||
+			stored.Status.CompletionTime == nil || stored.Status.Attempts[0].Phase != executionv1alpha1.AgentRunPhaseSucceeded {
+			t.Fatalf("successful lifecycle was not projected: %#v", stored.Status)
+		}
+		writes := recording.statusPatches
+		applies := len(recording.appliedKinds)
+		if _, err := reconciler.Reconcile(ctx, requestFor(run.Name)); err != nil {
+			t.Fatalf("repeat terminal reconcile: %v", err)
+		}
+		if recording.statusPatches != writes || len(recording.appliedKinds) != applies {
+			t.Fatal("terminal reconcile was not a stable no-op")
+		}
+	})
+
+	t.Run("externally deleted observed Job fails without recreation", func(t *testing.T) {
+		run := validControllerAgentRun("deleted-job")
+		if err := baseClient.Create(ctx, run); err != nil {
+			t.Fatalf("create AgentRun: %v", err)
+		}
+		if _, err := reconciler.Reconcile(ctx, requestFor(run.Name)); err != nil {
+			t.Fatalf("create prerequisites: %v", err)
+		}
+		stored := getControllerAgentRun(t, ctx, baseClient, run.Name)
+		names, err := naming.ForAgentRun(stored)
+		if err != nil {
+			t.Fatalf("derive names: %v", err)
+		}
+		workspace := &corev1.PersistentVolumeClaim{}
+		if err := baseClient.Get(ctx, client.ObjectKey{Namespace: run.Namespace, Name: names.Workspace}, workspace); err != nil {
+			t.Fatalf("get workspace: %v", err)
+		}
+		workspace.Status.Phase = corev1.ClaimBound
+		if err := baseClient.Status().Update(ctx, workspace); err != nil {
+			t.Fatalf("bind workspace: %v", err)
+		}
+		if _, err := reconciler.Reconcile(ctx, requestFor(run.Name)); err != nil {
+			t.Fatalf("create Job: %v", err)
+		}
+		job := &batchv1.Job{}
+		jobKey := client.ObjectKey{Namespace: run.Namespace, Name: names.Job}
+		if err := baseClient.Get(ctx, jobKey, job); err != nil {
+			t.Fatalf("get Job: %v", err)
+		}
+		if err := baseClient.Delete(ctx, job); err != nil {
+			t.Fatalf("delete Job: %v", err)
+		}
+		if _, err := reconciler.Reconcile(ctx, requestFor(run.Name)); err != nil {
+			t.Fatalf("reconcile deleted Job: %v", err)
+		}
+		stored = getControllerAgentRun(t, ctx, baseClient, run.Name)
+		if stored.Status.Phase != executionv1alpha1.AgentRunPhaseFailed || stored.Status.FailureCategory != executionv1alpha1.FailureCategoryInternal ||
+			len(stored.Status.Attempts) != 1 || stored.Status.Attempts[0].FailureReason == "" {
+			t.Fatalf("missing Job was not recorded: %#v", stored.Status)
+		}
+		if _, err := reconciler.Reconcile(ctx, requestFor(run.Name)); err != nil {
+			t.Fatalf("repeat missing Job reconcile: %v", err)
+		}
+		if err := baseClient.Get(ctx, jobKey, job); err == nil && job.DeletionTimestamp.IsZero() {
+			t.Fatal("externally deleted Job was recreated")
+		} else if err != nil && !apierrors.IsNotFound(err) {
+			t.Fatalf("get deleted Job: %v", err)
+		}
+	})
+
 	t.Run("missing configuration reference requeues without later resources", func(t *testing.T) {
 		run := validControllerAgentRun("missing-reference")
 		run.Spec.ArtifactDestinationRef.Name = "missing-artifact-store"
@@ -237,6 +381,39 @@ func TestAgentRunReconcilerFoundationEnvtest(t *testing.T) {
 		if condition == nil || condition.Status != metav1.ConditionFalse || condition.Reason != "ReferenceNotFound" ||
 			condition.Message != "Required Secret \"missing-credential\" is not available" {
 			t.Fatalf("unexpected Secret condition: %#v", condition)
+		}
+	})
+
+	t.Run("wait-for-first-consumer storage permits Job scheduling", func(t *testing.T) {
+		bindingMode := storagev1.VolumeBindingWaitForFirstConsumer
+		storageClass := &storagev1.StorageClass{
+			ObjectMeta:        metav1.ObjectMeta{Name: "wait-consumer"},
+			Provisioner:       "example.test/provisioner",
+			VolumeBindingMode: &bindingMode,
+		}
+		if err := baseClient.Create(ctx, storageClass); err != nil && !apierrors.IsAlreadyExists(err) {
+			t.Fatalf("create StorageClass: %v", err)
+		}
+		run := validControllerAgentRun("wait-consumer")
+		run.Spec.Workspace.StorageClassName = storageClass.Name
+		if err := baseClient.Create(ctx, run); err != nil {
+			t.Fatalf("create AgentRun: %v", err)
+		}
+		if _, err := reconciler.Reconcile(ctx, requestFor(run.Name)); err != nil {
+			t.Fatalf("reconcile first-consumer storage: %v", err)
+		}
+		stored := getControllerAgentRun(t, ctx, baseClient, run.Name)
+		condition := meta.FindStatusCondition(stored.Status.Conditions, ConditionWorkspaceReady)
+		if condition == nil || condition.Status != metav1.ConditionFalse || condition.Reason != "FirstConsumerPending" {
+			t.Fatalf("unexpected workspace condition: %#v", condition)
+		}
+		names, err := naming.ForAgentRun(stored)
+		if err != nil {
+			t.Fatalf("derive names: %v", err)
+		}
+		job := &batchv1.Job{}
+		if err := baseClient.Get(ctx, client.ObjectKey{Namespace: run.Namespace, Name: names.Job}, job); err != nil {
+			t.Fatalf("first-consumer Job was not created: %v", err)
 		}
 	})
 
@@ -465,6 +642,7 @@ func controllerTestScheme(t *testing.T) *runtime.Scheme {
 	scheme := runtime.NewScheme()
 	for name, add := range map[string]func(*runtime.Scheme) error{
 		"core": corev1.AddToScheme, "batch": batchv1.AddToScheme, "networking": networkingv1.AddToScheme,
+		"storage":  storagev1.AddToScheme,
 		"AgentRun": executionv1alpha1.AddToScheme,
 	} {
 		if err := add(scheme); err != nil {
