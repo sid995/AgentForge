@@ -9,6 +9,17 @@
 - scheduler crash before and after CR creation.
 - operator restart during active Job.
 - retryable and terminal attempt failure.
+- concurrent Scheduler claims, active/expired leases, priority and age order,
+  fairness rounds, optimistic renewal conflicts, empty queues, transient
+  database errors, and Scheduler-role tenant/data isolation.
+- eligibility outcome/explanation coverage at tenant/user concurrency, queue,
+  CPU, memory, budget, runtime/profile, and tenant/project-status boundaries;
+  concurrent decision persistence and noisy-neighbour tenant isolation.
+- cluster metadata validation, freshness/maintenance/runtime/allowlist filters,
+  deterministic strategy ties and regional fallback, concurrent capacity and
+  budget reservation, idempotent release/settle/reclaim, atomic assignment and
+  outbox replay/rollback, policy rejection, worker shutdown, health/readiness,
+  metrics, and backpressure bounds.
 
 ## Messaging
 

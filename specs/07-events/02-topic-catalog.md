@@ -21,6 +21,22 @@ defined in `07-events/04-event-architecture.md`.
 - `agent-run.cancelled.v1`
 - `agent-run.retry-requested.v1`
 
+`agent-run.scheduled.v1` is the Scheduler's durable assignment intent emitted
+with the `PROVISIONING` transition, not a temporary claim notification.
+`agent-run.provisioning-requested.v1` remains reserved and unimplemented until
+the Phase 6 Operator input boundary is approved.
+
+Phase 5.7 publishes executable v1 schemas, examples, compatibility baselines,
+producer validation, and consumer fixtures for `agent-run.scheduled.v1` and
+`agent-run.capacity-wait.v1`. Both are transactionally inserted with their
+matching aggregate transition and contain only allowlisted assignment or safe
+deferral metadata.
+
+Phase 5.8 activates `agent-run.failed.v1` for atomic Scheduler policy
+rejections. Its v1 contract supports the existing terminal failure taxonomy so
+later lifecycle producers do not need to weaken or reinterpret a policy-only
+published schema.
+
 Partition key: run ID.
 
 Physical topic: `agentforge.agent-run.lifecycle.v1`.

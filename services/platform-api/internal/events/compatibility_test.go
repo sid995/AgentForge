@@ -11,7 +11,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
+
+	"github.com/sid995/agentforge/services/platform-api/internal/domain"
 )
 
 type compatibilityBaseline struct {
@@ -90,12 +93,43 @@ func TestEventContractCompatibilityBaseline(t *testing.T) {
 func TestEventContractProducerOutputMatchesSchemas(t *testing.T) {
 	requested := mustRequestedEvent(t)
 	validateSerializedContract(t, "agent-run.requested.v1", requested.Serialized)
+	var requestedPayload AgentRunRequestedPayload
+	if err := json.Unmarshal(requested.Envelope.Payload, &requestedPayload); err != nil {
+		t.Fatal(err)
+	}
+	run := domain.AgentRun{ID: *requested.Envelope.RunID, TenantID: requested.Envelope.TenantID, ProjectID: *requested.Envelope.ProjectID, Status: domain.AgentRunProvisioning, Version: 2, CPUMillis: requestedPayload.CPUMillis, MemoryMiB: requestedPayload.MemoryMiB, UpdatedAt: requested.Envelope.OccurredAt.Add(time.Second)}
+	attempt := domain.AgentRunAttempt{ID: mustV7(t), TenantID: run.TenantID, RunID: run.ID, AttemptNumber: 1, Status: domain.AttemptStarting, Version: 2, SelectedCluster: "cluster-east", ExecutionProfile: "standard"}
+	scheduled, err := NewAgentRunScheduled(run, attempt, mustV7(t), mustV7(t), "correlation", "causation")
+	if err != nil {
+		t.Fatal(err)
+	}
+	validateSerializedContract(t, "agent-run.scheduled.v1", scheduled.Serialized)
+	waitEvent, err := NewAgentRunCapacityWait(domain.AgentRun{ID: run.ID, TenantID: run.TenantID, ProjectID: run.ProjectID, Status: domain.AgentRunCapacityWait, AttemptCount: 1, Version: 2, UpdatedAt: run.UpdatedAt}, "NO_CAPACITY", "no eligible cluster has sufficient capacity", run.UpdatedAt.Add(time.Minute), "correlation", "causation")
+	if err != nil {
+		t.Fatal(err)
+	}
+	validateSerializedContract(t, "agent-run.capacity-wait.v1", waitEvent.Serialized)
+	failedRun := domain.AgentRun{ID: run.ID, TenantID: run.TenantID, ProjectID: run.ProjectID, Status: domain.AgentRunPolicyRejected, FailureCategory: domain.FailurePolicy, AttemptCount: 1, Version: 2, UpdatedAt: run.UpdatedAt}
+	failed, err := NewAgentRunSchedulingRejected(failedRun, "TENANT_SUSPENDED", "tenant is suspended", "correlation", "causation")
+	if err != nil {
+		t.Fatal(err)
+	}
+	validateSerializedContract(t, "agent-run.failed.v1", failed.Serialized)
 	now := time.Date(2026, 7, 21, 14, 0, 0, 0, time.UTC)
 	dlq, err := NewDeadLetter(DeadLetterSource{Envelope: requested.Envelope, Topic: requested.Topic, Partition: 1, Offset: 9, Key: []byte(requested.PartitionKey), Headers: HeadersForEnvelope(requested.Envelope), Value: requested.Serialized}, "scheduler.v1", "INVARIANT_FAILED", "event violates scheduler invariant", 1, now, now)
 	if err != nil {
 		t.Fatalf("construct producer DLQ event: %v", err)
 	}
 	validateSerializedContract(t, "event-delivery.dead-lettered.v1", dlq.Serialized)
+}
+
+func mustV7(t *testing.T) uuid.UUID {
+	t.Helper()
+	id, err := uuid.NewV7()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return id
 }
 
 func TestEventContractSupportedConsumerFixtures(t *testing.T) {

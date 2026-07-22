@@ -95,3 +95,83 @@ The table has forced RLS and only tenant-scoped `SELECT`/`INSERT` grants for
 `agentforge_app`. Its tenant/time index supports the future one-year retention
 job, which remains disabled until replay policy is configured. Successful
 markers are never deleted to force replay.
+
+## Phase 5.2 scheduler queue boundary
+
+Migration `000005_scheduler_queue_leases` adds bounded priority, execution
+profile, optional preferred region, next-eligibility, Scheduler lease, and safe
+decision fields to `agent_runs`. The partial queue index supports queued, due
+capacity-wait, and expired-scheduling candidates ordered by priority and age.
+Database constraints require lease owner/expiry together and only while a run
+is `SCHEDULING`.
+
+The isolated `agentforge_scheduler` role has `BYPASSRLS` solely because fair
+claiming spans tenants. It receives column-level access to allowlisted run and
+attempt scheduling metadata and cannot select prompt references, request
+hashes, or cancellation text. Claims use `FOR UPDATE SKIP LOCKED`, short
+transactions, expected aggregate versions, and expiring leases. Every returned
+record retains its tenant ID for explicit tenant/run predicates downstream.
+
+## Phase 5.3 eligibility and quota boundary
+
+Migration `000006_scheduler_eligibility_quotas` adds explicit `ACTIVE` or
+`SUSPENDED` tenant/project status, tenant scheduling policies, daily budget
+usage, and append-only explained eligibility decisions. Policies bound tenant
+and user concurrency, queue depth, aggregate CPU/memory, daily integer-minor-
+unit budget, allowed runtimes/profiles, and deferral duration. Missing policy
+fails closed as a temporary deferral.
+
+Eligibility uses indexed aggregate SQL over active and waiting status sets; it
+does not load run collections. The tenant policy row is locked during snapshot
+evaluation and decision insertion. Decision rows preserve bounded outcome,
+reason, explanation, aggregate counts, resource/budget usage, run version, and
+next-eligibility time. Forced RLS remains enabled; only the isolated Scheduler
+role receives the required cross-tenant reads and decision insert.
+
+## Phase 5.4 execution-cluster registry boundary
+
+Migration `000007_execution_cluster_registry` creates global `clusters`,
+append-only `cluster_capacity_snapshots`, and tenant-scoped
+`cluster_tenant_allowlist`. Cluster identifiers, regions, statuses, bounded
+runtime/profile arrays, scheduling weights, non-negative integer costs,
+heartbeat timestamps, and versions are database constrained. Capacity reports
+are immutable per cluster and observation time and reject negative resources.
+
+Only the isolated Scheduler role can register/update clusters and capacity or
+manage allowlists. Candidate queries use the latest snapshot and require fresh
+cluster and capacity timestamps, active/non-maintenance state, compatible
+runtime/profile metadata, and an allowlist match for restricted clusters.
+
+## Phase 5.6 reservation boundary
+
+Migration `000008_scheduler_reservations` creates tenant/run/attempt-owned
+capacity and budget reservation ledgers. Partial unique indexes permit only one
+active reservation per run attempt. Cluster/expiry and tenant/expiry indexes
+support admission totals and bounded reclaim. Lifecycle checks require exactly
+the settlement or release timestamp appropriate to each state.
+
+The Scheduler role alone may create and transition reservations and adjust the
+reserved/spent columns of daily budget usage. Admission serializes on the
+tenant policy and cluster rows before checking latest capacity, existing active
+reservations, and locked daily usage. Historical released, expired, and settled
+records remain immutable evidence.
+
+## Phase 5.7 atomic intent boundary
+
+Migration `000009_atomic_scheduling_intent` attaches the selected execution
+profile and capacity/budget reservation IDs to an attempt and stores bounded
+strategy/score evidence on its run. Assignment fields are all-null or all-set.
+The Scheduler receives only the additional column reads/updates and outbox
+insert access required by the transaction.
+
+The transaction uses explicit tenant/run predicates and optimistic versions,
+and clears its lease only with the state transition. Assignment, reservations,
+daily-budget accounting, and the matching outbox envelope therefore commit or
+roll back together.
+
+Migration `000010_scheduler_policy_rejection` grants only the run failure and
+completion columns plus attempt completion time needed to atomically finalize
+a permanent scheduling policy rejection. The transaction completes the run as
+`POLICY_REJECTED`, completes its current pending attempt as `CANCELLED`, and
+inserts the failed-event outbox row. No schema object from an already committed
+sub-phase is rewritten.

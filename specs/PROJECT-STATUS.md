@@ -1,17 +1,17 @@
 # AgentForge Project Status
 
-**Last updated:** 2026-07-21
+**Last updated:** 2026-07-22
 
 ## Current milestone
 
-Phase 4 complete; next approved work is pending
+Phase 5 Scheduler complete; awaiting the next approved phase
 
 ## Overall state
 
-Phase 2 and the Phase 3.1/3.2 state-machine and persistence foundation are
-complete. At the user's direction, work has moved to Phase 4 event architecture
+Phase 2, the Phase 3.1/3.2 state-machine and persistence foundation, and Phase
+4 and 5 are complete. At the user's direction, Phase 5 Scheduler was completed
 before Phase 3.3 through 3.5 API, cancellation, and retry commands. Those gaps
-remain explicit dependencies for their corresponding outbox event integrations.
+remain explicit dependencies for their corresponding command integrations.
 
 ## Completed
 
@@ -51,17 +51,42 @@ remain explicit dependencies for their corresponding outbox event integrations.
 - Phase 4.5 machine-readable schemas for all implemented events, immutable-
   major compatibility baselines, producer contracts, supported v1 consumer
   fixtures, CI/Make validation, distributed-systems review, and completion audit
+- Phase 5.1 Scheduler implementation plan and ADR-003 covering competing
+  PostgreSQL claims, fairness, quotas, registry selection, reservations,
+  process lifecycle, observability, and failure/concurrency testing
+- Phase 5.2 bounded fair queue claims, `FOR UPDATE SKIP LOCKED`, expiring and
+  renewable Scheduler leases, least-privilege cross-tenant role, queue-age
+  telemetry hooks, safe structured logs, and concurrency/isolation tests
+- Phase 5.3 explained eligibility policies for tenant/project state, supported
+  runtime/profile, tenant/user concurrency, queue, CPU, memory, and daily
+  budget; indexed locked evaluation, persisted decisions, and noisy-neighbour
+  concurrency tests
+- Phase 5.4 validated global execution-cluster metadata, append-only capacity
+  snapshots, tenant allowlists, optimistic updates, freshness-aware candidate
+  filtering, an internal registration CLI, and PostgreSQL integration tests
+- Phase 5.5 replaceable least-loaded and region-affinity strategies with
+  integer scoring, deterministic tie-breaking, temporary no-capacity deferral,
+  bounded configuration, safe decision logging, and fallback tests
+- Phase 5.6 transactional, attempt-attached capacity and budget reservations
+  with locked admission, active-attempt uniqueness, exact-replay idempotency,
+  release/settlement, expired reclaim, and overbooking concurrency tests
+- Phase 5.7 atomic lease/policy/cluster revalidation, capacity and budget
+  reservation, attempt assignment, `PROVISIONING` transition, versioned
+  scheduled/capacity-wait outbox contracts, exact replay, and concurrency tests
+- Phase 5.8 independently runnable Scheduler with bounded workers/backpressure,
+  authoritative polling, optional Kafka wake hints, bounded jitter/backoff,
+  graceful shutdown, PostgreSQL readiness, liveness/metrics, non-root image,
+  root Compose integration, service tests, and Phase 5 completion audit
 
 ## In progress
 
-- No implementation phase is currently in progress
+- None
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Scheduler
 - Kubernetes Operator
 - Agent Runner
 - Model Gateway
@@ -75,8 +100,7 @@ remain explicit dependencies for their corresponding outbox event integrations.
 
 ## Next tasks
 
-1. Resume Phase 3.3 authenticated create/get/list API work when approved.
-2. Preserve the unresolved cancellation/retry event wiring until their Phase
-   3.4/3.5 command transactions exist.
-3. Wire the relay and first business consumer into deployable workloads only
-   in their approved owning phases.
+1. Select the next approved milestone: resume Phase 3.3 command/API work or
+   begin Phase 6 Operator integration.
+2. Preserve the unresolved Phase 3 cancellation/retry command dependencies and
+   the Phase 6 no-Kubernetes boundary.

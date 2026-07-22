@@ -18,3 +18,4 @@ Initial decisions to record:
 
 - `docs/adr/ADR-001-postgresql-persistence-and-migrations.md`
 - `docs/adr/ADR-002-transactional-outbox-and-at-least-once-events.md`
+- `docs/adr/ADR-003-postgresql-scheduler-leases-and-reservations.md`

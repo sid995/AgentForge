@@ -46,6 +46,37 @@ Unknown errors become a generic stored reason. Malformed broker bytes and
 unapproved headers are not copied into DLQ events; only a SHA-256 fingerprint,
 byte count, bounded source coordinates, and trusted quarantine tenant are used.
 
+## Phase 5.2 Scheduler isolation
+
+Global fair claiming uses a distinct `agentforge_scheduler` login and database
+role. It has `BYPASSRLS` only for queue coordination and receives column-level
+grants for run identity, resource requests, runtime/profile, actor, priority,
+version, and lease metadata plus current-attempt identity/status. It cannot
+select prompt references, request hashes, cancellation reasons, project
+repository URLs, or unrelated tenant tables. Application and Scheduler
+credentials are not interchangeable.
+
+Claim and renewal SQL always carry tenant identity forward and every targeted
+renewal predicates both `tenant_id` and run ID. Integration tests prove a
+foreign tenant renewal is not found and the Scheduler credential cannot read a
+prompt reference. Logs replace raw database errors with a bounded category.
+
+Phase 5.3 extends the Scheduler role only with tenant/project status, validated
+policy and budget usage reads, a narrow policy-row lock permission, and
+eligibility-decision inserts. Eligibility explanations are allowlisted and
+bounded; they never include prompts, repository details, database errors, or
+credentials. The trusted `created_by` value is used as the temporary user quota
+key until the identity tables replace it; clients cannot supply it directly at
+the Scheduler boundary.
+
+Phases 5.4 through 5.8 extend that role incrementally with registry,
+reservation, assignment, safe decision, and outbox columns only. The role can
+insert events but cannot relay or delete them, and cannot read prompt/source or
+authentication data. The non-root Scheduler image receives its isolated URL
+through Compose/runtime configuration. Kafka is an optional hint channel; its
+tenant and correlation metadata are accepted only after strict envelope,
+header, topic, and key validation.
+
 ## Secrets
 
 Store secrets in a cloud secret manager or Vault. Database rows hold references only. The agent accesses approved capabilities through brokers or scoped credentials. Every secret access is audited.

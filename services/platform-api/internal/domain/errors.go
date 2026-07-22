@@ -13,4 +13,8 @@ var (
 	ErrVersionConflict = errors.New("resource version conflicts with current state")
 	// ErrInvalidTransition is returned when a command violates the aggregate state machine.
 	ErrInvalidTransition = errors.New("state transition is not permitted")
+	// ErrCapacityUnavailable indicates a temporary lack of execution capacity.
+	ErrCapacityUnavailable = errors.New("execution capacity is unavailable")
+	// ErrBudgetUnavailable indicates a temporary lack of tenant budget.
+	ErrBudgetUnavailable = errors.New("tenant budget is unavailable")
 )

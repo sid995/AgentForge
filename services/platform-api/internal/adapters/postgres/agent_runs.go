@@ -209,11 +209,15 @@ func (repository *AgentRunRepository) SaveAttempt(ctx context.Context, attempt d
 	defer func() { _ = tx.Rollback() }()
 	updated, err := scanAttempt(tx.QueryRowContext(ctx, `
 		update agent_run_attempts
-		set status = $1, failure_category = nullif($2, ''), selected_cluster = nullif($3, ''), workload_reference = nullif($4, ''),
-			version = version + 1, updated_at = $5, started_at = $6, completed_at = $7
-		where tenant_id = $8 and id = $9 and version = $10
-		returning id, tenant_id, run_id, attempt_number, status, coalesce(failure_category, ''), version, coalesce(selected_cluster, ''), coalesce(workload_reference, ''), created_at, updated_at, started_at, completed_at`,
-		attempt.Status, attempt.FailureCategory, attempt.SelectedCluster, attempt.WorkloadReference, attempt.UpdatedAt, attempt.StartedAt, attempt.CompletedAt, attempt.TenantID, attempt.ID, expectedVersion))
+		set status = $1, failure_category = nullif($2, ''), selected_cluster = nullif($3, ''), execution_profile = nullif($4, ''),
+			capacity_reservation_id = nullif($5::uuid, '00000000-0000-0000-0000-000000000000'), budget_reservation_id = nullif($6::uuid, '00000000-0000-0000-0000-000000000000'),
+			workload_reference = nullif($7, ''), version = version + 1, updated_at = $8, started_at = $9, completed_at = $10
+		where tenant_id = $11 and id = $12 and version = $13
+		returning id, tenant_id, run_id, attempt_number, status, coalesce(failure_category, ''), version, coalesce(selected_cluster, ''), coalesce(execution_profile, ''),
+			coalesce(capacity_reservation_id, '00000000-0000-0000-0000-000000000000'), coalesce(budget_reservation_id, '00000000-0000-0000-0000-000000000000'),
+			coalesce(workload_reference, ''), created_at, updated_at, started_at, completed_at`,
+		attempt.Status, attempt.FailureCategory, attempt.SelectedCluster, attempt.ExecutionProfile, attempt.CapacityReservationID, attempt.BudgetReservationID,
+		attempt.WorkloadReference, attempt.UpdatedAt, attempt.StartedAt, attempt.CompletedAt, attempt.TenantID, attempt.ID, expectedVersion))
 	if err != nil {
 		return domain.AgentRunAttempt{}, repository.saveError(ctx, tx, attempt.TenantID, attempt.RunID, err)
 	}
@@ -274,7 +278,8 @@ const agentRunSelect = `select id, tenant_id, project_id, prompt_reference, runt
 	coalesce(cancellation_requested_by, ''), cancellation_requested_at, created_at, updated_at, completed_at from agent_runs`
 
 const attemptSelect = `select id, tenant_id, run_id, attempt_number, status, coalesce(failure_category, ''), version, coalesce(selected_cluster, ''),
-	coalesce(workload_reference, ''), created_at, updated_at, started_at, completed_at from agent_run_attempts`
+	coalesce(execution_profile, ''), coalesce(capacity_reservation_id, '00000000-0000-0000-0000-000000000000'),
+	coalesce(budget_reservation_id, '00000000-0000-0000-0000-000000000000'), coalesce(workload_reference, ''), created_at, updated_at, started_at, completed_at from agent_run_attempts`
 
 func scanAgentRun(row scanner) (domain.AgentRun, error) {
 	var run domain.AgentRun
@@ -287,7 +292,8 @@ func scanAgentRun(row scanner) (domain.AgentRun, error) {
 func scanAttempt(row scanner) (domain.AgentRunAttempt, error) {
 	var attempt domain.AgentRunAttempt
 	err := row.Scan(&attempt.ID, &attempt.TenantID, &attempt.RunID, &attempt.AttemptNumber, &attempt.Status, &attempt.FailureCategory, &attempt.Version,
-		&attempt.SelectedCluster, &attempt.WorkloadReference, &attempt.CreatedAt, &attempt.UpdatedAt, &attempt.StartedAt, &attempt.CompletedAt)
+		&attempt.SelectedCluster, &attempt.ExecutionProfile, &attempt.CapacityReservationID, &attempt.BudgetReservationID,
+		&attempt.WorkloadReference, &attempt.CreatedAt, &attempt.UpdatedAt, &attempt.StartedAt, &attempt.CompletedAt)
 	return attempt, err
 }
 
