@@ -135,3 +135,23 @@ distinguishes `GracefulCancellation` from `ForcedCancellation`; current Job,
 Pod, timing, and prior failure diagnostics are retained. Repeated requests and
 already-missing Jobs converge without recreating work. An already observed
 terminal Job result wins a later cancellation race.
+
+## Phase 6.8 retry reconciliation
+
+Operator retries require both a desired-state allowlist entry and approval by
+the platform taxonomy. Only `TRANSIENT_DEPENDENCY` and `INTERNAL` are eligible;
+validation, authentication, authorization, quota, conflict, permanent
+dependency, execution/test, policy, success, and cancellation outcomes never
+retry. The current observed attempt must also remain below `maxAttempts`.
+
+Backoff doubles from `initialBackoffSeconds`, is capped by
+`maxBackoffSeconds`, and receives deterministic 50-100% jitter derived from
+the immutable run ID and next attempt. Completion or stable condition time
+anchors the delay, making it restart-safe. `RetryReady` exposes pending and
+started states.
+
+When ready, the Operator first persists the next observed attempt and retains
+the prior terminal attempt entry. Current Job/Pod/timing/failure/result fields
+are cleared, then the normal prerequisite reconciler derives fresh
+attempt-qualified resources. The failed Job is never adopted or reused, and a
+status conflict cannot create the next Job before the attempt advance commits.

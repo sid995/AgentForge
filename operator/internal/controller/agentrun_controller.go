@@ -55,6 +55,7 @@ const (
 	ConditionJobReady             = "JobReady"
 	ConditionReady                = "Ready"
 	ConditionCancellationComplete = "CancellationComplete"
+	ConditionRetryReady           = "RetryReady"
 	ConditionCleanupPending       = "CleanupPending"
 
 	minimumRetryDelay = time.Second
@@ -149,6 +150,19 @@ func (r *AgentRunReconciler) Reconcile(ctx context.Context, request ctrl.Request
 
 	beforeStatus := run.DeepCopy()
 	if currentAttemptTerminal(run) {
+		if run.Spec.DesiredState == executionv1alpha1.DesiredStateRunning && retryAllowed(run) {
+			result := r.reconcileRetry(run)
+			changed, err := r.patchStatusIfChanged(ctx, beforeStatus, run)
+			if err != nil {
+				reconcileErr := classifyAPIError("RetryStatusWriteFailed", err)
+				outcome = string(reconcileErr.Class) + "_error"
+				return ctrl.Result{}, terminalIfPermanent(reconcileErr)
+			}
+			if !changed {
+				outcome = "unchanged"
+			}
+			return result, nil
+		}
 		run.Status.ObservedGeneration = run.Generation
 		for index := range run.Status.Conditions {
 			run.Status.Conditions[index].ObservedGeneration = run.Generation
@@ -185,6 +199,9 @@ func (r *AgentRunReconciler) Reconcile(ctx context.Context, request ctrl.Request
 	}
 	r.initializeAcceptedStatus(run)
 	result, prerequisiteErr := r.reconcilePrerequisites(ctx, run)
+	if prerequisiteErr == nil && retryAllowed(run) {
+		result = r.reconcileRetry(run)
+	}
 	changed, err := r.patchStatusIfChanged(ctx, beforeStatus, run)
 	if err != nil {
 		reconcileErr := classifyAPIError("StatusWriteFailed", err)

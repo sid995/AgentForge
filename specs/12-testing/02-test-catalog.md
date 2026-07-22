@@ -74,9 +74,14 @@
   observed success, repeated cancellation, already-missing Job convergence,
   graceful delete, forced deadline, exact Job-owner Pod filtering, and
   controller restart recovery;
+- retry allowlist intersection, every approved and prohibited category,
+  attempt ceiling, deterministic exponential capped jitter, restart recovery,
+  prior-attempt retention, current-field reset, new deterministic Job identity,
+  failed-Job retention, and Kubernetes 1.36 envtest Job creation;
 - a pinned kind 0.32.0 two-node cluster using Kubernetes 1.36.1 by digest,
   proving real scheduling, PVC binding, Pod completion, missing-evidence
-  failure, attempt projection, and one-Job idempotency;
+  failure, attempt projection, one-Job idempotency, and a transient image-pull
+  failure advancing to a distinct second-attempt Job;
 - non-root Operator image and configured leader election, health, readiness,
   authenticated metrics, and structured logging foundation.
 

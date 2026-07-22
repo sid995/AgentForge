@@ -99,4 +99,36 @@ if [[ "${job_count_after_reconcile}" != "1" ]]; then
     exit 1
 fi
 
+deadline=$((SECONDS + 300))
+retry_phase=""
+retry_attempt=""
+while (( SECONDS < deadline )); do
+    retry_phase="$("${kubectl_bin}" get agentrun lifecycle-transient-retry \
+        --namespace agentforge-kind-lifecycle \
+        -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+    retry_attempt="$("${kubectl_bin}" get agentrun lifecycle-transient-retry \
+        --namespace agentforge-kind-lifecycle \
+        -o jsonpath='{.status.attempt}' 2>/dev/null || true)"
+    if [[ "${retry_phase}" == "Failed" && "${retry_attempt}" == "2" ]]; then
+        break
+    fi
+    if ! kill -0 "${manager_pid}" 2>/dev/null; then
+        break
+    fi
+    sleep 2
+done
+retry_category="$("${kubectl_bin}" get agentrun lifecycle-transient-retry --namespace agentforge-kind-lifecycle -o jsonpath='{.status.failureCategory}' 2>/dev/null || true)"
+retry_job_count="$("${kubectl_bin}" get jobs --namespace agentforge-kind-lifecycle -l execution.agentforge.dev/run-id=019b0000-0000-7000-8000-000000000023 -o name | wc -l | tr -d ' ')"
+retry_job_names="$("${kubectl_bin}" get jobs --namespace agentforge-kind-lifecycle -l execution.agentforge.dev/run-id=019b0000-0000-7000-8000-000000000023 -o name)"
+if [[ "${retry_phase}" != "Failed" || "${retry_attempt}" != "2" ||
+      "${retry_category}" != "TRANSIENT_DEPENDENCY" || "${retry_job_count}" != "2" ||
+      "${retry_job_names}" != *"-a1-job"* || "${retry_job_names}" != *"-a2-job"* ]]; then
+    printf 'unexpected retry result: phase=%s attempt=%s category=%s jobs=%s names=%s\n' \
+        "${retry_phase}" "${retry_attempt}" "${retry_category}" "${retry_job_count}" "${retry_job_names}" >&2
+    printf '%s\n' 'operator manager log:' >&2
+    sed -n '1,240p' "${manager_log}" >&2
+    "${kubectl_bin}" get agentrun,jobs,pods,persistentvolumeclaims --namespace agentforge-kind-lifecycle -o yaml >&2 || true
+    exit 1
+fi
+
 printf '%s\n' 'kind lifecycle integration gate passed'

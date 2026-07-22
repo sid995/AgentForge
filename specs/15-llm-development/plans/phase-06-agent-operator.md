@@ -128,6 +128,14 @@ Apply the approved retry taxonomy and attempt ceiling, use deterministic new
 Job names and bounded jittered backoff, retain prior attempt metadata, and
 never retry security, invalid-configuration, or unapproved test failures.
 
+Status: implemented and validated. Desired retry categories are intersected
+with the platform's transient/internal allowlist and attempt ceiling. Backoff
+is exponential, capped, deterministically jittered, and restart-stable. Status
+commits the new attempt before fresh attempt-qualified resources are created,
+while prior attempt and failed Job history remain intact.
+Kubernetes 1.36.1 kind also proves a transient pull failure creates distinct
+attempt-one and attempt-two Jobs.
+
 ### 6.9 Finalization and cleanup
 
 Use ownership for cluster-local garbage collection and a finalizer only for

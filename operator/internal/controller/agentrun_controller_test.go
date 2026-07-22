@@ -417,6 +417,64 @@ func TestAgentRunReconcilerFoundationEnvtest(t *testing.T) {
 		}
 	})
 
+	t.Run("retry retains failed attempt and creates a new deterministic Job", func(t *testing.T) {
+		run := validControllerAgentRun("retry-new-job")
+		run.Spec.Workspace.StorageClassName = "wait-consumer"
+		run.Spec.RetryPolicy.MaxAttempts = 2
+		run.Spec.RetryPolicy.RetryableFailureCategories = []executionv1alpha1.FailureCategory{executionv1alpha1.FailureCategoryTransientDependency}
+		if err := baseClient.Create(ctx, run); err != nil {
+			t.Fatalf("create retry AgentRun: %v", err)
+		}
+		stored := getControllerAgentRun(t, ctx, baseClient, run.Name)
+		desired, err := resources.NewDefaultBuilder().BuildAll(stored)
+		if err != nil {
+			t.Fatalf("build first-attempt Job: %v", err)
+		}
+		if err := baseClient.Create(ctx, desired.Job); err != nil {
+			t.Fatalf("create failed first-attempt Job: %v", err)
+		}
+		completion := metav1.NewTime(fixedReconcileTime.Add(-time.Minute))
+		stored.Status = executionv1alpha1.AgentRunStatus{
+			Phase: executionv1alpha1.AgentRunPhaseFailed, ObservedGeneration: stored.Generation,
+			Attempt: 1, Namespace: stored.Namespace, JobName: desired.Job.Name,
+			CompletionTime: &completion, FailureCategory: executionv1alpha1.FailureCategoryTransientDependency,
+			FailureReason: "Execution Pod was evicted",
+			Attempts: []executionv1alpha1.AttemptStatus{{
+				Attempt: 1, JobName: desired.Job.Name, Phase: executionv1alpha1.AgentRunPhaseFailed,
+				CompletionTime: &completion, FailureCategory: executionv1alpha1.FailureCategoryTransientDependency,
+				FailureReason: "Execution Pod was evicted",
+			}},
+		}
+		if err := baseClient.Status().Update(ctx, stored); err != nil {
+			t.Fatalf("record retryable failure: %v", err)
+		}
+
+		result, err := reconciler.Reconcile(ctx, requestFor(run.Name))
+		if err != nil || result.RequeueAfter <= 0 {
+			t.Fatalf("advance retry attempt: result=%#v err=%v", result, err)
+		}
+		stored = getControllerAgentRun(t, ctx, baseClient, run.Name)
+		if stored.Status.Attempt != 2 || stored.Status.Phase != executionv1alpha1.AgentRunPhasePending || len(stored.Status.Attempts) != 2 {
+			t.Fatalf("retry attempt status: %#v", stored.Status)
+		}
+		secondNames, err := naming.ForAgentRun(stored)
+		if err != nil {
+			t.Fatalf("derive second-attempt names: %v", err)
+		}
+		if secondNames.Job == desired.Job.Name {
+			t.Fatal("retry reused the failed Job name")
+		}
+		if _, err := reconciler.Reconcile(ctx, requestFor(run.Name)); err != nil {
+			t.Fatalf("reconcile retry resources: %v", err)
+		}
+		if err := baseClient.Get(ctx, client.ObjectKey{Namespace: run.Namespace, Name: secondNames.Job}, &batchv1.Job{}); err != nil {
+			t.Fatalf("new retry Job was not created: %v", err)
+		}
+		if err := baseClient.Get(ctx, client.ObjectKeyFromObject(desired.Job), &batchv1.Job{}); err != nil {
+			t.Fatalf("failed Job was not retained as history: %v", err)
+		}
+	})
+
 	t.Run("conflicting pre-existing resource is permanent", func(t *testing.T) {
 		run := validControllerAgentRun("resource-conflict")
 		if err := baseClient.Create(ctx, run); err != nil {

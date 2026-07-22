@@ -48,3 +48,8 @@ Graceful cancellation deletes the deterministic owned Job with foreground
 propagation. Forced cancellation lists by Job label but acts only after exact
 controller APIVersion, kind, name, and UID verification, so a spoofed label
 cannot cause another Pod to be deleted.
+
+Phase 6.8 applies a hard platform retry allowlist after the desired CR
+allowlist. `POLICY`, `VALIDATION`, `PERMANENT_DEPENDENCY`, and `EXECUTION`
+outcomes cannot be relabeled or retried, preventing security-policy,
+configuration, and failed-test bypass through retry configuration.

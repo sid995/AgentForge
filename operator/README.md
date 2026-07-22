@@ -83,6 +83,13 @@ controller restarts. After that deadline, only Pods whose controller UID
 matches the observed Job are force-deleted. Status distinguishes graceful and
 forced cancellation, retains existing diagnostics, and remains idempotent.
 
+Phase 6.8 retries only desired categories that also pass the platform policy:
+`TRANSIENT_DEPENDENCY` and `INTERNAL`. Exponential delay is capped by the CR
+policy and receives deterministic 50-100% jitter, so restart does not change a
+scheduled retry. The Operator retains the failed attempt, advances the observed
+attempt, clears only current-attempt projections, and then creates resources
+under a new attempt-qualified deterministic Job name.
+
 Run the real lifecycle gate with:
 
 ```bash
@@ -92,4 +99,5 @@ make test-kind
 The target downloads kind 0.32.0 into `bin/` and creates a disposable two-node
 Kubernetes 1.36.1 cluster from a digest-pinned image. It proves PVC consumer
 binding, real Pod completion, mandatory-evidence enforcement, attempt status,
-and duplicate-safe Job creation.
+duplicate-safe Job creation, and a transient image-pull failure producing two
+distinct attempt-qualified Jobs under the retry ceiling.

@@ -110,17 +110,21 @@ remain explicit dependencies for their corresponding command integrations.
   durable two-minute restart-safe deadline, exact owner-UID forced Pod
   termination, graceful/forced terminal status, completion-race preservation,
   repeated cancellation idempotency, and focused controller tests
+- Phase 6.8 desired/platform retry-policy intersection, strict non-retryable
+  security/configuration/test outcomes, attempt ceilings, deterministic capped
+  exponential jitter, restart-safe deadlines, retained attempt history,
+  status-before-resource ordering, and fresh deterministic retry Jobs
 
 ## In progress
 
-- Phase 6.8 retry reconciliation
+- Phase 6.9 finalizer and cleanup reconciliation
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Phase 6.8 through 6.10 Operator retry, cleanup, and Scheduler handoff
+- Phase 6.9 through 6.10 Operator cleanup and Scheduler handoff
 - Agent Runner
 - Model Gateway
 - Build and deployment services
@@ -133,7 +137,7 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Commit the validated Phase 6.7 cancellation reconciliation.
-2. Implement and commit Phase 6.8 retry reconciliation.
+1. Commit the validated Phase 6.8 retry reconciliation.
+2. Implement and commit Phase 6.9 finalizer and cleanup reconciliation.
 3. Preserve the unresolved Phase 3 cancellation/retry command dependencies and
    the Phase 6 no-Kubernetes boundary.

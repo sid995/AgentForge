@@ -60,6 +60,12 @@ Kubernetes-standard conditions. Phase is one of `Pending`, `Provisioning`,
 `Running`, `Succeeded`, `Failed`, `Cancelling`, or `Cancelled`. Printer columns
 show phase, attempt, Job, and age.
 
+The immutable spec `attempt` is the Scheduler-assigned starting execution
+attempt for this CR. Approved Operator infrastructure retries advance only the
+controller-owned status `attempt`, retain each prior status entry, and remain
+bounded by `retryPolicy.maxAttempts`; they do not mutate Scheduler intent or
+the immutable `attemptId`.
+
 Failure categories are stable and non-sensitive: `VALIDATION`,
 `AUTHENTICATION`, `AUTHORIZATION`, `QUOTA`, `CONFLICT`,
 `TRANSIENT_DEPENDENCY`, `PERMANENT_DEPENDENCY`, `EXECUTION`, `POLICY`, and
@@ -84,4 +90,5 @@ deepcopy output, and a full sample manifest. Kubernetes 1.36 envtest proves
 schema installation, required fields, safe defaults, invalid combinations,
 list uniqueness, immutable intent, one-way cancellation, printer columns, and
 status-subresource isolation. Reconciliation and child-resource creation begin
-in later sub-phases.
+in later sub-phases. Phase 6.8 implements the bounded status-attempt
+progression described above.

@@ -123,3 +123,23 @@ followed by a forced Job delete. Absence then projects terminal `Cancelled`
 with either `GracefulCancellation` or `ForcedCancellation`. Repeated terminal
 reconciliation is a semantic no-op, existing diagnostics are retained, and a
 fully observed terminal Job outcome wins a later cancellation request.
+
+## Phase 6.8 retry
+
+A failed attempt retries only when its category is both present in the CR
+allowlist and one of the platform-approved `TRANSIENT_DEPENDENCY` or `INTERNAL`
+categories, with an observed attempt below `maxAttempts`. Security policy,
+invalid configuration, permanent dependency, execution/test, success, and
+cancellation states cannot retry.
+
+Retry delay doubles per Operator attempt, stops at the CR maximum, and uses
+deterministic 50-100% jitter from run identity plus next attempt. The terminal
+completion time, or a stable condition transition when completion time is
+absent, anchors the deadline across restarts. `RetryReady=False/BackoffPending`
+is durable and requeues for the remaining interval.
+
+After the deadline, one status patch retains the failed attempt and advances
+the current attempt to `Pending`, clearing only current execution projections.
+A subsequent reconciliation derives a new attempt-qualified Job and related
+resources. This ordering prevents a status conflict or controller crash from
+creating work for an uncommitted attempt, and the failed Job remains distinct.

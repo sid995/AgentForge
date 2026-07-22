@@ -34,3 +34,42 @@ spec:
   artifactDestinationRef:
     name: artifact-store
   desiredState: Running
+---
+apiVersion: execution.agentforge.dev/v1alpha1
+kind: AgentRun
+metadata:
+  name: lifecycle-transient-retry
+  namespace: agentforge-kind-lifecycle
+spec:
+  tenantId: 019b0000-0000-7000-8000-000000000021
+  projectId: 019b0000-0000-7000-8000-000000000022
+  runId: 019b0000-0000-7000-8000-000000000023
+  attemptId: 019b0000-0000-7000-8000-000000000024
+  attempt: 1
+  runnerImage: docker.io/library/busybox@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  runtime: shell-1.0
+  executionProfile: standard
+  taskRef: vault://tasks/kind-retry
+  timeoutSeconds: 120
+  retryPolicy:
+    maxAttempts: 2
+    initialBackoffSeconds: 2
+    maxBackoffSeconds: 5
+    retryableFailureCategories:
+      - TRANSIENT_DEPENDENCY
+  resources:
+    requests:
+      cpuMillis: 100
+      memoryMiB: 64
+    limits:
+      cpuMillis: 200
+      memoryMiB: 128
+  workspace:
+    sizeGiB: 1
+    storageClassName: standard
+    retentionPolicy: Delete
+  network:
+    profile: Isolated
+  artifactDestinationRef:
+    name: artifact-store
+  desiredState: Running
