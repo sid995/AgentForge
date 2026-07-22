@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 5.4: Execution-cluster registry
+Phase 5.5: Deterministic cluster selection
 
 ## Overall state
 
@@ -61,10 +61,13 @@ remain explicit dependencies for their corresponding command integrations.
   runtime/profile, tenant/user concurrency, queue, CPU, memory, and daily
   budget; indexed locked evaluation, persisted decisions, and noisy-neighbour
   concurrency tests
+- Phase 5.4 validated global execution-cluster metadata, append-only capacity
+  snapshots, tenant allowlists, optimistic updates, freshness-aware candidate
+  filtering, an internal registration CLI, and PostgreSQL integration tests
 
 ## In progress
 
-- Phase 5.4 validated execution-cluster registry
+- Phase 5.5 deterministic, replaceable cluster selection
 
 ## Not started
 
@@ -86,7 +89,7 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Implement Phase 5.4 execution-cluster registry and health rules.
+1. Implement Phase 5.5 deterministic cluster selection strategies.
 2. Implement each remaining Scheduler sub-phase through Phase 5.8 with a clean
    commit boundary.
 3. Preserve the unresolved Phase 3 cancellation/retry command dependencies and

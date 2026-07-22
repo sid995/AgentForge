@@ -50,3 +50,11 @@ type SchedulerQueueRepository interface {
 type SchedulerEligibilityRepository interface {
 	Evaluate(context.Context, ClaimedRun, time.Time) (domain.EligibilityDecision, error)
 }
+
+// ClusterRegistry owns trusted execution-cluster metadata and capacity reports.
+type ClusterRegistry interface {
+	Register(context.Context, domain.ExecutionCluster, domain.ClusterCapacity, []uuid.UUID) error
+	Update(context.Context, domain.ExecutionCluster, int64, domain.ClusterCapacity, []uuid.UUID) (domain.ExecutionCluster, error)
+	Get(context.Context, string) (domain.ExecutionCluster, domain.ClusterCapacity, error)
+	ListCandidates(context.Context, uuid.UUID, string, string, time.Time, time.Duration) ([]domain.ClusterCandidate, error)
+}

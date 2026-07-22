@@ -127,3 +127,17 @@ evaluation and decision insertion. Decision rows preserve bounded outcome,
 reason, explanation, aggregate counts, resource/budget usage, run version, and
 next-eligibility time. Forced RLS remains enabled; only the isolated Scheduler
 role receives the required cross-tenant reads and decision insert.
+
+## Phase 5.4 execution-cluster registry boundary
+
+Migration `000007_execution_cluster_registry` creates global `clusters`,
+append-only `cluster_capacity_snapshots`, and tenant-scoped
+`cluster_tenant_allowlist`. Cluster identifiers, regions, statuses, bounded
+runtime/profile arrays, scheduling weights, non-negative integer costs,
+heartbeat timestamps, and versions are database constrained. Capacity reports
+are immutable per cluster and observation time and reject negative resources.
+
+Only the isolated Scheduler role can register/update clusters and capacity or
+manage allowlists. Candidate queries use the latest snapshot and require fresh
+cluster and capacity timestamps, active/non-maintenance state, compatible
+runtime/profile metadata, and an allowlist match for restricted clusters.

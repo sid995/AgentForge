@@ -70,3 +70,17 @@ append-only decision in one transaction. Resource equality is allowed; a limit
 is blocked only when the candidate would exceed it. Queue equality is allowed
 because the claimed candidate is already included in the waiting count. Final
 quota admission is re-evaluated with reservations in Phase 5.7.
+
+## Phase 5.4 implementation
+
+The global execution-cluster registry stores validated region, status,
+maintenance, runtime/profile support, integer cost/weight, heartbeat, and
+optimistic version metadata. Append-only capacity snapshots report allocatable
+CPU/memory and queued workloads. Restricted clusters require an explicit
+tenant allowlist; unrestricted clusters are available to every tenant.
+
+The Scheduler-only repository supports registration, version-checked updates,
+latest-snapshot reads, and deterministic candidate listing. Candidates must be
+active, outside maintenance, heartbeat- and capacity-fresh, runtime/profile
+compatible, and tenant-allowed. The internal `clusterctl` command uses the
+same validation and repository path; it is not a tenant-facing API.

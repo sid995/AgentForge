@@ -21,7 +21,12 @@ and concurrent PostgreSQL integration tests.
 Phase 5.3 is now implemented and verified by migration 000006, focused domain
 policy specifications, indexed/locked PostgreSQL evaluation, append-only
 decision history, bounded telemetry, boundary tests, and concurrent saturated-
-versus-unrelated tenant integration tests. Phase 5.4 is next.
+versus-unrelated tenant integration tests.
+
+Phase 5.4 is now implemented and verified by migration 000007, validated
+cluster/capacity domain records, a least-privilege PostgreSQL registry,
+freshness/runtime/profile/allowlist candidate filtering, an internal CLI, and
+integration tests. Phase 5.5 is next.
 
 ## Process boundary
 
