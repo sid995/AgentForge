@@ -84,3 +84,18 @@ latest-snapshot reads, and deterministic candidate listing. Candidates must be
 active, outside maintenance, heartbeat- and capacity-fresh, runtime/profile
 compatible, and tenant-allowed. The internal `clusterctl` command uses the
 same validation and repository path; it is not a tenant-facing API.
+
+## Phase 5.5 implementation
+
+The replaceable `Strategy` boundary provides `least-loaded` and
+`region-affinity` selection. Both exclude insufficient capacity and compute an
+integer score from projected CPU/memory utilization, reported queued work,
+approved integer cost, and scheduling weight. Ties compare utilization, queue,
+cost, then cluster ID. Region affinity first ranks sufficient preferred-region
+candidates and deterministically falls back to the global set.
+
+No sufficient candidate returns a typed temporary deferral. Each successful
+decision records the strategy, cluster, reason, score components, fallback,
+and time. The observable application wrapper logs only safe decision fields
+and uses bounded strategy/result metric dimensions. The strategy is selected
+by the validated `AGENTFORGE_SCHEDULER_STRATEGY` configuration value.

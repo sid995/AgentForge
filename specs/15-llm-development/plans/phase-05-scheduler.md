@@ -26,7 +26,12 @@ versus-unrelated tenant integration tests.
 Phase 5.4 is now implemented and verified by migration 000007, validated
 cluster/capacity domain records, a least-privilege PostgreSQL registry,
 freshness/runtime/profile/allowlist candidate filtering, an internal CLI, and
-integration tests. Phase 5.5 is next.
+integration tests.
+
+Phase 5.5 is now implemented and verified by replaceable strategies, bounded
+strategy configuration, deterministic integer scoring and tie-breaking,
+temporary capacity deferral, observable safe decisions, and region-fallback
+tests. Phase 5.6 is next.
 
 ## Process boundary
 

@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 5.5: Deterministic cluster selection
+Phase 5.6: Capacity and budget reservations
 
 ## Overall state
 
@@ -64,10 +64,13 @@ remain explicit dependencies for their corresponding command integrations.
 - Phase 5.4 validated global execution-cluster metadata, append-only capacity
   snapshots, tenant allowlists, optimistic updates, freshness-aware candidate
   filtering, an internal registration CLI, and PostgreSQL integration tests
+- Phase 5.5 replaceable least-loaded and region-affinity strategies with
+  integer scoring, deterministic tie-breaking, temporary no-capacity deferral,
+  bounded configuration, safe decision logging, and fallback tests
 
 ## In progress
 
-- Phase 5.5 deterministic, replaceable cluster selection
+- Phase 5.6 capacity and budget reservations
 
 ## Not started
 
@@ -89,7 +92,7 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Implement Phase 5.5 deterministic cluster selection strategies.
+1. Implement Phase 5.6 capacity and budget reservations.
 2. Implement each remaining Scheduler sub-phase through Phase 5.8 with a clean
    commit boundary.
 3. Preserve the unresolved Phase 3 cancellation/retry command dependencies and
