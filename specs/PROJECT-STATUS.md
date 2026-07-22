@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 5.2: Scheduler queued-run claiming
+Phase 5.3: Scheduler eligibility and quotas
 
 ## Overall state
 
@@ -54,18 +54,21 @@ remain explicit dependencies for their corresponding command integrations.
 - Phase 5.1 Scheduler implementation plan and ADR-003 covering competing
   PostgreSQL claims, fairness, quotas, registry selection, reservations,
   process lifecycle, observability, and failure/concurrency testing
+- Phase 5.2 bounded fair queue claims, `FOR UPDATE SKIP LOCKED`, expiring and
+  renewable Scheduler leases, least-privilege cross-tenant role, queue-age
+  telemetry hooks, safe structured logs, and concurrency/isolation tests
 
 ## In progress
 
-- Phase 5.2 queued-run claiming and scheduler leases
+- Phase 5.3 eligibility decisions and quota evaluation
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Scheduler eligibility, cluster registry/selection, reservations, scheduling
-  intent, and process lifecycle after the current claim sub-phase
+- Scheduler cluster registry/selection, reservations, scheduling intent, and
+  process lifecycle after the current eligibility sub-phase
 - Kubernetes Operator
 - Agent Runner
 - Model Gateway
@@ -79,7 +82,7 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Implement and commit Phase 5.2 queued-run claiming and leases.
+1. Implement Phase 5.3 eligibility decisions and quota evaluation.
 2. Implement each remaining Scheduler sub-phase through Phase 5.8 with a clean
    commit boundary.
 3. Preserve the unresolved Phase 3 cancellation/retry command dependencies and

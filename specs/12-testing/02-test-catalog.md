@@ -9,6 +9,9 @@
 - scheduler crash before and after CR creation.
 - operator restart during active Job.
 - retryable and terminal attempt failure.
+- concurrent Scheduler claims, active/expired leases, priority and age order,
+  fairness rounds, optimistic renewal conflicts, empty queues, transient
+  database errors, and Scheduler-role tenant/data isolation.
 
 ## Messaging
 

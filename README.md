@@ -19,7 +19,7 @@ This repository contains the complete specification and GPT-5.6 Codex execution 
 - [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md): current implementation status
 - [`specs/TRACEABILITY.md`](specs/TRACEABILITY.md): requirement-to-code-and-test mapping
 - [`specs/15-llm-development/05-codex-execution-playbook.md`](specs/15-llm-development/05-codex-execution-playbook.md): complete phased prompt sequence
-- [`.env.example`](.env.example): documented local configuration through Phase 4.5
+- [`.env.example`](.env.example): documented local configuration through Phase 5.2
 
 ## Current state
 
@@ -33,5 +33,6 @@ contracts, Kafka adapters, and pinned local Redpanda in the same root Compose
 file. Phase 4.4 adds database-idempotent consumer transactions and retry/DLQ
 routing. Phase 4.5 adds machine-readable schemas for every implemented event,
 immutable-major compatibility baselines, producer contracts, supported
-consumer fixtures, and CI validation; see
+consumer fixtures, and CI validation. Phase 5.1 defines the Scheduler design;
+Phase 5.2 adds fair competing PostgreSQL queue claims and expiring leases; see
 [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).

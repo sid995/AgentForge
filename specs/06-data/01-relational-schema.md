@@ -95,3 +95,19 @@ The table has forced RLS and only tenant-scoped `SELECT`/`INSERT` grants for
 `agentforge_app`. Its tenant/time index supports the future one-year retention
 job, which remains disabled until replay policy is configured. Successful
 markers are never deleted to force replay.
+
+## Phase 5.2 scheduler queue boundary
+
+Migration `000005_scheduler_queue_leases` adds bounded priority, execution
+profile, optional preferred region, next-eligibility, Scheduler lease, and safe
+decision fields to `agent_runs`. The partial queue index supports queued, due
+capacity-wait, and expired-scheduling candidates ordered by priority and age.
+Database constraints require lease owner/expiry together and only while a run
+is `SCHEDULING`.
+
+The isolated `agentforge_scheduler` role has `BYPASSRLS` solely because fair
+claiming spans tenants. It receives column-level access to allowlisted run and
+attempt scheduling metadata and cannot select prompt references, request
+hashes, or cancellation text. Claims use `FOR UPDATE SKIP LOCKED`, short
+transactions, expected aggregate versions, and expiring leases. Every returned
+record retains its tenant ID for explicit tenant/run predicates downstream.

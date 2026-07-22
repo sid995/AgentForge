@@ -7,6 +7,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agentforge-migrator}
       POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:-agentforge-app}
       POSTGRES_RELAY_PASSWORD: ${POSTGRES_RELAY_PASSWORD:-agentforge-relay}
+      POSTGRES_SCHEDULER_PASSWORD: ${POSTGRES_SCHEDULER_PASSWORD:-agentforge-scheduler}
     ports:
       - "${POSTGRES_HOST_PORT:-15432}:5432"
     healthcheck:

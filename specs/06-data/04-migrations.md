@@ -26,6 +26,13 @@ least-privilege application grants, and forced tenant RLS. Its local down
 migration drops the marker table; production rollback retains data and uses a
 corrective forward migration under the normal migration contract.
 
+Phase 5.2 adds `000005_scheduler_queue_leases`. It expands `agent_runs` with
+queue policy and lease columns, replaces the earlier queue index, creates the
+isolated Scheduler role when absent, and grants only scheduling columns. Its
+local down migration restores the earlier queue index and removes the added
+columns. It retains the Scheduler role because another database in the same
+PostgreSQL cluster may depend on that role.
+
 ## Naming and ordering
 
 Migration files use a six-digit, increasing version and a kebab-case purpose:
@@ -46,6 +53,8 @@ rewrite applied history.
 - `agentforge_app` is a least-privilege, `NOBYPASSRLS` application role.
 - `agentforge_relay` is an isolated cross-tenant relay role with `BYPASSRLS`
   and DML access only to `outbox_events`.
+- `agentforge_scheduler` is an isolated cross-tenant role with `BYPASSRLS` and
+  column-level access only to implemented queue metadata and lease updates.
 - The migration role can create and alter roles, tables, indexes, and RLS
   policies. The application role has only the schema and DML privileges needed
   by implemented repositories.

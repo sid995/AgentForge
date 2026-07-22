@@ -14,6 +14,10 @@ This plan is design-only. Each implementation sub-phase is validated and
 committed before the next begins. The existing root `docker-compose.yml` is the
 only Compose definition and will be extended in place in Phase 5.8.
 
+Phase 5.2 is now implemented and verified by migration 000005, the isolated
+Scheduler role, queue port/PostgreSQL adapter, observable application claimer,
+and concurrent PostgreSQL integration tests. Phase 5.3 is next.
+
 ## Process boundary
 
 The Scheduler is a distinct control-plane process and image, already justified
