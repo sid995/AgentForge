@@ -2,7 +2,9 @@
 
 AgentForge is a Kubernetes-native infrastructure platform for running autonomous coding-agent workloads in isolated environments, tracking their execution and cost, building validated container artifacts, and deploying generated applications through GitOps.
 
-This repository contains the complete specification and GPT-5.6 Codex execution playbook, plus the Phase 1 Platform API foundation. Production implementation proceeds phase by phase rather than asking one coding agent to manifest a cloud platform through optimism.
+This repository contains the complete specification and GPT-5.6 Codex execution
+playbook plus the implemented control-plane foundations through Phase 6.1.
+Production implementation proceeds through validated, committed sub-phases.
 
 ## Start here
 
@@ -42,7 +44,25 @@ Phase 5.6 adds transactional capacity and budget reservations; see
 Phase 5.7 atomically commits assignments, reservations, state, and outbox
 events. Phase 5.8 adds the bounded Scheduler process, optional Kafka wake
 hints, authoritative polling, health/metrics, and the root-Compose image; see
+Phase 6.1 adds the Kubebuilder/controller-runtime Operator module,
+`execution.agentforge.dev/v1alpha1` API and generated CRD skeleton, manager
+health/readiness/metrics/leader election, envtest, and a non-root image; see
 [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).
+
+## Agent Operator development
+
+The Operator has an independently pinned Kubernetes toolchain. The root entry
+points delegate to its module:
+
+```bash
+make operator-manifests operator-generate
+make test-controller
+make lint-controller
+make build-operator
+```
+
+Generation downloads version-pinned tools into ignored `operator/bin/` paths.
+Phase 6.1 intentionally contains no reconciler and creates no Jobs.
 
 ## Local Scheduler
 

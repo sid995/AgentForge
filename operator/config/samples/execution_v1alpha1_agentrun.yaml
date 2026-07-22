@@ -1,0 +1,8 @@
+apiVersion: execution.agentforge.dev/v1alpha1
+kind: AgentRun
+metadata:
+  labels:
+    app.kubernetes.io/name: operator
+    app.kubernetes.io/managed-by: kustomize
+  name: bootstrap-sample
+spec: {}

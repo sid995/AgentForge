@@ -4,12 +4,13 @@
 
 ## Current milestone
 
-Phase 5 Scheduler complete; awaiting the next approved phase
+Phase 6.1 Operator bootstrap complete; Phase 6.2 CRD contract is next
 
 ## Overall state
 
 Phase 2, the Phase 3.1/3.2 state-machine and persistence foundation, and Phase
-4 and 5 are complete. At the user's direction, Phase 5 Scheduler was completed
+4 and 5 are complete. Phase 6 Operator work has begun after the Phase 5 merge.
+At the user's direction, Phase 5 Scheduler was completed
 before Phase 3.3 through 3.5 API, cancellation, and retry commands. Those gaps
 remain explicit dependencies for their corresponding command integrations.
 
@@ -77,17 +78,23 @@ remain explicit dependencies for their corresponding command integrations.
   authoritative polling, optional Kafka wake hints, bounded jitter/backoff,
   graceful shutdown, PostgreSQL readiness, liveness/metrics, non-root image,
   root Compose integration, service tests, and Phase 5 completion audit
+- Phase 6.1 Kubebuilder/controller-runtime Operator module, namespaced
+  `execution.agentforge.dev/v1alpha1` API and generated CRD/deepcopy foundation,
+  scheme registration, leader-election deployment, health/readiness,
+  authenticated metrics, structured logging, pinned generation/envtest tools,
+  root Make/CI integration, and non-root image
 
 ## In progress
 
-- None
+- Phase 6.2 complete AgentRun CRD desired-state and status contract
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Kubernetes Operator
+- Phase 6.2 through 6.10 Operator contract, reconciliation, workload lifecycle,
+  cancellation, retry, cleanup, and Scheduler handoff
 - Agent Runner
 - Model Gateway
 - Build and deployment services
@@ -100,7 +107,6 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Select the next approved milestone: resume Phase 3.3 command/API work or
-   begin Phase 6 Operator integration.
+1. Implement and commit Phase 6.2 AgentRun CRD contract and schema tests.
 2. Preserve the unresolved Phase 3 cancellation/retry command dependencies and
    the Phase 6 no-Kubernetes boundary.

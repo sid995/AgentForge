@@ -7,22 +7,26 @@ BUILD_VERSION ?= development
 BUILD_COMMIT ?= unknown
 BUILD_TIME ?= unknown
 
-.PHONY: help check-tools format lint test verify-event-contracts test-integration test-events-integration test-controller migrate bootstrap-topics build-platform-api build-scheduler verify
+.PHONY: help check-tools format lint lint-controller test verify-event-contracts test-integration test-events-integration test-controller operator-manifests operator-generate migrate bootstrap-topics build-platform-api build-scheduler build-operator verify
 
 help:
 	@printf '%s\n' 'AgentForge development targets:'
-	@printf '%s\n' '  check-tools       Check Phase 0 through Phase 5 prerequisites'
+	@printf '%s\n' '  check-tools       Check Phase 0 through Phase 6.1 prerequisites'
 	@printf '%s\n' '  format            Format tracked Go source'
-	@printf '%s\n' '  lint              Run Platform API static analysis'
+	@printf '%s\n' '  lint              Run Platform API and Operator static analysis'
+	@printf '%s\n' '  lint-controller   Run Operator static analysis'
 	@printf '%s\n' '  test              Run Platform API unit tests'
 	@printf '%s\n' '  verify-event-contracts Validate event schemas, compatibility, and fixtures'
 	@printf '%s\n' '  test-integration  Run PostgreSQL integration tests in Docker Compose'
 	@printf '%s\n' '  test-events-integration Run Kafka contract tests against isolated Redpanda'
-	@printf '%s\n' '  test-controller   Run controller tests (unavailable until configured)'
+	@printf '%s\n' '  test-controller   Generate manifests and run Operator envtest coverage'
+	@printf '%s\n' '  operator-manifests Regenerate Operator CRD and RBAC manifests'
+	@printf '%s\n' '  operator-generate Regenerate Operator Go code'
 	@printf '%s\n' '  migrate           Apply checked-in PostgreSQL migrations'
 	@printf '%s\n' '  bootstrap-topics  Create/update local Redpanda topics'
 	@printf '%s\n' '  build-platform-api Build the Platform API container image (BUILD_VERSION, BUILD_COMMIT, BUILD_TIME are supported)'
 	@printf '%s\n' '  build-scheduler    Build the Scheduler container image (BUILD_VERSION, BUILD_COMMIT, BUILD_TIME are supported)'
+	@printf '%s\n' '  build-operator     Build the Agent Operator container image'
 	@printf '%s\n' '  verify            Validate repository controls and documentation inventory'
 
 check-tools:
@@ -41,6 +45,10 @@ lint:
 	else \
 		docker run --rm --volume "$(CURDIR):/workspace" --workdir /workspace/services/platform-api $(GOLANGCI_LINT_IMAGE) golangci-lint run ./...; \
 	fi
+	@$(MAKE) -C operator lint
+
+lint-controller:
+	@$(MAKE) -C operator lint
 
 test:
 	@go test ./services/platform-api/...
@@ -69,8 +77,13 @@ test-events-integration:
 		AGENTFORGE_TEST_KAFKA_BROKERS='127.0.0.1:29092' go test -count=1 -tags=brokerintegration ./services/platform-api/internal/adapters/kafka
 
 test-controller:
-	@echo 'Controller tests are unavailable: Phase 5 has no Kubernetes operator.' >&2
-	@exit 1
+	@$(MAKE) -C operator test
+
+operator-manifests:
+	@$(MAKE) -C operator manifests
+
+operator-generate:
+	@$(MAKE) -C operator generate
 
 migrate:
 	@if [[ -f .env ]]; then set -a; source .env; set +a; fi; go run ./services/platform-api/cmd/migrate
@@ -93,6 +106,9 @@ build-scheduler:
 		--build-arg BUILD_TIME="$(BUILD_TIME)" \
 		--tag agentforge/scheduler:dev \
 		--file services/platform-api/Scheduler.Dockerfile .
+
+build-operator:
+	@$(MAKE) -C operator docker-build IMG=agentforge/operator:dev
 
 verify:
 	@scripts/verify-repository.sh

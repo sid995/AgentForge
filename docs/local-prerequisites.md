@@ -1,6 +1,6 @@
 # Local Prerequisites
 
-## Required during Phases 0 through 5.3
+## Required through Phase 6.1
 
 - Git
 - GNU Make or a compatible `make`
@@ -8,6 +8,7 @@
 - Go 1.26.0 or a compatible patch release
 - Docker CLI and a running Docker-compatible daemon for container builds and
   local PostgreSQL integration tests
+- `kubectl` for Operator manifest installation and deployment commands
 
 Run `make check-tools` to verify that the required command-line tools are on
 your `PATH`. The check verifies CLI availability; it does not start Docker or
@@ -37,14 +38,15 @@ Install these only when their governing phase begins:
 
 - `golangci-lint` v2 for Go linting
 - ShellCheck for shell-script linting
-- kubectl, Helm, and kind for Kubernetes and operator work
+- kind for the Phase 6.6 real-cluster controller gate
+- Helm when the GitOps/deployment packaging phase begins
 - Terraform for cloud infrastructure
 
 The local environment specification adds PostgreSQL, Redis, Redpanda or Kafka,
 MinIO, Argo CD, and observability dependencies only in their respective
 implementation phases. Do not add them during Phase 0.
 
-## Phase 1 through Phase 5.3 commands
+## Phase 1 through Phase 6.1 commands
 
 ```bash
 make help
@@ -56,6 +58,10 @@ make verify-event-contracts
 make test-integration
 make test-events-integration
 make bootstrap-topics
+make operator-manifests operator-generate
+make test-controller
+make lint-controller
+make build-operator
 ```
 
 `make lint` uses a local `golangci-lint` v2 installation when present. If it is
@@ -103,5 +109,8 @@ topic bootstrap, or Kafka contracts fail. The normal local broker listens on
 configure clients. Local Redpanda uses plaintext and replication one; it is
 only a development/test topology.
 
-`make test-controller` still fails deliberately with a clear message because a
-Kubernetes operator has not been introduced.
+`make test-controller` downloads the pinned setup-envtest tool and Kubernetes
+1.36.0 API server/etcd assets into ignored `operator/bin/` paths, regenerates
+the CRD/RBAC/deepcopy artifacts, and runs the Operator tests. It does not use a
+developer's current Kubernetes context. The later kind gate remains
+unavailable until its Phase 6 sub-phase and must not be reported as passing.

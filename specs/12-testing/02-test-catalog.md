@@ -40,6 +40,14 @@
 - object-storage prefix isolation.
 - Kubernetes namespace and egress isolation.
 
+## Kubernetes controller
+
+- reproducible CRD, RBAC, and deepcopy generation with pinned tools;
+- manager scheme registration for `execution.agentforge.dev/v1alpha1`;
+- envtest installation and create/get behavior for the AgentRun CRD;
+- non-root Operator image and configured leader election, health, readiness,
+  authenticated metrics, and structured logging foundation.
+
 ## Deployment
 
 - competing promotions.
