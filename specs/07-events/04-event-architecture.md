@@ -298,6 +298,19 @@ found and corrected the DLQ header JSON field casing before publication.
 `.github/workflows/repository-checks.yml` runs the compatibility target and the
 real Redpanda contract integration independently.
 
+## Phase 6.10 scheduled-intent consumer
+
+The published v1 scheduling fact remains unchanged so older strict consumers
+and schemas continue to accept current messages. Its transaction also inserts
+a complete immutable `agentrun_handoff_intents` row keyed by event ID. The
+handoff checks the durable consumer/event marker first, loads and validates
+that exact intent, performs deterministic create-or-compare, then inserts the
+marker. A crash after the Kubernetes write but before the marker therefore
+repeats only an exact comparison. Transient Kubernetes or database failures
+retain the source offset and publish through the bounded retry topics; missing
+or invalid intent, tenant/cluster denial, and immutable conflicts are
+acknowledged only after DLQ publication.
+
 ## Resolved specification contradictions
 
 - The old topic catalog mixed event types with Kafka topics. Event types remain

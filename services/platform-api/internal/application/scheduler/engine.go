@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/sid995/agentforge/services/platform-api/internal/config"
 	"github.com/sid995/agentforge/services/platform-api/internal/domain"
 	"github.com/sid995/agentforge/services/platform-api/internal/ports"
 )
@@ -27,6 +28,7 @@ type EngineConfig struct {
 	ClusterFreshness  time.Duration
 	ReservationTTL    time.Duration
 	DeferralDuration  time.Duration
+	ExecutionIntent   config.ExecutionIntentConfig
 }
 
 type eligibilityEvaluator interface {
@@ -220,7 +222,12 @@ func (engine *Engine) process(ctx context.Context, run ports.ClaimedRun) {
 		}
 	}
 	budget := estimateBudget(run, chosen.Cluster)
-	_, err = engine.intent.Schedule(ctx, ports.SchedulingIntentRequest{Claim: run, LeaseOwner: engine.configuration.Owner, AttemptID: run.AttemptID, AttemptVersion: run.AttemptVersion, ClusterID: selection.ClusterID, ClusterFreshness: engine.configuration.ClusterFreshness, Strategy: selection.Strategy, SelectionScore: selection.Score, BudgetMinorUnits: budget, ReservationTTL: engine.configuration.ReservationTTL, CorrelationID: correlation, CausationID: causation, Now: now})
+	desired, err := engine.configuration.ExecutionIntent.DesiredState(domain.AgentRun{Runtime: run.Runtime, PromptReference: run.PromptReference, TimeoutSeconds: run.TimeoutSeconds, MaxAttempts: run.MaxAttempts, CPUMillis: run.CPUMillis, MemoryMiB: run.MemoryMiB}, run.ExecutionProfile)
+	if err != nil {
+		engine.observeResult("intent_configuration_error", err)
+		return
+	}
+	_, err = engine.intent.Schedule(ctx, ports.SchedulingIntentRequest{Claim: run, LeaseOwner: engine.configuration.Owner, AttemptID: run.AttemptID, AttemptVersion: run.AttemptVersion, ClusterID: selection.ClusterID, ClusterFreshness: engine.configuration.ClusterFreshness, Strategy: selection.Strategy, SelectionScore: selection.Score, BudgetMinorUnits: budget, ReservationTTL: engine.configuration.ReservationTTL, CorrelationID: correlation, CausationID: causation, Now: now, DesiredState: desired})
 	engine.observeResult("scheduled", err)
 }
 

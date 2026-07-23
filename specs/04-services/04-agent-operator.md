@@ -173,3 +173,23 @@ timestamp anchors a ten-minute deadline. At expiry the Operator records
 `CleanupEscalated`, releases the finalizer without issuing a PVC delete, and
 emits a correlated escalation log for the retained-workspace runbook. Status
 and finalizer patch failures also keep polling rather than becoming terminal.
+
+## Phase 6.10 scheduled-intent handoff
+
+The separate `agentrun-handoff` component consumes
+`agent-run.scheduled.v1`; the Scheduler executable remains prohibited from
+calling Kubernetes. The consumer loads and validates the exact durable desired
+intent paired with the scheduled event,
+rechecks the registered cluster/tenant relationship, selects an explicitly
+mapped kubeconfig context, and creates or exactly compares a deterministic
+tenant namespace and run-attempt AgentRun name.
+
+The processed-event marker is checked before writes and inserted only after
+the Kubernetes effect. A crash between those boundaries repeats safe exact
+comparison. Existing mismatched namespace ownership or immutable CR intent is
+permanently quarantined; API availability failures use the bounded retry
+topics. Correlation, causation, trace, selected-cluster, and scheduled-event
+context are attached as bounded annotations and structured audit fields.
+The consumer never writes the status subresource and never creates Jobs or
+other execution children. Its health/readiness endpoints and low-cardinality
+metrics expose processed, duplicate, retry, DLQ, and routing-failure outcomes.

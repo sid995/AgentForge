@@ -3,7 +3,7 @@
 AgentForge is a Kubernetes-native infrastructure platform for running autonomous coding-agent workloads in isolated environments, tracking their execution and cost, building validated container artifacts, and deploying generated applications through GitOps.
 
 This repository contains the complete specification and GPT-5.6 Codex execution
-playbook plus the implemented control-plane foundations through Phase 6.9.
+playbook plus the implemented control-plane foundations through Phase 6.10.
 Production implementation proceeds through validated, committed sub-phases.
 
 ## Start here
@@ -21,7 +21,7 @@ Production implementation proceeds through validated, committed sub-phases.
 - [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md): current implementation status
 - [`specs/TRACEABILITY.md`](specs/TRACEABILITY.md): requirement-to-code-and-test mapping
 - [`specs/15-llm-development/05-codex-execution-playbook.md`](specs/15-llm-development/05-codex-execution-playbook.md): complete phased prompt sequence
-- [`.env.example`](.env.example): documented local configuration through Phase 5
+- [`.env.example`](.env.example): documented local configuration through Phase 6
 
 ## Current state
 
@@ -54,7 +54,9 @@ resources. Phase 6.4 adds pure secure workload-resource builders, and Phase
 Phase 6.6 adds observed Job/Pod lifecycle, strict result evidence, and a pinned
 Kubernetes 1.36 kind gate. Phase 6.7 adds graceful, deadline-bounded,
 restart-safe cancellation, Phase 6.8 adds bounded policy-approved retries, and
-Phase 6.9 safely finalizes retained workspaces; see
+Phase 6.9 safely finalizes retained workspaces. Phase 6.10 adds the
+idempotent, tenant-isolated Scheduler-event-to-AgentRun handoff without giving
+the Scheduler process or consumer permission to create Jobs; see
 [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).
 
 ## Agent Operator development
@@ -78,6 +80,16 @@ attempts and creates new attempt-qualified Jobs after restart-safe jittered
 backoff. Phase 6.9 preserves retained PVCs with an idempotent handoff marker
 before finalizer removal.
 
+Phase 6.10 adds `make build-handoff`. For local Kubernetes handoff, set the
+explicit kubeconfig and cluster-context mapping in `.env`, register the same
+cluster ID in PostgreSQL, install the CRD/Operator, then start:
+
+```bash
+docker compose --profile kubernetes up --detach agentrun-handoff
+curl --fail http://127.0.0.1:18082/health/ready
+curl --fail http://127.0.0.1:18082/metrics
+```
+
 ## Local Scheduler
 
 ```bash
@@ -98,6 +110,7 @@ real scheduling; tenant policies must likewise exist for admitted tenants.
 
 The root Compose stack caps processor and memory usage for every service. The
 local defaults are PostgreSQL at `1.0` CPU and `512m`, Redpanda at `1.0` CPU
-and `1g`, and Scheduler at `0.5` CPU and `256m`. Override the corresponding
+and `1g`, Scheduler at `0.5` CPU and `256m`, and the optional handoff service
+at `0.5` CPU and `256m`. Override the corresponding
 `*_CPUS` and `*_MEMORY_LIMIT` values in `.env` when the development workload
 needs a different budget.

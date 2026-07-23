@@ -39,6 +39,13 @@ tables, and adds partial aggregate-query indexes. Its local down migration
 drops those new tables/indexes before removing the status columns. Production
 rollback preserves decision history and uses a corrective forward migration.
 
+Phase 6.10 adds `000011_agentrun_handoff`. It creates the durable,
+event-ID-keyed immutable intent table and grants the Scheduler only the
+additional run reads plus intent insert/replay access required by its existing
+transaction. It creates the isolated cross-tenant handoff role when absent and
+grants only intent/cluster authorization reads plus processed-event marker
+reads/inserts. No workflow table write privilege is granted.
+
 ## Naming and ordering
 
 Migration files use a six-digit, increasing version and a kebab-case purpose:
@@ -61,6 +68,8 @@ rewrite applied history.
   and DML access only to `outbox_events`.
 - `agentforge_scheduler` is an isolated cross-tenant role with `BYPASSRLS` and
   column-level access only to implemented queue metadata and lease updates.
+- `agentforge_handoff` is an isolated cross-tenant role with `BYPASSRLS`,
+  read-only cluster authorization access, and processed-event marker access.
 - The migration role can create and alter roles, tables, indexes, and RLS
   policies. The application role has only the schema and DML privileges needed
   by implemented repositories.

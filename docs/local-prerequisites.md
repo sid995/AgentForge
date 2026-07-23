@@ -1,6 +1,6 @@
 # Local Prerequisites
 
-## Required through Phase 6.1
+## Required through Phase 6
 
 - Git
 - GNU Make or a compatible `make`
@@ -19,8 +19,9 @@ provision cloud resources.
 Copy [`.env.example`](../.env.example) to `.env` before running the local
 PostgreSQL dependency. The example documents every environment variable used
 by the Platform API, migration command, Compose configuration, and supported
-build metadata, relay, Scheduler database role, Kafka client, and Redpanda
-inputs through Phase 5.3.
+build metadata, relay, Scheduler and handoff database roles, Kafka client,
+trusted execution intent, Kubernetes context mapping, and Redpanda inputs
+through Phase 6.
 `.env` is ignored by Git; its included passwords are development-only defaults
 and must not be used outside a local machine.
 
@@ -46,7 +47,7 @@ The local environment specification adds PostgreSQL, Redis, Redpanda or Kafka,
 MinIO, Argo CD, and observability dependencies only in their respective
 implementation phases. Do not add them during Phase 0.
 
-## Phase 1 through Phase 6.1 commands
+## Phase 1 through Phase 6 commands
 
 ```bash
 make help
@@ -62,6 +63,7 @@ make operator-manifests operator-generate
 make test-controller
 make lint-controller
 make build-operator
+make build-handoff
 ```
 
 `make lint` uses a local `golangci-lint` v2 installation when present. If it is
@@ -70,8 +72,9 @@ required Docker daemon. `make test` is an executable Phase 1 quality gate.
 
 `make test-integration` uses the root Compose definition to create an isolated
 PostgreSQL 17.5 project on host port `25432`, applies migrations with the local
-migration role, runs the tagged database tests with the application, relay, and
-Scheduler roles, and tears the project down with its test volume. The isolated
+migration role, runs the tagged database tests with the application, relay,
+Scheduler, and AgentRun handoff roles, and tears the project down with its test
+volume. The isolated
 port and Compose project avoid changing a developer's normal local stack on
 port `15432`. The target supplies deterministic test values rather than relying
 on a developer's `.env`. Run `make migrate` against
@@ -97,6 +100,14 @@ authenticates the isolated cross-tenant queue role.
 `POSTGRES_SCHEDULER_PASSWORD` configures that role when a new local PostgreSQL
 volume is initialized. As with the relay role, an older disposable local volume
 must be recreated before the new login exists.
+
+`AGENTFORGE_TEST_HANDOFF_DATABASE_URL` is integration-test-only and
+authenticates the least-privilege AgentRun handoff role.
+`POSTGRES_HANDOFF_PASSWORD` configures that role when a new local PostgreSQL
+volume is initialized. The handoff runtime additionally requires an explicit
+`AGENTFORGE_HANDOFF_KUBECONFIG`,
+`AGENTFORGE_HANDOFF_CLUSTER_CONTEXTS`, and UUIDv7 quarantine tenant. The
+optional Compose service is enabled only with `--profile kubernetes`.
 
 `make test-events-integration` starts only the pinned single-node Redpanda
 service in the isolated `agentforge-events-integration` Compose project on host

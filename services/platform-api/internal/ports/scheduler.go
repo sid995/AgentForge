@@ -25,6 +25,8 @@ type ClaimedRun struct {
 	TenantID             uuid.UUID
 	ProjectID            uuid.UUID
 	Runtime              string
+	PromptReference      string
+	MaxAttempts          int
 	ExecutionProfile     string
 	PreferredRegion      string
 	CreatedBy            string
@@ -95,6 +97,7 @@ type SchedulingIntentRequest struct {
 	CorrelationID    string
 	CausationID      string
 	Now              time.Time
+	DesiredState     domain.AgentRunDesiredState
 }
 
 type CapacityWaitRequest struct {

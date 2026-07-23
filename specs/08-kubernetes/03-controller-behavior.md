@@ -160,3 +160,12 @@ The deletion timestamp is the durable clock for a ten-minute escalation
 deadline. Expiry records `CleanupEscalated`, releases the finalizer without a
 PVC delete, and emits correlated operator-review telemetry; patch failures
 continue polling rather than terminating the reconcile key.
+
+## Phase 6.10 Scheduler intent projection
+
+The Operator does not consume scheduling events. The separate handoff
+component projects a validated `agent-run.scheduled.v1` fact into the selected
+cluster as a deterministic AgentRun and never creates controller children.
+It creates the object without status; the status subresource remains
+Operator-exclusive. Exact existing specs are idempotent no-ops, while
+mismatched immutable intent is a permanent conflict and is never overwritten.

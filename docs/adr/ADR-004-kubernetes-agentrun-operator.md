@@ -15,8 +15,10 @@ harder to repair, and bypass a single enforcement point for workload security.
 
 Define the namespaced `execution.agentforge.dev/v1alpha1` `AgentRun` custom
 resource and reconcile it with a dedicated controller-runtime Operator. The
-Scheduler may create or compare deterministic AgentRun resources but never
-create Jobs. The Operator is the sole owner of execution ServiceAccounts,
+Scheduler intent may be projected by a separate idempotent handoff component
+that creates or compares deterministic AgentRun resources but never creates
+Jobs; the Scheduler process itself remains database/event-only. The Operator
+is the sole owner of execution ServiceAccounts,
 configuration, workspace claims, NetworkPolicies, and Jobs.
 
 The project is generated with Kubebuilder v4 and pins controller-runtime,

@@ -1,15 +1,16 @@
 # AgentForge Project Status
 
-**Last updated:** 2026-07-22
+**Last updated:** 2026-07-23
 
 ## Current milestone
 
-Phase 6.4 secure resource builders complete; Phase 6.5 prerequisites are next
+Phase 6.10 Scheduler-to-CR handoff complete; Phase 6 review and audit are next
 
 ## Overall state
 
 Phase 2, the Phase 3.1/3.2 state-machine and persistence foundation, and Phase
-4 and 5 are complete. Phase 6 Operator work has begun after the Phase 5 merge.
+4 and 5 are complete. Phase 6 implementation is complete pending its specialist
+review and completion audit.
 At the user's direction, Phase 5 Scheduler was completed
 before Phase 3.3 through 3.5 API, cancellation, and retry commands. Those gaps
 remain explicit dependencies for their corresponding command integrations.
@@ -119,17 +120,24 @@ remain explicit dependencies for their corresponding command integrations.
   partial/missing-resource idempotency, bounded cleanup diagnostics/retry,
   restart-safe ten-minute escalation, envtest deletion, and real kind PVC
   survival after AgentRun finalization
+- Phase 6.10 separately deployable scheduled-intent handoff with a
+  transactionally paired immutable intent record and unchanged v1 event
+  contract, explicit registered-cluster client selection and tenant
+  authorization, deterministic Namespace/AgentRun
+  creation, exact idempotent comparison, durable processed markers,
+  retry/DLQ behavior, status-subresource ownership preservation, correlated
+  audit context, least-privilege database role, and bounded root-Compose
+  packaging
 
 ## In progress
 
-- Phase 6.10 Scheduler-to-CR handoff
+- Phase 6 controller/security review and completion audit
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Phase 6.10 Scheduler handoff
 - Agent Runner
 - Model Gateway
 - Build and deployment services
@@ -142,7 +150,6 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Commit the validated Phase 6.9 finalizer and cleanup reconciliation.
-2. Implement and commit Phase 6.10 Scheduler-to-CR handoff.
-3. Preserve the unresolved Phase 3 cancellation/retry command dependencies and
-   the Phase 6 no-Kubernetes boundary.
+1. Perform the Phase 6 Kubernetes-controller and security review.
+2. Run the Phase 6 completion audit and full repository gates.
+3. Preserve the unresolved Phase 3 cancellation/retry command dependencies.

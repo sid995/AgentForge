@@ -7,7 +7,7 @@ ARG BUILD_COMMIT=unknown
 ARG BUILD_TIME=unknown
 
 COPY go.work ./
-COPY services/platform-api/go.mod services/platform-api/go.mod
+COPY operator operator
 COPY services/platform-api services/platform-api
 
 RUN CGO_ENABLED=0 go build -trimpath \

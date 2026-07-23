@@ -27,6 +27,7 @@ type SchedulerConfig struct {
 	Strategy          string
 	KafkaHintsEnabled bool
 	KafkaGroup        string
+	ExecutionIntent   ExecutionIntentConfig
 }
 
 func LoadScheduler(lookup LookupEnv) (SchedulerConfig, error) {
@@ -86,6 +87,9 @@ func LoadScheduler(lookup LookupEnv) (SchedulerConfig, error) {
 	}
 	if configuration.KafkaGroup == "" || len(configuration.KafkaGroup) > 160 {
 		return SchedulerConfig{}, fmt.Errorf("AGENTFORGE_SCHEDULER_KAFKA_GROUP must contain 1 to 160 characters")
+	}
+	if configuration.ExecutionIntent, err = loadExecutionIntent(lookup); err != nil {
+		return SchedulerConfig{}, err
 	}
 	return configuration, nil
 }

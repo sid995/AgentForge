@@ -43,6 +43,10 @@ func (repository *SchedulingIntentRepository) Schedule(ctx context.Context, requ
 	if run.Status != domain.AgentRunScheduling || leaseOwner != request.LeaseOwner || leaseExpiry == nil || !leaseExpiry.After(request.Now.UTC()) || run.Version != request.Claim.Version || executionProfile != request.Claim.ExecutionProfile {
 		return ports.SchedulingIntentResult{}, domain.ErrVersionConflict
 	}
+	if request.DesiredState.Runtime != run.Runtime || request.DesiredState.TaskReference != run.PromptReference ||
+		request.DesiredState.TimeoutSeconds != run.TimeoutSeconds || request.DesiredState.MaxAttempts != run.MaxAttempts {
+		return ports.SchedulingIntentResult{}, domain.ErrConflict
+	}
 	attempt, err := lockPendingAttempt(ctx, tx, run, request.AttemptID, request.AttemptVersion)
 	if err != nil {
 		return ports.SchedulingIntentResult{}, err
@@ -135,6 +139,9 @@ func (repository *SchedulingIntentRepository) Schedule(ctx context.Context, requ
 	}
 	if err := insertOutboxEvent(ctx, tx, event); err != nil {
 		return ports.SchedulingIntentResult{}, translateError(err)
+	}
+	if err := insertHandoffIntent(ctx, tx, event.Envelope.EventID, run, attempt, request.DesiredState); err != nil {
+		return ports.SchedulingIntentResult{}, err
 	}
 	if err := tx.Commit(); err != nil {
 		return ports.SchedulingIntentResult{}, translateError(err)
@@ -278,6 +285,16 @@ func validateSchedulingIntent(request ports.SchedulingIntentRequest) error {
 	if request.Claim.TenantID == uuid.Nil || request.Claim.ID == uuid.Nil || request.AttemptID == uuid.Nil || request.Claim.Version < 1 || request.AttemptVersion < 1 || strings.TrimSpace(request.LeaseOwner) == "" || request.ClusterID == "" || request.ClusterFreshness <= 0 || request.Strategy == "" || request.SelectionScore < 0 || request.BudgetMinorUnits < 0 || request.ReservationTTL <= 0 || request.ReservationTTL > 24*time.Hour || request.Now.IsZero() || strings.TrimSpace(request.CorrelationID) == "" || strings.TrimSpace(request.CausationID) == "" {
 		return fmt.Errorf("scheduling intent request is invalid")
 	}
+	desired := request.DesiredState
+	if desired.Runtime != request.Claim.Runtime || desired.ExecutionProfile != request.Claim.ExecutionProfile ||
+		desired.TaskReference != request.Claim.PromptReference || desired.TimeoutSeconds != request.Claim.TimeoutSeconds ||
+		desired.MaxAttempts != request.Claim.MaxAttempts || desired.CPUMillis != request.Claim.CPUMillis ||
+		desired.MemoryMiB != request.Claim.MemoryMiB {
+		return fmt.Errorf("scheduling desired state does not match claimed run")
+	}
+	if err := desired.Validate(request.Claim.AttemptNumber); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -285,7 +302,7 @@ func lockSchedulingRun(ctx context.Context, tx *sql.Tx, tenantID, runID uuid.UUI
 	var run domain.AgentRun
 	var owner, profile string
 	var expiry *time.Time
-	err := tx.QueryRowContext(ctx, `select id,tenant_id,project_id,runtime,cpu_millis,memory_mib,attempt_count,status,version,created_by,updated_at,coalesce(scheduler_lease_owner,''),scheduler_lease_expires_at,execution_profile from agent_runs where tenant_id=$1 and id=$2 for update`, tenantID, runID).Scan(&run.ID, &run.TenantID, &run.ProjectID, &run.Runtime, &run.CPUMillis, &run.MemoryMiB, &run.AttemptCount, &run.Status, &run.Version, &run.CreatedBy, &run.UpdatedAt, &owner, &expiry, &profile)
+	err := tx.QueryRowContext(ctx, `select id,tenant_id,project_id,prompt_reference,runtime,cpu_millis,memory_mib,timeout_seconds,max_attempts,attempt_count,status,version,created_by,updated_at,coalesce(scheduler_lease_owner,''),scheduler_lease_expires_at,execution_profile from agent_runs where tenant_id=$1 and id=$2 for update`, tenantID, runID).Scan(&run.ID, &run.TenantID, &run.ProjectID, &run.PromptReference, &run.Runtime, &run.CPUMillis, &run.MemoryMiB, &run.TimeoutSeconds, &run.MaxAttempts, &run.AttemptCount, &run.Status, &run.Version, &run.CreatedBy, &run.UpdatedAt, &owner, &expiry, &profile)
 	return run, owner, expiry, profile, translateError(err)
 }
 
@@ -364,12 +381,40 @@ func replaySchedulingIntent(ctx context.Context, tx *sql.Tx, run domain.AgentRun
 	if err := tx.QueryRowContext(ctx, `select event_id from outbox_events where tenant_id=$1 and run_id=$2 and event_type=$3 and aggregate_version=$4`, run.TenantID, run.ID, events.AgentRunScheduledType, run.Version).Scan(&result.EventID); err != nil {
 		return result, translateError(err)
 	}
+	var serialized []byte
+	if err := tx.QueryRowContext(ctx, `select desired_state from agentrun_handoff_intents where event_id=$1 and tenant_id=$2 and run_id=$3 and attempt_number=$4`, result.EventID, run.TenantID, run.ID, run.AttemptCount).Scan(&serialized); err != nil {
+		return result, translateError(err)
+	}
+	var stored domain.AgentRunDesiredState
+	if err := json.Unmarshal(serialized, &stored); err != nil || !desiredStateMatches(stored, request.DesiredState) {
+		return result, domain.ErrConflict
+	}
 	result.RunVersion = run.Version
 	result.Replayed = true
 	if err := tx.Commit(); err != nil {
 		return result, translateError(err)
 	}
 	return result, nil
+}
+
+func insertHandoffIntent(ctx context.Context, tx *sql.Tx, eventID uuid.UUID, run domain.AgentRun, attempt domain.AgentRunAttempt, desired domain.AgentRunDesiredState) error {
+	serialized, err := json.Marshal(desired)
+	if err != nil {
+		return fmt.Errorf("serialize AgentRun handoff intent: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `insert into agentrun_handoff_intents (event_id,tenant_id,run_id,attempt_id,attempt_number,cluster_id,desired_state,created_at) values ($1,$2,$3,$4,$5,$6,$7::jsonb,$8)`, eventID, run.TenantID, run.ID, attempt.ID, attempt.AttemptNumber, attempt.SelectedCluster, serialized, run.UpdatedAt); err != nil {
+		return translateError(err)
+	}
+	return nil
+}
+
+func desiredStateMatches(stored, desired domain.AgentRunDesiredState) bool {
+	serializedStored, err := json.Marshal(stored)
+	if err != nil {
+		return false
+	}
+	serializedExpected, err := json.Marshal(desired)
+	return err == nil && string(serializedStored) == string(serializedExpected)
 }
 
 var _ ports.SchedulingIntentRepository = (*SchedulingIntentRepository)(nil)

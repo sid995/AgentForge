@@ -50,5 +50,9 @@ jobs:
         run: make test-events-integration
       - name: Build Platform API image
         run: make build-platform-api
+      - name: Build Scheduler image
+        run: make build-scheduler
+      - name: Build AgentRun handoff image
+        run: make build-handoff
       - name: Build Agent Operator image
         run: make build-operator

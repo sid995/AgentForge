@@ -155,3 +155,18 @@ Consume `agent-run.scheduled.v1` idempotently, select the registered cluster
 client, validate and create/compare the deterministic namespace/AgentRun,
 handle conflict/retry/failure and tracing/audit context, and never create Jobs.
 Then perform the security/controller review and the Phase 6 completion audit.
+
+Status: implemented and validated. A separately deployable handoff consumer
+preserves the Scheduler process's no-Kubernetes boundary. Atomic scheduled
+facts are transactionally paired with complete immutable CR intent keyed by
+event ID while the published v1 contract remains unchanged. The consumer uses
+durable duplicate markers, explicit cluster-context selection and tenant authorization,
+deterministic names, exact existing-resource comparison, retry/DLQ routing,
+and correlated audit annotations. It creates only Namespace and AgentRun
+objects and leaves status exclusively to the Operator.
+
+The handoff package reuses the checked-in Operator API type and adds
+Kubernetes `client-go`/controller-runtime client dependencies to the Platform
+API Go module. This increases module download and source-build cost for that
+module; only the handoff binary initializes Kubernetes clients, while Platform
+API and Scheduler runtime behavior remains unchanged.
