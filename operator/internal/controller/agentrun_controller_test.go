@@ -384,6 +384,26 @@ func TestAgentRunReconcilerFoundationEnvtest(t *testing.T) {
 		}
 	})
 
+	t.Run("existing Secret is checked through metadata only", func(t *testing.T) {
+		secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "runner-credential", Namespace: controllerTestNamespace}, Data: map[string][]byte{"token": []byte("test-only")}}
+		if err := baseClient.Create(ctx, secret); err != nil && !apierrors.IsAlreadyExists(err) {
+			t.Fatalf("create Secret: %v", err)
+		}
+		run := validControllerAgentRun("existing-secret")
+		run.Spec.SecretRefs = []executionv1alpha1.LocalObjectReference{{Name: secret.Name}}
+		if err := baseClient.Create(ctx, run); err != nil {
+			t.Fatalf("create AgentRun: %v", err)
+		}
+		if _, err := reconciler.Reconcile(ctx, requestFor(run.Name)); err != nil {
+			t.Fatalf("reconcile existing Secret: %v", err)
+		}
+		stored := getControllerAgentRun(t, ctx, baseClient, run.Name)
+		condition := meta.FindStatusCondition(stored.Status.Conditions, ConditionConfigurationReady)
+		if condition == nil || condition.Status != metav1.ConditionTrue {
+			t.Fatalf("unexpected Secret-ready condition: %#v", condition)
+		}
+	})
+
 	t.Run("wait-for-first-consumer storage permits Job scheduling", func(t *testing.T) {
 		bindingMode := storagev1.VolumeBindingWaitForFirstConsumer
 		storageClass := &storagev1.StorageClass{

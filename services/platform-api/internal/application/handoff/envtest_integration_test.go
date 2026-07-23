@@ -35,13 +35,17 @@ func TestHandoffCreatesSchemaValidatedAgentRunInRealAPIServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	service, err := NewService(testAuthorizer{}, testSelector{kubernetes}, testIntentLoader{desired: handoffDesired()}, &testMarker{}, nil, nil)
+	marker := &failOnceMarker{}
+	service, err := NewService(testAuthorizer{}, testSelector{kubernetes}, testIntentLoader{desired: handoffDesired()}, marker, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	event := scheduledFixture(t)
+	if err := service.Process(context.Background(), event, time.Now().UTC()); err == nil {
+		t.Fatal("first process unexpectedly persisted its marker")
+	}
 	if err := service.Process(context.Background(), event, time.Now().UTC()); err != nil {
-		t.Fatal(err)
+		t.Fatalf("real API crash-window replay: %v", err)
 	}
 	var payload events.AgentRunScheduledPayload
 	if err := json.Unmarshal(event.Envelope.Payload, &payload); err != nil {

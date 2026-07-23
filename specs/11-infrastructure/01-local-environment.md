@@ -32,4 +32,7 @@ Compose file under the `kubernetes` profile. It mounts only the explicitly
 configured kubeconfig, uses a declared cluster-ID-to-context map, and has CPU
 and memory limits like every other Compose service. `.env.example` records all
 Scheduler execution-intent, handoff, database-role, kubeconfig, port, and
-resource-limit variables.
+resource-limit variables, including the bounded handoff processing timeout.
+The configured kubeconfig context must use only the Namespace and AgentRun
+permissions required by the handoff; administrator credentials are prohibited
+outside disposable local development.

@@ -74,11 +74,17 @@ func run() error {
 		return err
 	}
 	topics := append([]string{events.AgentRunLifecycleTopic}, retryTopics...)
-	consumer, err := kafkaadapter.NewConsumer(kafkaConfiguration, configuration.KafkaGroup, topics...)
+	consumers, err := openTopicConsumers(topics, func(topic string) (ports.EventConsumer, error) {
+		return kafkaadapter.NewConsumer(kafkaConfiguration, configuration.KafkaGroup, topic)
+	})
 	if err != nil {
 		return err
 	}
-	defer consumer.Close()
+	defer func() {
+		for _, consumer := range consumers {
+			consumer.Close()
+		}
+	}()
 	producer, err := kafkaadapter.NewProducer(kafkaConfiguration)
 	if err != nil {
 		return err
@@ -91,8 +97,12 @@ func run() error {
 
 	processContext, cancelProcess := context.WithCancel(context.Background())
 	defer cancelProcess()
-	consumerDone := make(chan error, 1)
-	go func() { consumerDone <- consume(processContext, consumer, service, router, logger) }()
+	consumerDone := make(chan error, len(consumers))
+	for _, consumer := range consumers {
+		go func() {
+			consumerDone <- consume(processContext, consumer, service, router, logger, configuration.ProcessTimeout)
+		}()
+	}
 	var ready atomic.Bool
 	server := &http.Server{Handler: healthHandler(&ready, pool, metrics), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 1 << 20}
 	listener, err := net.Listen("tcp", configuration.HTTPAddress)
@@ -106,12 +116,18 @@ func run() error {
 
 	signalContext, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	var runErr error
+	completedConsumers := 0
 	select {
 	case err := <-consumerDone:
-		return err
+		completedConsumers = 1
+		runErr = err
+		if runErr == nil {
+			runErr = fmt.Errorf("AgentRun handoff consumer stopped unexpectedly")
+		}
 	case err := <-serveDone:
 		if !errors.Is(err, http.ErrServerClosed) {
-			return err
+			runErr = err
 		}
 	case <-signalContext.Done():
 	}
@@ -120,17 +136,39 @@ func run() error {
 	shutdown, cancelShutdown := context.WithTimeout(context.Background(), configuration.ShutdownTimeout)
 	defer cancelShutdown()
 	if err := server.Shutdown(shutdown); err != nil {
-		return err
+		runErr = errors.Join(runErr, err)
 	}
-	select {
-	case err := <-consumerDone:
-		return err
-	case <-shutdown.Done():
-		return fmt.Errorf("AgentRun handoff shutdown timed out")
+	for completedConsumers < len(consumers) {
+		select {
+		case err := <-consumerDone:
+			completedConsumers++
+			runErr = errors.Join(runErr, err)
+		case <-shutdown.Done():
+			return errors.Join(runErr, fmt.Errorf("AgentRun handoff shutdown timed out"))
+		}
 	}
+	return runErr
 }
 
-func consume(ctx context.Context, consumer ports.EventConsumer, service *handoffapp.Service, router *consumerapp.Router, logger *slog.Logger) error {
+func openTopicConsumers(topics []string, open func(string) (ports.EventConsumer, error)) ([]ports.EventConsumer, error) {
+	if len(topics) == 0 || open == nil {
+		return nil, fmt.Errorf("handoff consumer topics and factory are required")
+	}
+	consumers := make([]ports.EventConsumer, 0, len(topics))
+	for _, topic := range topics {
+		consumer, err := open(topic)
+		if err != nil {
+			for _, opened := range consumers {
+				opened.Close()
+			}
+			return nil, err
+		}
+		consumers = append(consumers, consumer)
+	}
+	return consumers, nil
+}
+
+func consume(ctx context.Context, consumer ports.EventConsumer, service *handoffapp.Service, router *consumerapp.Router, logger *slog.Logger, processTimeout time.Duration) error {
 	for {
 		received, err := consumer.Poll(ctx)
 		if err != nil {
@@ -168,12 +206,15 @@ func consume(ctx context.Context, consumer ports.EventConsumer, service *handoff
 			}
 		}
 		now := time.Now().UTC()
-		if err := service.Process(ctx, received, now); err != nil {
+		processContext, cancelProcess := context.WithTimeout(ctx, processTimeout)
+		processErr := service.Process(processContext, received, now)
+		cancelProcess()
+		if processErr != nil {
 			attempt, attemptErr := deliveryAttempt(received)
 			if attemptErr != nil {
 				return attemptErr
 			}
-			routed, routeErr := router.Route(ctx, received, err, attempt, received.Envelope.OccurredAt, now)
+			routed, routeErr := router.Route(ctx, received, processErr, attempt, received.Envelope.OccurredAt, now)
 			if routeErr != nil {
 				return routeErr
 			}

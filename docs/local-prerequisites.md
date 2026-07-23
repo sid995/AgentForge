@@ -108,6 +108,10 @@ volume is initialized. The handoff runtime additionally requires an explicit
 `AGENTFORGE_HANDOFF_KUBECONFIG`,
 `AGENTFORGE_HANDOFF_CLUSTER_CONTEXTS`, and UUIDv7 quarantine tenant. The
 optional Compose service is enabled only with `--profile kubernetes`.
+`AGENTFORGE_HANDOFF_PROCESS_TIMEOUT` bounds one database/Kubernetes effect and
+defaults to 30 seconds. Every cluster ID must map to a unique existing
+kubeconfig context. Use a least-privilege context; do not provide platform or
+cloud administrator credentials.
 
 `make test-events-integration` starts only the pinned single-node Redpanda
 service in the isolated `agentforge-events-integration` Compose project on host
@@ -123,5 +127,7 @@ only a development/test topology.
 `make test-controller` downloads the pinned setup-envtest tool and Kubernetes
 1.36.0 API server/etcd assets into ignored `operator/bin/` paths, regenerates
 the CRD/RBAC/deepcopy artifacts, and runs the Operator tests. It does not use a
-developer's current Kubernetes context. The later kind gate remains
-unavailable until its Phase 6 sub-phase and must not be reported as passing.
+developer's current Kubernetes context. `make test-controller-kind` creates an
+isolated pinned kind 0.32.0/Kubernetes 1.36.1 cluster and proves actual Job,
+retry, and retained-PVC behavior; unlike envtest it requires a working Docker
+daemon and fails clearly when that prerequisite is unavailable.

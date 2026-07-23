@@ -169,3 +169,7 @@ cluster as a deterministic AgentRun and never creates controller children.
 It creates the object without status; the status subresource remains
 Operator-exclusive. Exact existing specs are idempotent no-ops, while
 mismatched immutable intent is a permanent conflict and is never overwritten.
+The handoff validates a one-to-one cluster-context map before becoming ready,
+bounds Kubernetes processing time, and isolates primary and delayed-retry
+consumption. The Operator checks referenced Secrets through metadata-only,
+uncached reads with get-only RBAC so Secret contents are never cached.

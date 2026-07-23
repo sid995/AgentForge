@@ -48,4 +48,10 @@ users:
 	if _, err := selector.Select(context.Background(), "cluster-west"); !errors.Is(err, handoffapp.ErrUnauthorizedCluster) {
 		t.Fatalf("unmapped cluster error=%v", err)
 	}
+	if _, err := NewClientSelector(path, map[string]string{"cluster-west": "missing"}); err == nil {
+		t.Fatal("unknown kubeconfig context mapping accepted")
+	}
+	if _, err := NewClientSelector(path, map[string]string{"cluster-east": "context-east", "cluster-alias": "context-east"}); err == nil {
+		t.Fatal("duplicate kubeconfig context mapping accepted")
+	}
 }

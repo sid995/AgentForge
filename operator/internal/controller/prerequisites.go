@@ -156,7 +156,7 @@ func (r *AgentRunReconciler) workspaceWaitsForFirstConsumer(ctx context.Context,
 		return false, nil
 	}
 	storageClass := &storagev1.StorageClass{}
-	if err := r.Get(ctx, client.ObjectKey{Name: *workspace.Spec.StorageClassName}, storageClass); err != nil {
+	if err := r.uncachedReader().Get(ctx, client.ObjectKey{Name: *workspace.Spec.StorageClassName}, storageClass); err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
 		}
@@ -195,8 +195,9 @@ func (r *AgentRunReconciler) configurationReferencesReady(ctx context.Context, r
 	slices.Sort(secretNames)
 	secretNames = slices.Compact(secretNames)
 	for _, name := range secretNames {
-		object := &corev1.Secret{}
-		if err := r.Get(ctx, client.ObjectKey{Namespace: run.Namespace, Name: name}, object); err != nil {
+		object := &metav1.PartialObjectMetadata{}
+		object.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Secret"))
+		if err := r.uncachedReader().Get(ctx, client.ObjectKey{Namespace: run.Namespace, Name: name}, object); err != nil {
 			if apierrors.IsNotFound(err) {
 				r.setCondition(run, ConditionConfigurationReady, metav1.ConditionFalse, "ReferenceNotFound", fmt.Sprintf("Required Secret %q is not available", name))
 				r.setCondition(run, ConditionWorkspaceReady, metav1.ConditionFalse, "ConfigurationPending", "Workspace waits for execution configuration")
@@ -209,6 +210,13 @@ func (r *AgentRunReconciler) configurationReferencesReady(ctx context.Context, r
 		}
 	}
 	return true, nil
+}
+
+func (r *AgentRunReconciler) uncachedReader() client.Reader {
+	if r.APIReader != nil {
+		return r.APIReader
+	}
+	return r.Client
 }
 
 func (r *AgentRunReconciler) ensureObject(ctx context.Context, run *executionv1alpha1.AgentRun, desired client.Object) error {

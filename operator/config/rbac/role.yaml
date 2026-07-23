@@ -31,8 +31,6 @@ rules:
   - secrets
   verbs:
   - get
-  - list
-  - watch
 - apiGroups:
   - batch
   resources:
@@ -85,5 +83,3 @@ rules:
   - storageclasses
   verbs:
   - get
-  - list
-  - watch

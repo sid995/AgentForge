@@ -174,6 +174,7 @@ func main() {
 
 	if err := (&controller.AgentRunReconciler{
 		Client:          mgr.GetClient(),
+		APIReader:       mgr.GetAPIReader(),
 		ResourceBuilder: resources.NewDefaultBuilder(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create AgentRun controller")

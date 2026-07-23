@@ -165,6 +165,12 @@ deterministic names, exact existing-resource comparison, retry/DLQ routing,
 and correlated audit annotations. It creates only Namespace and AgentRun
 objects and leaves status exclusively to the Operator.
 
+The specialist review narrowed Secret and StorageClass access to uncached
+get-only reads, uses metadata-only objects for Secret existence, validates
+one-to-one kubeconfig context mappings at startup, bounds event processing, and
+isolates primary and delayed-retry topic consumers. Real API crash-window
+replay now verifies exact comparison after CRD defaulting.
+
 The handoff package reuses the checked-in Operator API type and adds
 Kubernetes `client-go`/controller-runtime client dependencies to the Platform
 API Go module. This increases module download and source-build cost for that

@@ -120,6 +120,9 @@ Initial delays are `1m`, `5m`, and `30m`; each retry increments bounded delivery
 metadata while preserving the original envelope. Dead letters go to
 `agentforge.<domain>.<stream>.dlq.v<major>` keyed by the original partition key. Retry and DLQ
 publishing must be acknowledged before the source offset is committed.
+Consumers that implement not-before waits must isolate the primary topic and
+each retry tier into separate group members. A delayed retry record must never
+block fresh records from the primary lifecycle topic.
 
 ## Producer and relay policy
 

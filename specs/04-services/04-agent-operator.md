@@ -193,3 +193,12 @@ context are attached as bounded annotations and structured audit fields.
 The consumer never writes the status subresource and never creates Jobs or
 other execution children. Its health/readiness endpoints and low-cardinality
 metrics expose processed, duplicate, retry, DLQ, and routing-failure outcomes.
+
+The Phase 6 specialist review requires every configured cluster to resolve to
+one unique kubeconfig context at startup and bounds each event attempt with
+`AGENTFORGE_HANDOFF_PROCESS_TIMEOUT` (default 30 seconds, maximum five
+minutes). The primary topic and each delayed retry tier use separate consumer
+group members so a not-before wait cannot stop fresh scheduling handoffs.
+Operator reference checks use the uncached API reader for StorageClasses and
+metadata-only Secrets; the controller therefore needs only `get`, and never
+cluster-wide Secret list/watch or Secret payload caching.

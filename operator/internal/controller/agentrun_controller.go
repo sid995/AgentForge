@@ -65,6 +65,7 @@ const (
 // AgentRunReconciler projects durable AgentRun intent into namespaced execution resources.
 type AgentRunReconciler struct {
 	client.Client
+	APIReader       client.Reader
 	ResourceBuilder *resources.Builder
 	Now             func() time.Time
 }
@@ -73,9 +74,9 @@ type AgentRunReconciler struct {
 // +kubebuilder:rbac:groups=execution.agentforge.dev,resources=agentruns/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=execution.agentforge.dev,resources=agentruns/finalizers,verbs=update;patch
 // +kubebuilder:rbac:groups="",resources=serviceaccounts;configmaps;persistentvolumeclaims,verbs=get;list;watch;create;patch
-// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get
 // +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;delete
-// +kubebuilder:rbac:groups=storage.k8s.io,resources=storageclasses,verbs=get;list;watch
+// +kubebuilder:rbac:groups=storage.k8s.io,resources=storageclasses,verbs=get
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;patch
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;patch;delete
 

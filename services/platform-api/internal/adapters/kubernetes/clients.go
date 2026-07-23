@@ -24,6 +24,21 @@ func NewClientSelector(kubeconfig string, contexts map[string]string) (*ClientSe
 	if kubeconfig == "" || len(contexts) == 0 {
 		return nil, fmt.Errorf("kubeconfig and cluster contexts are required")
 	}
+	raw, err := clientcmd.LoadFromFile(kubeconfig)
+	if err != nil {
+		return nil, fmt.Errorf("load kubeconfig: %w", err)
+	}
+	seenContexts := make(map[string]struct{}, len(contexts))
+	for clusterID, contextName := range contexts {
+		configured, exists := raw.Contexts[contextName]
+		if !exists || configured == nil || configured.Cluster == "" || raw.Clusters[configured.Cluster] == nil {
+			return nil, fmt.Errorf("cluster %q maps to an unknown kubeconfig context", clusterID)
+		}
+		if _, duplicate := seenContexts[contextName]; duplicate {
+			return nil, fmt.Errorf("kubeconfig context %q is mapped to multiple clusters", contextName)
+		}
+		seenContexts[contextName] = struct{}{}
+	}
 	return &ClientSelector{kubeconfig: kubeconfig, contexts: contexts, clients: make(map[string]client.Client)}, nil
 }
 

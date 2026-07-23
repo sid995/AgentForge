@@ -82,7 +82,8 @@ before finalizer removal.
 
 Phase 6.10 adds `make build-handoff`. For local Kubernetes handoff, set the
 explicit kubeconfig and cluster-context mapping in `.env`, register the same
-cluster ID in PostgreSQL, install the CRD/Operator, then start:
+cluster ID in PostgreSQL, install the CRD/Operator, then start. Each cluster ID
+must map to a unique context; use a least-privilege context.
 
 ```bash
 docker compose --profile kubernetes up --detach agentrun-handoff

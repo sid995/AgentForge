@@ -19,6 +19,7 @@ type HandoffConfig struct {
 	Environment        string
 	Database           DatabaseConfig
 	ShutdownTimeout    time.Duration
+	ProcessTimeout     time.Duration
 	KafkaGroup         string
 	KubeconfigPath     string
 	ClusterContexts    map[string]string
@@ -27,7 +28,7 @@ type HandoffConfig struct {
 
 func LoadHandoff(lookup LookupEnv) (HandoffConfig, error) {
 	configuration := HandoffConfig{
-		HTTPAddress: ":8082", Environment: defaultEnvironment, ShutdownTimeout: defaultShutdownTimeout,
+		HTTPAddress: ":8082", Environment: defaultEnvironment, ShutdownTimeout: defaultShutdownTimeout, ProcessTimeout: 30 * time.Second,
 		KafkaGroup: "agentforge-agentrun-handoff-v1",
 		Database:   DatabaseConfig{MaxConns: defaultDatabaseMaxConns, MaxIdleConns: defaultDatabaseMaxIdle, MaxConnLifetime: defaultDatabaseLifetime, AcquireTimeout: defaultDatabaseAcquire, ConnectTimeout: defaultDatabaseConnect},
 	}
@@ -46,6 +47,12 @@ func LoadHandoff(lookup LookupEnv) (HandoffConfig, error) {
 	}
 	if configuration.ShutdownTimeout, err = duration(lookup, "AGENTFORGE_SHUTDOWN_TIMEOUT", configuration.ShutdownTimeout); err != nil {
 		return HandoffConfig{}, err
+	}
+	if configuration.ProcessTimeout, err = duration(lookup, "AGENTFORGE_HANDOFF_PROCESS_TIMEOUT", configuration.ProcessTimeout); err != nil {
+		return HandoffConfig{}, err
+	}
+	if configuration.ProcessTimeout > 5*time.Minute {
+		return HandoffConfig{}, fmt.Errorf("AGENTFORGE_HANDOFF_PROCESS_TIMEOUT must not exceed 5m")
 	}
 	if value, ok := lookup("AGENTFORGE_HANDOFF_KAFKA_GROUP"); ok {
 		configuration.KafkaGroup = strings.TrimSpace(value)

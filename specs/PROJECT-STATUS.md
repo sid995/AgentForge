@@ -4,13 +4,13 @@
 
 ## Current milestone
 
-Phase 6.10 Scheduler-to-CR handoff complete; Phase 6 review and audit are next
+Phase 6 specialist review complete; completion audit is next
 
 ## Overall state
 
 Phase 2, the Phase 3.1/3.2 state-machine and persistence foundation, and Phase
-4 and 5 are complete. Phase 6 implementation is complete pending its specialist
-review and completion audit.
+4 and 5 are complete. Phase 6 implementation and specialist review are
+complete pending the completion audit.
 At the user's direction, Phase 5 Scheduler was completed
 before Phase 3.3 through 3.5 API, cancellation, and retry commands. Those gaps
 remain explicit dependencies for their corresponding command integrations.
@@ -128,10 +128,14 @@ remain explicit dependencies for their corresponding command integrations.
   retry/DLQ behavior, status-subresource ownership preservation, correlated
   audit context, least-privilege database role, and bounded root-Compose
   packaging
+- Phase 6 controller/security review: metadata-only uncached Secret checks and
+  get-only RBAC, uncached get-only StorageClass reads, startup validation for
+  one-to-one kubeconfig contexts, bounded handoff processing, isolated primary
+  and retry-tier consumers, and real-API crash-window replay
 
 ## In progress
 
-- Phase 6 controller/security review and completion audit
+- Phase 6 completion audit
 
 ## Not started
 
