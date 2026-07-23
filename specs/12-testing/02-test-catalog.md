@@ -78,10 +78,16 @@
   attempt ceiling, deterministic exponential capped jitter, restart recovery,
   prior-attempt retention, current-field reset, new deterministic Job identity,
   failed-Job retention, and Kubernetes 1.36 envtest Job creation;
+- cleanup during provisioning, running, and terminal state; retained-PVC
+  survival and released marker; every attempt and partial absence; partial API
+  failure/retry; ownership conflict; deadline/controller restart escalation;
+  finalizer-removal conflict/retry; envtest finalizer removal; and kind
+  retained-PVC survival after CR deletion;
 - a pinned kind 0.32.0 two-node cluster using Kubernetes 1.36.1 by digest,
   proving real scheduling, PVC binding, Pod completion, missing-evidence
   failure, attempt projection, one-Job idempotency, and a transient image-pull
-  failure advancing to a distinct second-attempt Job;
+  failure advancing to a distinct second-attempt Job, plus retained AgentRun
+  deletion with finalizer completion and released PVC survival;
 - non-root Operator image and configured leader election, health, readiness,
   authenticated metrics, and structured logging foundation.
 

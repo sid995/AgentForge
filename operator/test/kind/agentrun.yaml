@@ -38,6 +38,43 @@ spec:
 apiVersion: execution.agentforge.dev/v1alpha1
 kind: AgentRun
 metadata:
+  name: lifecycle-retained-cleanup
+  namespace: agentforge-kind-lifecycle
+spec:
+  tenantId: 019b0000-0000-7000-8000-000000000031
+  projectId: 019b0000-0000-7000-8000-000000000032
+  runId: 019b0000-0000-7000-8000-000000000033
+  attemptId: 019b0000-0000-7000-8000-000000000034
+  attempt: 1
+  runnerImage: docker.io/library/busybox@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028
+  runtime: shell-1.0
+  executionProfile: standard
+  taskRef: vault://tasks/kind-retained-cleanup
+  timeoutSeconds: 120
+  retryPolicy:
+    maxAttempts: 1
+    initialBackoffSeconds: 2
+    maxBackoffSeconds: 5
+  resources:
+    requests:
+      cpuMillis: 100
+      memoryMiB: 64
+    limits:
+      cpuMillis: 200
+      memoryMiB: 128
+  workspace:
+    sizeGiB: 1
+    storageClassName: standard
+    retentionPolicy: Retain
+  network:
+    profile: Isolated
+  artifactDestinationRef:
+    name: artifact-store
+  desiredState: Running
+---
+apiVersion: execution.agentforge.dev/v1alpha1
+kind: AgentRun
+metadata:
   name: lifecycle-transient-retry
   namespace: agentforge-kind-lifecycle
 spec:

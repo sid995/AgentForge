@@ -90,6 +90,14 @@ scheduled retry. The Operator retains the failed attempt, advances the observed
 attempt, clears only current-attempt projections, and then creates resources
 under a new attempt-qualified deterministic Job name.
 
+Phase 6.9 lets owner references garbage-collect ordinary children and uses the
+existing finalizer only for explicitly retained workspaces. Every retained
+attempt PVC is preserved and receives a deterministic `Released` handoff
+marker before finalizer removal. Missing and partially completed work is safe
+to replay. Bounded `CleanupPending` diagnostics retry every 15 seconds, and a
+ten-minute deadline releases the finalizer with an escalation log/runbook path
+instead of leaving deletion silently blocked.
+
 Run the real lifecycle gate with:
 
 ```bash
@@ -101,3 +109,5 @@ Kubernetes 1.36.1 cluster from a digest-pinned image. It proves PVC consumer
 binding, real Pod completion, mandatory-evidence enforcement, attempt status,
 duplicate-safe Job creation, and a transient image-pull failure producing two
 distinct attempt-qualified Jobs under the retry ceiling.
+It also deletes a retained AgentRun and proves the CR finalizes while its PVC
+survives with the `Released` handoff marker.

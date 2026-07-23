@@ -142,6 +142,13 @@ Use ownership for cluster-local garbage collection and a finalizer only for
 external or retained resources. Cleanup is bounded, observable, idempotent,
 restart-safe, and cannot silently leave a permanently blocked finalizer.
 
+Status: implemented and validated. Disposable children remain owner-managed;
+the retained-workspace finalizer validates and marks every attempt PVC as
+released without deleting it. Missing/partial resources, API failure, restart,
+and ownership conflicts are idempotent and diagnosable. A deletion-timestamp
+anchored ten-minute deadline releases the finalizer with an explicit runbook
+escalation path, and kind proves the retained PVC survives CR deletion.
+
 ### 6.10 Scheduler handoff and audit
 
 Consume `agent-run.scheduled.v1` idempotently, select the registered cluster

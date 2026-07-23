@@ -568,8 +568,12 @@ func TestAgentRunReconcilerFoundationEnvtest(t *testing.T) {
 		}
 	})
 
-	t.Run("deletion timestamp exposes cleanup pending and keeps finalizer", func(t *testing.T) {
+	t.Run("deletion releases retained workspace and removes finalizer", func(t *testing.T) {
 		stored := getControllerAgentRun(t, ctx, baseClient, "retained")
+		names, err := naming.ForAgentRun(stored)
+		if err != nil {
+			t.Fatalf("derive retained workspace name: %v", err)
+		}
 		if err := baseClient.Delete(ctx, stored); err != nil {
 			t.Fatalf("delete retained AgentRun: %v", err)
 		}
@@ -580,13 +584,15 @@ func TestAgentRunReconcilerFoundationEnvtest(t *testing.T) {
 		if _, err := reconciler.Reconcile(ctx, requestFor(stored.Name)); err != nil {
 			t.Fatalf("reconcile deletion: %v", err)
 		}
-		stored = getControllerAgentRun(t, ctx, baseClient, stored.Name)
-		condition := meta.FindStatusCondition(stored.Status.Conditions, ConditionCleanupPending)
-		if condition == nil || condition.Status != metav1.ConditionTrue || condition.Reason != "RetainedResources" {
-			t.Fatalf("unexpected cleanup condition: %#v", condition)
+		if err := baseClient.Get(ctx, requestFor(stored.Name).NamespacedName, &executionv1alpha1.AgentRun{}); !apierrors.IsNotFound(err) {
+			t.Fatalf("AgentRun remained after cleanup finalizer release: %v", err)
 		}
-		if !containsString(stored.Finalizers, RetainedResourcesFinalizer) {
-			t.Fatal("foundation removed finalizer before retained-resource cleanup exists")
+		workspace := &corev1.PersistentVolumeClaim{}
+		if err := baseClient.Get(ctx, client.ObjectKey{Namespace: stored.Namespace, Name: names.Workspace}, workspace); err != nil {
+			t.Fatalf("retained workspace was not preserved: %v", err)
+		}
+		if workspace.Annotations[retentionStateAnnotation] != retentionStateReleased {
+			t.Fatalf("retention handoff was not recorded: %#v", workspace.Annotations)
 		}
 	})
 

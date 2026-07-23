@@ -155,3 +155,21 @@ the prior terminal attempt entry. Current Job/Pod/timing/failure/result fields
 are cleared, then the normal prerequisite reconciler derives fresh
 attempt-qualified resources. The failed Job is never adopted or reused, and a
 status conflict cannot create the next Job before the attempt advance commits.
+
+## Phase 6.9 finalization and cleanup
+
+Ordinary ServiceAccounts, ConfigMaps, PVCs, NetworkPolicies, Jobs, and Pods use
+controller ownership and need no cleanup finalizer. The existing
+`retained-resources` finalizer remains limited to `workspace.retentionPolicy:
+Retain`. On deletion, the Operator checks every observed attempt's detached
+PVC, validates the owner UID and retention marker, and patches a deterministic
+`retention-state: Released` handoff annotation without deleting the claim.
+
+Missing claims and already released attempts are successful no-ops; partial
+handoff resumes at the first unfinished claim after restart. API and ownership
+failures produce bounded `CleanupPending=True` diagnostics and retry every 15
+seconds regardless of permanent/transient classification. The CR deletion
+timestamp anchors a ten-minute deadline. At expiry the Operator records
+`CleanupEscalated`, releases the finalizer without issuing a PVC delete, and
+emits a correlated escalation log for the retained-workspace runbook. Status
+and finalizer patch failures also keep polling rather than becoming terminal.

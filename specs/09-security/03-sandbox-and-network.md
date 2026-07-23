@@ -53,3 +53,9 @@ Phase 6.8 applies a hard platform retry allowlist after the desired CR
 allowlist. `POLICY`, `VALIDATION`, `PERMANENT_DEPENDENCY`, and `EXECUTION`
 outcomes cannot be relabeled or retried, preventing security-policy,
 configuration, and failed-test bypass through retry configuration.
+
+Phase 6.9 never adopts or deletes a retained workspace. It verifies that the
+PVC has no controller owner and that its bounded owner-UID and retention
+markers match before recording handoff. Ownership conflicts remain visible
+until the bounded escalation deadline, and escalation releases only the CR
+finalizer; it does not issue destructive storage operations.

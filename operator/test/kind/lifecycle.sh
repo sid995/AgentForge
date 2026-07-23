@@ -131,4 +131,46 @@ if [[ "${retry_phase}" != "Failed" || "${retry_attempt}" != "2" ||
     exit 1
 fi
 
+deadline=$((SECONDS + 300))
+retained_phase=""
+while (( SECONDS < deadline )); do
+    retained_phase="$("${kubectl_bin}" get agentrun lifecycle-retained-cleanup \
+        --namespace agentforge-kind-lifecycle \
+        -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+    if [[ "${retained_phase}" == "Failed" ]]; then
+        break
+    fi
+    if ! kill -0 "${manager_pid}" 2>/dev/null; then
+        break
+    fi
+    sleep 2
+done
+if [[ "${retained_phase}" != "Failed" ]]; then
+    printf 'retained cleanup fixture did not complete execution: phase=%s\n' "${retained_phase}" >&2
+    exit 1
+fi
+"${kubectl_bin}" delete agentrun lifecycle-retained-cleanup --namespace agentforge-kind-lifecycle --wait=false
+deadline=$((SECONDS + 120))
+retention_state=""
+while (( SECONDS < deadline )); do
+    retention_state="$("${kubectl_bin}" get persistentvolumeclaims \
+        --namespace agentforge-kind-lifecycle \
+        -l execution.agentforge.dev/run-id=019b0000-0000-7000-8000-000000000033 \
+        -o jsonpath='{.items[0].metadata.annotations.execution\.agentforge\.dev/retention-state}' 2>/dev/null || true)"
+    if ! "${kubectl_bin}" get agentrun lifecycle-retained-cleanup --namespace agentforge-kind-lifecycle >/dev/null 2>&1 &&
+       [[ "${retention_state}" == "Released" ]]; then
+        break
+    fi
+    sleep 2
+done
+retained_pvc_count="$("${kubectl_bin}" get persistentvolumeclaims --namespace agentforge-kind-lifecycle -l execution.agentforge.dev/run-id=019b0000-0000-7000-8000-000000000033 -o name | wc -l | tr -d ' ')"
+if "${kubectl_bin}" get agentrun lifecycle-retained-cleanup --namespace agentforge-kind-lifecycle >/dev/null 2>&1 ||
+   [[ "${retention_state}" != "Released" || "${retained_pvc_count}" != "1" ]]; then
+    printf 'unexpected retained cleanup result: state=%s pvcs=%s\n' "${retention_state}" "${retained_pvc_count}" >&2
+    printf '%s\n' 'operator manager log:' >&2
+    sed -n '1,240p' "${manager_log}" >&2
+    "${kubectl_bin}" get agentrun,jobs,pods,persistentvolumeclaims --namespace agentforge-kind-lifecycle -o yaml >&2 || true
+    exit 1
+fi
+
 printf '%s\n' 'kind lifecycle integration gate passed'

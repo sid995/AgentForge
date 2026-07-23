@@ -23,6 +23,10 @@ Job for the current observed attempt. They perform no API writes. Every
 cluster-local child uses an AgentRun controller owner reference, except a PVC
 with explicit `Retain` policy; retained PVCs omit garbage-collection ownership
 and carry a retention annotation for finalizer cleanup.
+Phase 6.9 preserves those claims after AgentRun deletion and adds
+`execution.agentforge.dev/retention-state: Released` only after validating the
+claim's retention and owner-UID markers. No retained-workspace cleanup path
+issues a PVC delete.
 
 The Job uses a digest-qualified runner image, active deadline, zero Kubernetes
 backoff, exact CPU/memory requests and limits, bounded termination grace, and

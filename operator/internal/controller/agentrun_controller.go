@@ -113,13 +113,38 @@ func (r *AgentRunReconciler) Reconcile(ctx context.Context, request ctrl.Request
 			return ctrl.Result{}, nil
 		}
 		beforeStatus := run.DeepCopy()
-		r.initializeDeletingStatus(run)
+		cleanupComplete, cleanupErr := r.reconcileCleanup(ctx, run)
 		if _, err := r.patchStatusIfChanged(ctx, beforeStatus, run); err != nil {
 			reconcileErr := classifyAPIError("DeletionStatusWriteFailed", err)
-			outcome = string(reconcileErr.Class) + "_error"
-			return ctrl.Result{}, terminalIfPermanent(reconcileErr)
+			outcome = "cleanup_pending"
+			log.Info("Retained AgentRun cleanup status is waiting for operator retry", "reason", reconcileErr.Reason)
+			return ctrl.Result{RequeueAfter: cleanupRequeue}, nil
 		}
-		log.Info("Retained AgentRun is awaiting cleanup reconciliation")
+		if cleanupErr != nil {
+			outcome = "cleanup_pending"
+			log.Info("Retained AgentRun cleanup is waiting for operator retry", "reason", cleanupErr.Reason)
+			return ctrl.Result{RequeueAfter: cleanupRequeue}, nil
+		}
+		if !cleanupComplete {
+			return ctrl.Result{RequeueAfter: cleanupRequeue}, nil
+		}
+		beforeMetadata := run.DeepCopy()
+		controllerutil.RemoveFinalizer(run, RetainedResourcesFinalizer)
+		patch := client.MergeFromWithOptions(beforeMetadata, client.MergeFromWithOptimisticLock{})
+		if err := r.Patch(ctx, run, patch); err != nil {
+			reconcileErr := classifyAPIError("FinalizerRemovalFailed", err)
+			beforeFailureStatus := run.DeepCopy()
+			r.setCondition(run, ConditionCleanupPending, metav1.ConditionTrue, "FinalizerRemovalFailed", "Cleanup completed but finalizer removal could not make progress")
+			_, _ = r.patchStatusIfChanged(ctx, beforeFailureStatus, run)
+			outcome = "cleanup_pending"
+			log.Info("Retained AgentRun finalizer removal is waiting for operator retry", "reason", reconcileErr.Reason)
+			return ctrl.Result{RequeueAfter: cleanupRequeue}, nil
+		}
+		if condition := meta.FindStatusCondition(run.Status.Conditions, ConditionCleanupPending); condition != nil && condition.Reason == "CleanupEscalated" {
+			log.Info("Cleanup deadline elapsed; released finalizer for retained-resource operator review")
+		} else {
+			log.Info("Completed retained-resource cleanup and removed finalizer")
+		}
 		return ctrl.Result{}, nil
 	}
 
@@ -276,7 +301,9 @@ func (r *AgentRunReconciler) initializeInvalidStatus(run *executionv1alpha1.Agen
 func (r *AgentRunReconciler) initializeDeletingStatus(run *executionv1alpha1.AgentRun) {
 	run.Status.ObservedGeneration = run.Generation
 	r.setCondition(run, ConditionReady, metav1.ConditionFalse, "Deleting", "AgentRun deletion is in progress")
-	r.setCondition(run, ConditionCleanupPending, metav1.ConditionTrue, "RetainedResources", "Retained resources require cleanup reconciliation")
+	if meta.FindStatusCondition(run.Status.Conditions, ConditionCleanupPending) == nil {
+		r.setCondition(run, ConditionCleanupPending, metav1.ConditionTrue, "CleanupStarted", "Retained workspace handoff is in progress")
+	}
 }
 
 func (r *AgentRunReconciler) setCondition(run *executionv1alpha1.AgentRun, conditionType string, status metav1.ConditionStatus, reason, message string) {

@@ -114,17 +114,22 @@ remain explicit dependencies for their corresponding command integrations.
   security/configuration/test outcomes, attempt ceilings, deterministic capped
   exponential jitter, restart-safe deadlines, retained attempt history,
   status-before-resource ordering, and fresh deterministic retry Jobs
+- Phase 6.9 owner-reference garbage collection plus retained-workspace-only
+  finalization, every-attempt retention handoff, no-delete PVC preservation,
+  partial/missing-resource idempotency, bounded cleanup diagnostics/retry,
+  restart-safe ten-minute escalation, envtest deletion, and real kind PVC
+  survival after AgentRun finalization
 
 ## In progress
 
-- Phase 6.9 finalizer and cleanup reconciliation
+- Phase 6.10 Scheduler-to-CR handoff
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Phase 6.9 through 6.10 Operator cleanup and Scheduler handoff
+- Phase 6.10 Scheduler handoff
 - Agent Runner
 - Model Gateway
 - Build and deployment services
@@ -137,7 +142,7 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Commit the validated Phase 6.8 retry reconciliation.
-2. Implement and commit Phase 6.9 finalizer and cleanup reconciliation.
+1. Commit the validated Phase 6.9 finalizer and cleanup reconciliation.
+2. Implement and commit Phase 6.10 Scheduler-to-CR handoff.
 3. Preserve the unresolved Phase 3 cancellation/retry command dependencies and
    the Phase 6 no-Kubernetes boundary.

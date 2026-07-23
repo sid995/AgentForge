@@ -143,3 +143,20 @@ the current attempt to `Pending`, clearing only current execution projections.
 A subsequent reconciliation derives a new attempt-qualified Job and related
 resources. This ordering prevents a status conflict or controller crash from
 creating work for an uncommitted attempt, and the failed Job remains distinct.
+
+## Phase 6.9 finalization and cleanup
+
+Cluster-local disposable resources continue to rely on AgentRun controller
+owner references. Only explicitly retained workspaces carry the
+`retained-resources` finalizer. Deletion iterates from the Scheduler starting
+attempt through the current observed attempt, tolerates absent claims, validates
+unowned owner-UID/retention markers, and idempotently records a `Released`
+handoff annotation. The Operator never deletes a retained PVC.
+
+`CleanupPending=True` records sanitized read, ownership, patch, status, and
+finalizer-removal blockers. Partial success persists on each PVC, and a
+15-second explicit requeue makes transient errors and controller restart safe.
+The deletion timestamp is the durable clock for a ten-minute escalation
+deadline. Expiry records `CleanupEscalated`, releases the finalizer without a
+PVC delete, and emits correlated operator-review telemetry; patch failures
+continue polling rather than terminating the reconcile key.
