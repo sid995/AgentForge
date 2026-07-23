@@ -2,15 +2,17 @@
 
 ## Pull request pipeline
 
-1. Format and lint.
+1. Format, lint, and repository-control verification.
 2. Unit and contract tests.
-3. Go race tests for relevant packages.
+3. Go race and vet checks for relevant packages.
 4. Event-schema example, immutable-major compatibility, producer, and supported
    consumer-fixture validation through `make verify-event-contracts`.
-5. Database migration validation.
+5. PostgreSQL migration and integration validation.
 6. Kafka contract integration against the root-Compose Redpanda service.
-7. CRD and manifest schema validation when those artifacts exist.
-8. Build OCI image.
+7. Reproducible CRD/RBAC/deepcopy generation, Kubernetes 1.36 envtest, and the
+   pinned kind 0.32.0/Kubernetes 1.36.1 lifecycle gate.
+8. Build the non-root Platform API, Scheduler, AgentRun handoff, and Operator
+   OCI images.
 9. Generate SBOM, scan dependencies and images, and sign in a protected
    workflow when the release pipeline is implemented.
 

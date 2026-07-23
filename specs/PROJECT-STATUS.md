@@ -134,6 +134,10 @@ remain explicit dependencies for their corresponding command integrations.
 - Phase 6 completion audit: full repository, PostgreSQL, Kafka, envtest,
   Kubernetes 1.36 kind, race, static, contract, Compose, and non-root image
   gates with no unresolved high-severity finding
+- Phase 6 post-audit documentation closure: domain recovery and cancellation,
+  handoff/Operator ownership, security, telemetry, tests, CI, milestones, and
+  local prerequisites aligned with implemented behavior and deferred
+  PostgreSQL lifecycle projection
 
 ## In progress
 

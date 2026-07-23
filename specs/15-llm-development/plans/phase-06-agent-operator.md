@@ -181,3 +181,7 @@ The specialist review and full Phase gate are complete. The severity-ranked
 findings, concrete failure interleavings, validation record, and remaining
 boundaries are recorded in
 `15-llm-development/audits/phase-06-completion-audit.md`.
+The post-audit consistency pass also aligns the domain recovery/cancellation
+boundary, milestones, controller responsibilities, security, telemetry, test
+catalog, CI, and local prerequisites with the implemented handoff and the
+explicitly deferred PostgreSQL lifecycle projection.

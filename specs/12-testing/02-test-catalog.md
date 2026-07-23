@@ -6,7 +6,8 @@
 - Invalid transition.
 - cancellation races completion.
 - timeout during model call.
-- scheduler crash before and after CR creation.
+- handoff crash before AgentRun creation and after creation but before the
+  processed-event marker.
 - operator restart during active Job.
 - retryable and terminal attempt failure.
 - concurrent Scheduler claims, active/expired leases, priority and age order,
@@ -32,6 +33,11 @@
 - immutable-major required-field and JSON-type compatibility baselines.
 - supported old consumer fixtures against current schemas and runtime decoders.
 - retry-attempt progression and publish-before-acknowledgment against Redpanda.
+- atomic scheduled-event/immutable-intent pairing; strict event/intent
+  identity; registered-cluster and tenant authorization; exact
+  Namespace/AgentRun replay after API defaulting; durable processed markers;
+  retry/DLQ publish-before-acknowledgment; bounded processing; and independent
+  primary/retry-tier group members.
 
 ## Isolation
 
@@ -39,12 +45,16 @@
 - RLS enforcement.
 - object-storage prefix isolation.
 - Kubernetes namespace and egress isolation.
+- explicit one-to-one cluster-context mapping and cross-tenant handoff
+  rejection before Kubernetes writes.
 
 ## Kubernetes controller
 
 - reproducible CRD, RBAC, and deepcopy generation with pinned tools;
 - manager scheme registration for `execution.agentforge.dev/v1alpha1`;
 - envtest installation and create/get behavior for the AgentRun CRD;
+- metadata-only uncached Secret existence checks and get-only Secret and
+  StorageClass RBAC;
 - AgentRun required schema, safe defaults, enum/range/reference validation,
   prohibited resource/network/retry combinations, set-list uniqueness,
   immutable execution intent, one-way cancellation, printer columns, and
@@ -89,7 +99,10 @@
   failure advancing to a distinct second-attempt Job, plus retained AgentRun
   deletion with finalizer completion and released PVC survival;
 - non-root Operator image and configured leader election, health, readiness,
-  authenticated metrics, and structured logging foundation.
+  authenticated metrics, and structured logging foundation;
+- non-root handoff image, health/readiness/metrics endpoints, deterministic
+  namespace and AgentRun projection, exact conflict behavior, real-API
+  crash-window replay, and proof that it cannot create Jobs or write status.
 
 ## Deployment
 

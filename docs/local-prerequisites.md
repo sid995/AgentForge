@@ -33,13 +33,20 @@ phases extend this same
 [`docker-compose.yml`](../docker-compose.yml); they must not add phase-specific
 Compose files.
 
-## Required in later phases
+## Repository-managed and later-phase tools
 
-Install these only when their governing phase begins:
+The current Make targets provision or fall back to pinned tools where
+documented:
 
-- `golangci-lint` v2 for Go linting
-- ShellCheck for shell-script linting
-- kind for the Phase 6.6 real-cluster controller gate
+- `golangci-lint` v2 may be installed locally; otherwise `make lint` uses its
+  pinned container through Docker.
+- `make test-controller-kind` downloads the pinned kind v0.32.0 binary into
+  the ignored Operator tool directory.
+- ShellCheck remains an optional host check until a required shell-lint gate is
+  introduced.
+
+Install these only when their later governing phase begins:
+
 - Helm when the GitOps/deployment packaging phase begins
 - Terraform for cloud infrastructure
 

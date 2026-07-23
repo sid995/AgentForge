@@ -9,8 +9,13 @@
 5. Observe Job and Pod conditions.
 6. Classify state and failure.
 7. Patch status only when changed.
-8. Emit metrics and durable lifecycle command/event.
+8. Emit metrics; publish a durable lifecycle fact only after its later
+   cross-store contract is implemented.
 9. Requeue only when polling is required.
+
+Phase 6 ends at Kubernetes status ownership. The Operator does not write
+PostgreSQL workflow state, and no observed-lifecycle producer is claimed by
+the Phase 6 completion gate.
 
 ## Failure classification
 

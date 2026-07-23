@@ -13,8 +13,12 @@
 - Observe Pod and Job state.
 - Classify failure.
 - Update status conditions.
-- Emit metrics and lifecycle events.
+- Emit metrics.
 - Clean external resources before removing finalizer.
+
+Publishing observed lifecycle facts back to the PostgreSQL workflow is a later
+integration. Phase 6 does not invent that event contract or claim the
+`CANCELLING -> CANCELLED` platform transition from Kubernetes status alone.
 
 ## Controller rules
 
