@@ -4,13 +4,12 @@
 
 ## Current milestone
 
-Phase 6 specialist review complete; completion audit is next
+Phase 6 complete; resume Phase 3.3 create/get/list run API
 
 ## Overall state
 
 Phase 2, the Phase 3.1/3.2 state-machine and persistence foundation, and Phase
-4 and 5 are complete. Phase 6 implementation and specialist review are
-complete pending the completion audit.
+4, 5, and 6 are complete.
 At the user's direction, Phase 5 Scheduler was completed
 before Phase 3.3 through 3.5 API, cancellation, and retry commands. Those gaps
 remain explicit dependencies for their corresponding command integrations.
@@ -132,10 +131,13 @@ remain explicit dependencies for their corresponding command integrations.
   get-only RBAC, uncached get-only StorageClass reads, startup validation for
   one-to-one kubeconfig contexts, bounded handoff processing, isolated primary
   and retry-tier consumers, and real-API crash-window replay
+- Phase 6 completion audit: full repository, PostgreSQL, Kafka, envtest,
+  Kubernetes 1.36 kind, race, static, contract, Compose, and non-root image
+  gates with no unresolved high-severity finding
 
 ## In progress
 
-- Phase 6 completion audit
+- None; Phase 6 is closed
 
 ## Not started
 
@@ -150,10 +152,11 @@ remain explicit dependencies for their corresponding command integrations.
 ## Known gaps to resolve during bootstrap
 
 - Create ADRs for decisions currently described only inside component specifications.
-- Add executable OpenAPI, event schema, CRD, and Terraform artifacts during their implementation phases.
+- Add executable OpenAPI and Terraform artifacts during their implementation
+  phases; event schemas and the AgentRun CRD are checked in and verified.
 
 ## Next tasks
 
-1. Perform the Phase 6 Kubernetes-controller and security review.
-2. Run the Phase 6 completion audit and full repository gates.
-3. Preserve the unresolved Phase 3 cancellation/retry command dependencies.
+1. Resume Phase 3.3 create/get/list run API.
+2. Implement Phase 3.4 cancellation and Phase 3.5 retry commands.
+3. Run the Phase 3 completion audit before beginning the Agent Runner.

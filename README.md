@@ -56,8 +56,10 @@ Kubernetes 1.36 kind gate. Phase 6.7 adds graceful, deadline-bounded,
 restart-safe cancellation, Phase 6.8 adds bounded policy-approved retries, and
 Phase 6.9 safely finalizes retained workspaces. Phase 6.10 adds the
 idempotent, tenant-isolated Scheduler-event-to-AgentRun handoff without giving
-the Scheduler process or consumer permission to create Jobs; see
-[`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).
+the Scheduler process or consumer permission to create Jobs. Phase 6 is closed
+by its Kubernetes/security review and
+[`completion audit`](specs/15-llm-development/audits/phase-06-completion-audit.md);
+see [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).
 
 ## Agent Operator development
 
