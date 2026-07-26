@@ -21,6 +21,7 @@ type AgentRunPage struct {
 type AgentRunRepository interface {
 	Create(context.Context, domain.AgentRun, domain.AgentRunAttempt) error
 	Get(context.Context, uuid.UUID, uuid.UUID) (domain.AgentRun, error)
+	GetByIdempotencyKey(context.Context, uuid.UUID, string) (domain.AgentRun, error)
 	List(context.Context, uuid.UUID, AgentRunPage) ([]domain.AgentRun, error)
 	Save(context.Context, domain.AgentRun, int64) (domain.AgentRun, error)
 	CreateNextAttempt(context.Context, domain.AgentRun, domain.AgentRunAttempt, int64) (domain.AgentRun, error)

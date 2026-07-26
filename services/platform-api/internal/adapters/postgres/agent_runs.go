@@ -74,6 +74,23 @@ func (repository *AgentRunRepository) Get(ctx context.Context, tenantID, runID u
 	return run, nil
 }
 
+// GetByIdempotencyKey returns the previously accepted run for one tenant key.
+func (repository *AgentRunRepository) GetByIdempotencyKey(ctx context.Context, tenantID uuid.UUID, key string) (domain.AgentRun, error) {
+	tx, err := repository.database.BeginTenant(ctx, tenantID)
+	if err != nil {
+		return domain.AgentRun{}, translateError(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	run, err := scanAgentRun(tx.QueryRowContext(ctx, agentRunSelect+` where tenant_id = $1 and idempotency_key = $2`, tenantID, key))
+	if err != nil {
+		return domain.AgentRun{}, translateError(err)
+	}
+	if err := tx.Commit(); err != nil {
+		return domain.AgentRun{}, translateError(err)
+	}
+	return run, nil
+}
+
 // List returns a tenant-scoped, keyset-paginated run history.
 func (repository *AgentRunRepository) List(ctx context.Context, tenantID uuid.UUID, page ports.AgentRunPage) ([]domain.AgentRun, error) {
 	if (page.AfterCreatedAt == nil) != (page.AfterID == nil) {
