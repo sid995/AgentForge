@@ -138,9 +138,13 @@ are trusted internal commands, not client status mutations.
 ## Cancellation and completion races
 
 Cancellation is a durable request, not a workload termination command. In
-Phase 3 it must not contact Kubernetes. A future Scheduler removes queued
-work, and a future Operator requests workload termination and confirms the
-`CANCELLING -> CANCELLED` transition.
+Phase 3 it must not contact Kubernetes. The Phase 3.4 command and its
+queue-removal/intent-projection integrations remain unfinished. Phase 6
+implements the Kubernetes side once an AgentRun already carries
+`desiredState: Cancelled`: the Operator stops new work, terminates the owned
+Job within a bounded deadline, and records observed cancellation in the CR
+status. Projecting that observation back into PostgreSQL to confirm
+`CANCELLING -> CANCELLED` remains a later lifecycle integration.
 
 The first successfully committed conditional transition wins:
 
@@ -192,7 +196,10 @@ not reopen the completed execution attempt.
 - State transition, attempt mutation, idempotency result, audit record, and
   outbox intent are one transaction once those command paths are implemented.
   No business transaction synchronously publishes to Kafka.
-- After a process crash, PostgreSQL state is authoritative. Future Scheduler
-  recovery reclaims expired `SCHEDULING` leases and reconciles incomplete
-  provisioning; future Operator recovery observes the current run/attempt
-  version before acting. No recovery path assumes in-memory command history.
+- After a process crash, PostgreSQL state is authoritative for platform
+  workflow. The Scheduler reclaims expired `SCHEDULING` leases. The AgentRun
+  handoff replays from the scheduled event and immutable intent, while the
+  Operator reconstructs Kubernetes progress from the CR status and owned
+  resources; it does not read PostgreSQL run versions. Projecting observed
+  Kubernetes lifecycle back into PostgreSQL remains a later integration. No
+  recovery path assumes in-memory command history.

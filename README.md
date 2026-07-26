@@ -2,7 +2,9 @@
 
 AgentForge is a Kubernetes-native infrastructure platform for running autonomous coding-agent workloads in isolated environments, tracking their execution and cost, building validated container artifacts, and deploying generated applications through GitOps.
 
-This repository contains the complete specification and GPT-5.6 Codex execution playbook, plus the Phase 1 Platform API foundation. Production implementation proceeds phase by phase rather than asking one coding agent to manifest a cloud platform through optimism.
+This repository contains the complete specification and GPT-5.6 Codex execution
+playbook plus the implemented control-plane foundations through Phase 6.10.
+Production implementation proceeds through validated, committed sub-phases.
 
 ## Start here
 
@@ -19,7 +21,7 @@ This repository contains the complete specification and GPT-5.6 Codex execution 
 - [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md): current implementation status
 - [`specs/TRACEABILITY.md`](specs/TRACEABILITY.md): requirement-to-code-and-test mapping
 - [`specs/15-llm-development/05-codex-execution-playbook.md`](specs/15-llm-development/05-codex-execution-playbook.md): complete phased prompt sequence
-- [`.env.example`](.env.example): documented local configuration through Phase 5
+- [`.env.example`](.env.example): documented local configuration through Phase 6
 
 ## Current state
 
@@ -42,7 +44,54 @@ Phase 5.6 adds transactional capacity and budget reservations; see
 Phase 5.7 atomically commits assignments, reservations, state, and outbox
 events. Phase 5.8 adds the bounded Scheduler process, optional Kafka wake
 hints, authoritative polling, health/metrics, and the root-Compose image; see
-[`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).
+Phase 6.1 adds the Kubebuilder/controller-runtime Operator module and manager
+foundation. Phase 6.2 adds the complete validated
+`execution.agentforge.dev/v1alpha1` AgentRun desired/status contract, generated
+CRD, full sample, and Kubernetes 1.36 schema tests. Phase 6.3 adds the
+idempotent reconciliation/status/finalizer foundation without creating child
+resources. Phase 6.4 adds pure secure workload-resource builders, and Phase
+6.5 reconciles them in dependency order with safe ownership and storage gates.
+Phase 6.6 adds observed Job/Pod lifecycle, strict result evidence, and a pinned
+Kubernetes 1.36 kind gate. Phase 6.7 adds graceful, deadline-bounded,
+restart-safe cancellation, Phase 6.8 adds bounded policy-approved retries, and
+Phase 6.9 safely finalizes retained workspaces. Phase 6.10 adds the
+idempotent, tenant-isolated Scheduler-event-to-AgentRun handoff without giving
+the Scheduler process or consumer permission to create Jobs. Phase 6 is closed
+by its Kubernetes/security review and
+[`completion audit`](specs/15-llm-development/audits/phase-06-completion-audit.md);
+see [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).
+
+## Agent Operator development
+
+The Operator has an independently pinned Kubernetes toolchain. The root entry
+points delegate to its module:
+
+```bash
+make operator-manifests operator-generate
+make test-controller
+make test-controller-kind
+make lint-controller
+make build-operator
+```
+
+Generation downloads version-pinned tools into ignored `operator/bin/` paths.
+Phase 6.6 also handles `WaitForFirstConsumer` binding and observed lifecycle;
+Phase 6.7 adds cancellation before new work, graceful Job termination, and a
+forced deadline that survives controller restarts. Phase 6.8 retains failed
+attempts and creates new attempt-qualified Jobs after restart-safe jittered
+backoff. Phase 6.9 preserves retained PVCs with an idempotent handoff marker
+before finalizer removal.
+
+Phase 6.10 adds `make build-handoff`. For local Kubernetes handoff, set the
+explicit kubeconfig and cluster-context mapping in `.env`, register the same
+cluster ID in PostgreSQL, install the CRD/Operator, then start. Each cluster ID
+must map to a unique context; use a least-privilege context.
+
+```bash
+docker compose --profile kubernetes up --detach agentrun-handoff
+curl --fail http://127.0.0.1:18082/health/ready
+curl --fail http://127.0.0.1:18082/metrics
+```
 
 ## Local Scheduler
 
@@ -64,6 +113,7 @@ real scheduling; tenant policies must likewise exist for admitted tenants.
 
 The root Compose stack caps processor and memory usage for every service. The
 local defaults are PostgreSQL at `1.0` CPU and `512m`, Redpanda at `1.0` CPU
-and `1g`, and Scheduler at `0.5` CPU and `256m`. Override the corresponding
+and `1g`, Scheduler at `0.5` CPU and `256m`, and the optional handoff service
+at `0.5` CPU and `256m`. Override the corresponding
 `*_CPUS` and `*_MEMORY_LIMIT` values in `.env` when the development workload
 needs a different budget.

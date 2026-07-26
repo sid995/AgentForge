@@ -139,6 +139,16 @@ lease, records the bounded policy decision and completion, changes the current
 `agent-run.failed.v1`. Exact replay returns the original run, attempt, and
 event versions; changed rejection input conflicts.
 
+## Phase 6.10 handoff boundary
+
+The scheduling transaction now stores the complete immutable AgentRun CR
+desired state in `agentrun_handoff_intents`, keyed by the unchanged
+`agent-run.scheduled.v1` event ID. The independently deployed
+`agentrun-handoff` consumer, not the Scheduler process, performs Kubernetes
+writes. This preserves both the published v1 event contract and the
+Scheduler process's database-only coordination boundary while making delayed
+delivery insensitive to later configuration drift.
+
 ## Phase 5.8 implementation
 
 The independent Scheduler executable composes the claim, eligibility,

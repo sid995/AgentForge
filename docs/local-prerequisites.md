@@ -1,6 +1,6 @@
 # Local Prerequisites
 
-## Required during Phases 0 through 5.3
+## Required through Phase 6
 
 - Git
 - GNU Make or a compatible `make`
@@ -8,6 +8,7 @@
 - Go 1.26.0 or a compatible patch release
 - Docker CLI and a running Docker-compatible daemon for container builds and
   local PostgreSQL integration tests
+- `kubectl` for Operator manifest installation and deployment commands
 
 Run `make check-tools` to verify that the required command-line tools are on
 your `PATH`. The check verifies CLI availability; it does not start Docker or
@@ -18,8 +19,9 @@ provision cloud resources.
 Copy [`.env.example`](../.env.example) to `.env` before running the local
 PostgreSQL dependency. The example documents every environment variable used
 by the Platform API, migration command, Compose configuration, and supported
-build metadata, relay, Scheduler database role, Kafka client, and Redpanda
-inputs through Phase 5.3.
+build metadata, relay, Scheduler and handoff database roles, Kafka client,
+trusted execution intent, Kubernetes context mapping, and Redpanda inputs
+through Phase 6.
 `.env` is ignored by Git; its included passwords are development-only defaults
 and must not be used outside a local machine.
 
@@ -31,20 +33,28 @@ phases extend this same
 [`docker-compose.yml`](../docker-compose.yml); they must not add phase-specific
 Compose files.
 
-## Required in later phases
+## Repository-managed and later-phase tools
 
-Install these only when their governing phase begins:
+The current Make targets provision or fall back to pinned tools where
+documented:
 
-- `golangci-lint` v2 for Go linting
-- ShellCheck for shell-script linting
-- kubectl, Helm, and kind for Kubernetes and operator work
+- `golangci-lint` v2 may be installed locally; otherwise `make lint` uses its
+  pinned container through Docker.
+- `make test-controller-kind` downloads the pinned kind v0.32.0 binary into
+  the ignored Operator tool directory.
+- ShellCheck remains an optional host check until a required shell-lint gate is
+  introduced.
+
+Install these only when their later governing phase begins:
+
+- Helm when the GitOps/deployment packaging phase begins
 - Terraform for cloud infrastructure
 
 The local environment specification adds PostgreSQL, Redis, Redpanda or Kafka,
 MinIO, Argo CD, and observability dependencies only in their respective
 implementation phases. Do not add them during Phase 0.
 
-## Phase 1 through Phase 5.3 commands
+## Phase 1 through Phase 6 commands
 
 ```bash
 make help
@@ -56,6 +66,11 @@ make verify-event-contracts
 make test-integration
 make test-events-integration
 make bootstrap-topics
+make operator-manifests operator-generate
+make test-controller
+make lint-controller
+make build-operator
+make build-handoff
 ```
 
 `make lint` uses a local `golangci-lint` v2 installation when present. If it is
@@ -64,8 +79,9 @@ required Docker daemon. `make test` is an executable Phase 1 quality gate.
 
 `make test-integration` uses the root Compose definition to create an isolated
 PostgreSQL 17.5 project on host port `25432`, applies migrations with the local
-migration role, runs the tagged database tests with the application, relay, and
-Scheduler roles, and tears the project down with its test volume. The isolated
+migration role, runs the tagged database tests with the application, relay,
+Scheduler, and AgentRun handoff roles, and tears the project down with its test
+volume. The isolated
 port and Compose project avoid changing a developer's normal local stack on
 port `15432`. The target supplies deterministic test values rather than relying
 on a developer's `.env`. Run `make migrate` against
@@ -92,6 +108,18 @@ authenticates the isolated cross-tenant queue role.
 volume is initialized. As with the relay role, an older disposable local volume
 must be recreated before the new login exists.
 
+`AGENTFORGE_TEST_HANDOFF_DATABASE_URL` is integration-test-only and
+authenticates the least-privilege AgentRun handoff role.
+`POSTGRES_HANDOFF_PASSWORD` configures that role when a new local PostgreSQL
+volume is initialized. The handoff runtime additionally requires an explicit
+`AGENTFORGE_HANDOFF_KUBECONFIG`,
+`AGENTFORGE_HANDOFF_CLUSTER_CONTEXTS`, and UUIDv7 quarantine tenant. The
+optional Compose service is enabled only with `--profile kubernetes`.
+`AGENTFORGE_HANDOFF_PROCESS_TIMEOUT` bounds one database/Kubernetes effect and
+defaults to 30 seconds. Every cluster ID must map to a unique existing
+kubeconfig context. Use a least-privilege context; do not provide platform or
+cloud administrator credentials.
+
 `make test-events-integration` starts only the pinned single-node Redpanda
 service in the isolated `agentforge-events-integration` Compose project on host
 port `29092`, creates all declared topics, runs the producer/manual-ack consumer
@@ -103,5 +131,10 @@ topic bootstrap, or Kafka contracts fail. The normal local broker listens on
 configure clients. Local Redpanda uses plaintext and replication one; it is
 only a development/test topology.
 
-`make test-controller` still fails deliberately with a clear message because a
-Kubernetes operator has not been introduced.
+`make test-controller` downloads the pinned setup-envtest tool and Kubernetes
+1.36.0 API server/etcd assets into ignored `operator/bin/` paths, regenerates
+the CRD/RBAC/deepcopy artifacts, and runs the Operator tests. It does not use a
+developer's current Kubernetes context. `make test-controller-kind` creates an
+isolated pinned kind 0.32.0/Kubernetes 1.36.1 cluster and proves actual Job,
+retry, and retained-PVC behavior; unlike envtest it requires a working Docker
+daemon and fails clearly when that prerequisite is unavailable.

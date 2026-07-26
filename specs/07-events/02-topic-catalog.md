@@ -37,6 +37,13 @@ rejections. Its v1 contract supports the existing terminal failure taxonomy so
 later lifecycle producers do not need to weaken or reinterpret a policy-only
 published schema.
 
+Phase 6.10 deliberately leaves `agent-run.scheduled.v1` byte-contract
+requirements unchanged. The same scheduling transaction stores a companion
+`agentrun_handoff_intents` row keyed by event ID. The handoff consumer validates
+that exact durable intent before creating a CR, avoiding both v1 unknown-field
+breakage and configuration drift. Runner images are digest-qualified trusted
+runtime mappings, while task data remains a reference rather than raw content.
+
 Partition key: run ID.
 
 Physical topic: `agentforge.agent-run.lifecycle.v1`.

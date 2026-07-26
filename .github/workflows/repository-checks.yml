@@ -26,7 +26,7 @@ jobs:
           git diff --exit-code
       - name: Verify repository controls
         run: make verify
-      - name: Lint Platform API
+      - name: Lint Go modules
         run: make lint
       - name: Test Platform API
         run: make test
@@ -36,9 +36,23 @@ jobs:
         run: go test -race ./services/platform-api/...
       - name: Vet Platform API
         run: go vet ./services/platform-api/...
+      - name: Regenerate Operator contracts
+        run: |
+          make operator-manifests operator-generate
+          git diff --exit-code
+      - name: Test Operator with envtest
+        run: make test-controller
+      - name: Integration-test Operator lifecycle with kind
+        run: make test-controller-kind
       - name: Integration-test PostgreSQL persistence
         run: make test-integration
       - name: Integration-test Kafka contracts
         run: make test-events-integration
       - name: Build Platform API image
         run: make build-platform-api
+      - name: Build Scheduler image
+        run: make build-scheduler
+      - name: Build AgentRun handoff image
+        run: make build-handoff
+      - name: Build Agent Operator image
+        run: make build-operator

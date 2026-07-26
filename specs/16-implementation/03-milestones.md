@@ -6,11 +6,17 @@ Create project and run APIs, PostgreSQL migrations, domain state machine, idempo
 
 ## M2: Scheduling and CRD
 
-Scheduler claims runs, selects local cluster, creates AgentRun CR, and repairs partial state.
+Scheduler claims runs, selects a registered cluster, and commits immutable
+scheduled intent with its outbox fact. A separate idempotent handoff creates or
+exactly compares the AgentRun CR; the Scheduler process has no Kubernetes
+client.
 
 ## M3: Operator vertical slice
 
-Controller creates restricted Job, fake runner completes, status reaches terminal state, artifacts are recorded.
+Controller creates a restricted Job, the test runner completes, and Kubernetes
+status reaches a terminal state with a validated artifact-manifest reference.
+Projection into PostgreSQL and full artifact persistence belong to later
+lifecycle and Runner work.
 
 ## M4: Kafka workflow
 

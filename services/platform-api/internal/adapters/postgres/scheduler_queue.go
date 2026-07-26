@@ -66,13 +66,13 @@ func (repository *SchedulerQueueRepository) Claim(ctx context.Context, request p
 				scheduler_lease_expires_at = $3, updated_at = $1, version = run.version + 1
 			from locked
 			where run.id = locked.id and run.version = locked.version
-			returning run.id, run.tenant_id, run.project_id, run.runtime,
+			returning run.id, run.tenant_id, run.project_id, run.runtime, run.prompt_reference, run.max_attempts,
 				run.execution_profile, coalesce(run.preferred_region, '') as preferred_region, run.created_by,
 				run.cpu_millis, run.memory_mib, run.timeout_seconds, run.attempt_count,
 				run.priority::integer, locked.effective_priority, run.version, run.created_at,
 				run.scheduler_lease_owner, run.scheduler_lease_expires_at, locked.tenant_rank
 		)
-		select updated.id, updated.tenant_id, updated.project_id, updated.runtime, updated.execution_profile, updated.preferred_region,
+		select updated.id, updated.tenant_id, updated.project_id, updated.runtime, updated.prompt_reference, updated.max_attempts, updated.execution_profile, updated.preferred_region,
 			updated.created_by, updated.cpu_millis, updated.memory_mib, updated.timeout_seconds, updated.attempt_count, updated.priority,
 			updated.effective_priority, updated.version, updated.created_at, updated.scheduler_lease_owner,
 			updated.scheduler_lease_expires_at, attempt.id, attempt.version
@@ -88,7 +88,7 @@ func (repository *SchedulerQueueRepository) Claim(ctx context.Context, request p
 	claimed := make([]ports.ClaimedRun, 0, request.BatchSize)
 	for rows.Next() {
 		var run ports.ClaimedRun
-		if err := rows.Scan(&run.ID, &run.TenantID, &run.ProjectID, &run.Runtime, &run.ExecutionProfile, &run.PreferredRegion, &run.CreatedBy, &run.CPUMillis, &run.MemoryMiB, &run.TimeoutSeconds, &run.AttemptNumber, &run.Priority, &run.EffectivePriority, &run.Version, &run.CreatedAt, &run.SchedulerLeaseOwner, &run.SchedulerLeaseExpiry, &run.AttemptID, &run.AttemptVersion); err != nil {
+		if err := rows.Scan(&run.ID, &run.TenantID, &run.ProjectID, &run.Runtime, &run.PromptReference, &run.MaxAttempts, &run.ExecutionProfile, &run.PreferredRegion, &run.CreatedBy, &run.CPUMillis, &run.MemoryMiB, &run.TimeoutSeconds, &run.AttemptNumber, &run.Priority, &run.EffectivePriority, &run.Version, &run.CreatedAt, &run.SchedulerLeaseOwner, &run.SchedulerLeaseExpiry, &run.AttemptID, &run.AttemptVersion); err != nil {
 			return nil, fmt.Errorf("scan scheduler claim: %w", err)
 		}
 		claimed = append(claimed, run)

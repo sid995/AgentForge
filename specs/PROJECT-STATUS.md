@@ -1,15 +1,16 @@
 # AgentForge Project Status
 
-**Last updated:** 2026-07-22
+**Last updated:** 2026-07-23
 
 ## Current milestone
 
-Phase 5 Scheduler complete; awaiting the next approved phase
+Phase 6 complete; resume Phase 3.3 create/get/list run API
 
 ## Overall state
 
 Phase 2, the Phase 3.1/3.2 state-machine and persistence foundation, and Phase
-4 and 5 are complete. At the user's direction, Phase 5 Scheduler was completed
+4, 5, and 6 are complete.
+At the user's direction, Phase 5 Scheduler was completed
 before Phase 3.3 through 3.5 API, cancellation, and retry commands. Those gaps
 remain explicit dependencies for their corresponding command integrations.
 
@@ -77,17 +78,76 @@ remain explicit dependencies for their corresponding command integrations.
   authoritative polling, optional Kafka wake hints, bounded jitter/backoff,
   graceful shutdown, PostgreSQL readiness, liveness/metrics, non-root image,
   root Compose integration, service tests, and Phase 5 completion audit
+- Phase 6.1 Kubebuilder/controller-runtime Operator module, namespaced
+  `execution.agentforge.dev/v1alpha1` API and generated CRD/deepcopy foundation,
+  scheme registration, leader-election deployment, health/readiness,
+  authenticated metrics, structured logging, pinned generation/envtest tools,
+  root Make/CI integration, and non-root image
+- Phase 6.2 complete AgentRun desired/status contract, immutable Scheduler
+  intent and one-way cancellation, structural validation and safe defaults,
+  printer columns, status subresource, generated artifacts, full sample, future
+  conversion strategy, and Kubernetes 1.36 envtest schema coverage
+- Phase 6.3 registered AgentRun reconciliation foundation with defensive
+  validation, observed-generation status and conditions, retained-resource-only
+  finalizer policy, deterministic names, transient/permanent errors, bounded
+  exponential retry, correlated logs, low-cardinality metrics, conflict-safe
+  minimal status writes, self-update filtering, and envtest coverage
+- Phase 6.4 pure deterministic ServiceAccount, immutable ConfigMap, PVC,
+  NetworkPolicy, and Job builders with trusted placement profiles, optional
+  runtime class, secret/config projections, retained-storage ownership,
+  restricted egress validation, full restricted Pod/container security,
+  golden manifests, invalid-configuration tests, and security mutations
+- Phase 6.5 ordered prerequisite reconciliation with non-forced server-side
+  apply, explicit owner validation, matching-object no-ops, external metadata
+  preservation, reference and storage gating, per-prerequisite conditions,
+  owned-resource watches, conflict diagnostics, and Kubernetes 1.36 envtest
+- Phase 6.6 observed Job/Pod lifecycle projection, normalized retry/permanent
+  failure taxonomy, strict mandatory result evidence, current and per-attempt
+  timestamps/status, terminal stability, deleted-Job no-recreation, first
+  consumer PVC binding, exhaustive unit/envtest coverage, and digest-pinned
+  kind 0.32.0/Kubernetes 1.36.1 integration
+- Phase 6.7 cancellation-before-creation, graceful foreground Job termination,
+  durable two-minute restart-safe deadline, exact owner-UID forced Pod
+  termination, graceful/forced terminal status, completion-race preservation,
+  repeated cancellation idempotency, and focused controller tests
+- Phase 6.8 desired/platform retry-policy intersection, strict non-retryable
+  security/configuration/test outcomes, attempt ceilings, deterministic capped
+  exponential jitter, restart-safe deadlines, retained attempt history,
+  status-before-resource ordering, and fresh deterministic retry Jobs
+- Phase 6.9 owner-reference garbage collection plus retained-workspace-only
+  finalization, every-attempt retention handoff, no-delete PVC preservation,
+  partial/missing-resource idempotency, bounded cleanup diagnostics/retry,
+  restart-safe ten-minute escalation, envtest deletion, and real kind PVC
+  survival after AgentRun finalization
+- Phase 6.10 separately deployable scheduled-intent handoff with a
+  transactionally paired immutable intent record and unchanged v1 event
+  contract, explicit registered-cluster client selection and tenant
+  authorization, deterministic Namespace/AgentRun
+  creation, exact idempotent comparison, durable processed markers,
+  retry/DLQ behavior, status-subresource ownership preservation, correlated
+  audit context, least-privilege database role, and bounded root-Compose
+  packaging
+- Phase 6 controller/security review: metadata-only uncached Secret checks and
+  get-only RBAC, uncached get-only StorageClass reads, startup validation for
+  one-to-one kubeconfig contexts, bounded handoff processing, isolated primary
+  and retry-tier consumers, and real-API crash-window replay
+- Phase 6 completion audit: full repository, PostgreSQL, Kafka, envtest,
+  Kubernetes 1.36 kind, race, static, contract, Compose, and non-root image
+  gates with no unresolved high-severity finding
+- Phase 6 post-audit documentation closure: domain recovery and cancellation,
+  handoff/Operator ownership, security, telemetry, tests, CI, milestones, and
+  local prerequisites aligned with implemented behavior and deferred
+  PostgreSQL lifecycle projection
 
 ## In progress
 
-- None
+- None; Phase 6 is closed
 
 ## Not started
 
 - Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
-- Kubernetes Operator
 - Agent Runner
 - Model Gateway
 - Build and deployment services
@@ -96,11 +156,11 @@ remain explicit dependencies for their corresponding command integrations.
 ## Known gaps to resolve during bootstrap
 
 - Create ADRs for decisions currently described only inside component specifications.
-- Add executable OpenAPI, event schema, CRD, and Terraform artifacts during their implementation phases.
+- Add executable OpenAPI and Terraform artifacts during their implementation
+  phases; event schemas and the AgentRun CRD are checked in and verified.
 
 ## Next tasks
 
-1. Select the next approved milestone: resume Phase 3.3 command/API work or
-   begin Phase 6 Operator integration.
-2. Preserve the unresolved Phase 3 cancellation/retry command dependencies and
-   the Phase 6 no-Kubernetes boundary.
+1. Resume Phase 3.3 create/get/list run API.
+2. Implement Phase 3.4 cancellation and Phase 3.5 retry commands.
+3. Run the Phase 3 completion audit before beginning the Agent Runner.

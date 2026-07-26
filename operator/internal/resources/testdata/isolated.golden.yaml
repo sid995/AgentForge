@@ -1,0 +1,310 @@
+apiVersion: v1
+automountServiceAccountToken: false
+kind: ServiceAccount
+metadata:
+  annotations:
+    execution.agentforge.dev/attempt-id: 019b0000-0000-7000-8000-000000000005
+    execution.agentforge.dev/execution-profile: standard
+    execution.agentforge.dev/network-profile: Isolated
+    execution.agentforge.dev/owner-uid: 11111111-2222-3333-4444-555555555555
+  labels:
+    app.kubernetes.io/managed-by: agentforge-operator
+    app.kubernetes.io/name: agentforge-runner
+    execution.agentforge.dev/attempt: "1"
+    execution.agentforge.dev/project-id: 019b0000-0000-7000-8000-000000000003
+    execution.agentforge.dev/run-id: 019b0000-0000-7000-8000-000000000004
+    execution.agentforge.dev/runtime: python-3.12
+    execution.agentforge.dev/tenant-id: 019b0000-0000-7000-8000-000000000002
+    execution.agentforge.dev/workload: agent-run
+  name: ar-019b0000000070008000000000000004-a1-sa
+  namespace: tenant-example
+  ownerReferences:
+  - apiVersion: execution.agentforge.dev/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: AgentRun
+    name: run-example
+    uid: 11111111-2222-3333-4444-555555555555
+---
+apiVersion: v1
+data:
+  config.json: '{"artifactDestinationRef":"artifact-store","attempt":1,"attemptId":"019b0000-0000-7000-8000-000000000005","configurationRefs":["a-policy-config","z-runner-config"],"deployOnSuccess":false,"projectId":"019b0000-0000-7000-8000-000000000003","runId":"019b0000-0000-7000-8000-000000000004","runtime":"python-3.12","secretRefs":["artifact-credential","source-credential"],"taskRef":"vault://tasks/run-example","tenantId":"019b0000-0000-7000-8000-000000000002"}'
+immutable: true
+kind: ConfigMap
+metadata:
+  annotations:
+    execution.agentforge.dev/attempt-id: 019b0000-0000-7000-8000-000000000005
+    execution.agentforge.dev/execution-profile: standard
+    execution.agentforge.dev/network-profile: Isolated
+    execution.agentforge.dev/owner-uid: 11111111-2222-3333-4444-555555555555
+  labels:
+    app.kubernetes.io/managed-by: agentforge-operator
+    app.kubernetes.io/name: agentforge-runner
+    execution.agentforge.dev/attempt: "1"
+    execution.agentforge.dev/project-id: 019b0000-0000-7000-8000-000000000003
+    execution.agentforge.dev/run-id: 019b0000-0000-7000-8000-000000000004
+    execution.agentforge.dev/runtime: python-3.12
+    execution.agentforge.dev/tenant-id: 019b0000-0000-7000-8000-000000000002
+    execution.agentforge.dev/workload: agent-run
+  name: ar-019b0000000070008000000000000004-a1-config
+  namespace: tenant-example
+  ownerReferences:
+  - apiVersion: execution.agentforge.dev/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: AgentRun
+    name: run-example
+    uid: 11111111-2222-3333-4444-555555555555
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  annotations:
+    execution.agentforge.dev/attempt-id: 019b0000-0000-7000-8000-000000000005
+    execution.agentforge.dev/execution-profile: standard
+    execution.agentforge.dev/network-profile: Isolated
+    execution.agentforge.dev/owner-uid: 11111111-2222-3333-4444-555555555555
+  labels:
+    app.kubernetes.io/managed-by: agentforge-operator
+    app.kubernetes.io/name: agentforge-runner
+    execution.agentforge.dev/attempt: "1"
+    execution.agentforge.dev/project-id: 019b0000-0000-7000-8000-000000000003
+    execution.agentforge.dev/run-id: 019b0000-0000-7000-8000-000000000004
+    execution.agentforge.dev/runtime: python-3.12
+    execution.agentforge.dev/tenant-id: 019b0000-0000-7000-8000-000000000002
+    execution.agentforge.dev/workload: agent-run
+  name: ar-019b0000000070008000000000000004-a1-workspace
+  namespace: tenant-example
+  ownerReferences:
+  - apiVersion: execution.agentforge.dev/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: AgentRun
+    name: run-example
+    uid: 11111111-2222-3333-4444-555555555555
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: standard
+status: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  annotations:
+    execution.agentforge.dev/attempt-id: 019b0000-0000-7000-8000-000000000005
+    execution.agentforge.dev/execution-profile: standard
+    execution.agentforge.dev/network-profile: Isolated
+    execution.agentforge.dev/owner-uid: 11111111-2222-3333-4444-555555555555
+  labels:
+    app.kubernetes.io/managed-by: agentforge-operator
+    app.kubernetes.io/name: agentforge-runner
+    execution.agentforge.dev/attempt: "1"
+    execution.agentforge.dev/project-id: 019b0000-0000-7000-8000-000000000003
+    execution.agentforge.dev/run-id: 019b0000-0000-7000-8000-000000000004
+    execution.agentforge.dev/runtime: python-3.12
+    execution.agentforge.dev/tenant-id: 019b0000-0000-7000-8000-000000000002
+    execution.agentforge.dev/workload: agent-run
+  name: ar-019b0000000070008000000000000004-a1-network
+  namespace: tenant-example
+  ownerReferences:
+  - apiVersion: execution.agentforge.dev/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: AgentRun
+    name: run-example
+    uid: 11111111-2222-3333-4444-555555555555
+spec:
+  podSelector:
+    matchLabels:
+      execution.agentforge.dev/attempt: "1"
+      execution.agentforge.dev/run-id: 019b0000-0000-7000-8000-000000000004
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    execution.agentforge.dev/attempt-id: 019b0000-0000-7000-8000-000000000005
+    execution.agentforge.dev/execution-profile: standard
+    execution.agentforge.dev/network-profile: Isolated
+    execution.agentforge.dev/owner-uid: 11111111-2222-3333-4444-555555555555
+  labels:
+    app.kubernetes.io/managed-by: agentforge-operator
+    app.kubernetes.io/name: agentforge-runner
+    execution.agentforge.dev/attempt: "1"
+    execution.agentforge.dev/project-id: 019b0000-0000-7000-8000-000000000003
+    execution.agentforge.dev/run-id: 019b0000-0000-7000-8000-000000000004
+    execution.agentforge.dev/runtime: python-3.12
+    execution.agentforge.dev/tenant-id: 019b0000-0000-7000-8000-000000000002
+    execution.agentforge.dev/workload: agent-run
+  name: ar-019b0000000070008000000000000004-a1-job
+  namespace: tenant-example
+  ownerReferences:
+  - apiVersion: execution.agentforge.dev/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: AgentRun
+    name: run-example
+    uid: 11111111-2222-3333-4444-555555555555
+spec:
+  activeDeadlineSeconds: 1800
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      annotations:
+        execution.agentforge.dev/attempt-id: 019b0000-0000-7000-8000-000000000005
+        execution.agentforge.dev/execution-profile: standard
+        execution.agentforge.dev/network-profile: Isolated
+        execution.agentforge.dev/owner-uid: 11111111-2222-3333-4444-555555555555
+      labels:
+        app.kubernetes.io/managed-by: agentforge-operator
+        app.kubernetes.io/name: agentforge-runner
+        execution.agentforge.dev/attempt: "1"
+        execution.agentforge.dev/project-id: 019b0000-0000-7000-8000-000000000003
+        execution.agentforge.dev/run-id: 019b0000-0000-7000-8000-000000000004
+        execution.agentforge.dev/runtime: python-3.12
+        execution.agentforge.dev/tenant-id: 019b0000-0000-7000-8000-000000000002
+        execution.agentforge.dev/workload: agent-run
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: DoesNotExist
+              - key: node-role.kubernetes.io/master
+                operator: DoesNotExist
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: AGENTFORGE_RUN_CONFIG
+          value: /etc/agentforge/runtime/config.json
+        - name: AGENTFORGE_WORKSPACE
+          value: /workspace
+        image: ghcr.io/agentforge/runner@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        imagePullPolicy: IfNotPresent
+        name: runner
+        resources:
+          limits:
+            cpu: "2"
+            memory: 4Gi
+          requests:
+            cpu: "1"
+            memory: 2Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsGroup: 65532
+          runAsNonRoot: true
+          runAsUser: 65532
+          seccompProfile:
+            type: RuntimeDefault
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /workspace
+          name: workspace
+        - mountPath: /etc/agentforge/runtime
+          name: runtime-config
+          readOnly: true
+        - mountPath: /etc/agentforge/artifacts
+          name: artifact-destination
+          readOnly: true
+        - mountPath: /tmp
+          name: tmp
+        - mountPath: /home/agent
+          name: home
+        - mountPath: /etc/agentforge/config/a-policy-config
+          name: external-config-00
+          readOnly: true
+        - mountPath: /etc/agentforge/config/z-runner-config
+          name: external-config-01
+          readOnly: true
+        - mountPath: /var/run/agentforge/secrets/artifact-credential
+          name: external-secret-00
+          readOnly: true
+        - mountPath: /var/run/agentforge/secrets/source-credential
+          name: external-secret-01
+          readOnly: true
+      enableServiceLinks: false
+      nodeSelector:
+        agentforge.dev/node-pool: agents
+      priorityClassName: agentforge-agent
+      restartPolicy: Never
+      securityContext:
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 65532
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: ar-019b0000000070008000000000000004-a1-sa
+      terminationGracePeriodSeconds: 30
+      tolerations:
+      - effect: NoSchedule
+        key: agentforge.dev/node-pool
+        operator: Equal
+        value: agents
+      topologySpreadConstraints:
+      - labelSelector:
+          matchLabels:
+            execution.agentforge.dev/attempt: "1"
+            execution.agentforge.dev/run-id: 019b0000-0000-7000-8000-000000000004
+        maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+      - labelSelector:
+          matchLabels:
+            execution.agentforge.dev/attempt: "1"
+            execution.agentforge.dev/run-id: 019b0000-0000-7000-8000-000000000004
+        maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+      volumes:
+      - name: workspace
+        persistentVolumeClaim:
+          claimName: ar-019b0000000070008000000000000004-a1-workspace
+      - configMap:
+          defaultMode: 292
+          name: ar-019b0000000070008000000000000004-a1-config
+        name: runtime-config
+      - configMap:
+          defaultMode: 292
+          name: artifact-store
+        name: artifact-destination
+      - emptyDir:
+          sizeLimit: 64Mi
+        name: tmp
+      - emptyDir:
+          sizeLimit: 256Mi
+        name: home
+      - configMap:
+          defaultMode: 292
+          name: a-policy-config
+        name: external-config-00
+      - configMap:
+          defaultMode: 292
+          name: z-runner-config
+        name: external-config-01
+      - name: external-secret-00
+        secret:
+          defaultMode: 288
+          secretName: artifact-credential
+      - name: external-secret-01
+        secret:
+          defaultMode: 288
+          secretName: source-credential
+status: {}

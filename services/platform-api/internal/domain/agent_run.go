@@ -72,6 +72,33 @@ const (
 	AttemptTimedOut  AgentRunAttemptStatus = "TIMED_OUT"
 )
 
+// AgentRunDesiredState is the complete immutable Scheduler intent handed to
+// Kubernetes after a cluster assignment commits.
+type AgentRunDesiredState struct {
+	RunnerImage                string            `json:"runnerImage"`
+	Runtime                    string            `json:"runtime"`
+	ExecutionProfile           string            `json:"executionProfile"`
+	TaskReference              string            `json:"taskRef"`
+	TimeoutSeconds             int               `json:"timeoutSeconds"`
+	MaxAttempts                int               `json:"maxAttempts"`
+	InitialBackoffSeconds      int               `json:"initialBackoffSeconds"`
+	MaxBackoffSeconds          int               `json:"maxBackoffSeconds"`
+	RetryableFailureCategories []FailureCategory `json:"retryableFailureCategories,omitempty"`
+	CPUMillis                  int               `json:"cpuMillis"`
+	MemoryMiB                  int               `json:"memoryMiB"`
+	CPULimitMillis             int               `json:"cpuLimitMillis"`
+	MemoryLimitMiB             int               `json:"memoryLimitMiB"`
+	WorkspaceSizeGiB           int               `json:"workspaceSizeGiB"`
+	StorageClassName           string            `json:"storageClassName,omitempty"`
+	WorkspaceRetentionPolicy   string            `json:"workspaceRetentionPolicy"`
+	NetworkProfile             string            `json:"networkProfile"`
+	AllowedDestinationsRef     string            `json:"allowedDestinationsRef,omitempty"`
+	ArtifactDestinationRef     string            `json:"artifactDestinationRef"`
+	ConfigurationRefs          []string          `json:"configurationRefs,omitempty"`
+	SecretRefs                 []string          `json:"secretRefs,omitempty"`
+	DeployOnSuccess            bool              `json:"deployOnSuccess"`
+}
+
 // AgentRun is the tenant-owned durable aggregate for one accepted task request.
 type AgentRun struct {
 	ID                      uuid.UUID

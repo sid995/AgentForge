@@ -89,8 +89,10 @@ func (router *Router) Route(ctx context.Context, source ports.ReceivedEvent, pro
 	if processingError == nil || attempt < 1 || firstFailedAt.IsZero() || now.Before(firstFailedAt) {
 		return "", fmt.Errorf("processing failure metadata is invalid")
 	}
-	if expectedAttempt, err := expectedFailureAttempt(source); err != nil || expectedAttempt != attempt {
-		return "", fmt.Errorf("processing attempt does not match source delivery metadata")
+	if source.Envelope.EventID != uuid.Nil {
+		if expectedAttempt, err := expectedFailureAttempt(source); err != nil || expectedAttempt != attempt {
+			return "", fmt.Errorf("processing attempt does not match source delivery metadata")
+		}
 	}
 	permanent, code, reason := classify(processingError)
 	if !permanent && attempt <= len(retryTopics) && events.ValidateEnvelope(source.Envelope) == nil {

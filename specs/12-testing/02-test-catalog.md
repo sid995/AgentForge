@@ -6,7 +6,8 @@
 - Invalid transition.
 - cancellation races completion.
 - timeout during model call.
-- scheduler crash before and after CR creation.
+- handoff crash before AgentRun creation and after creation but before the
+  processed-event marker.
 - operator restart during active Job.
 - retryable and terminal attempt failure.
 - concurrent Scheduler claims, active/expired leases, priority and age order,
@@ -32,6 +33,11 @@
 - immutable-major required-field and JSON-type compatibility baselines.
 - supported old consumer fixtures against current schemas and runtime decoders.
 - retry-attempt progression and publish-before-acknowledgment against Redpanda.
+- atomic scheduled-event/immutable-intent pairing; strict event/intent
+  identity; registered-cluster and tenant authorization; exact
+  Namespace/AgentRun replay after API defaulting; durable processed markers;
+  retry/DLQ publish-before-acknowledgment; bounded processing; and independent
+  primary/retry-tier group members.
 
 ## Isolation
 
@@ -39,6 +45,64 @@
 - RLS enforcement.
 - object-storage prefix isolation.
 - Kubernetes namespace and egress isolation.
+- explicit one-to-one cluster-context mapping and cross-tenant handoff
+  rejection before Kubernetes writes.
+
+## Kubernetes controller
+
+- reproducible CRD, RBAC, and deepcopy generation with pinned tools;
+- manager scheme registration for `execution.agentforge.dev/v1alpha1`;
+- envtest installation and create/get behavior for the AgentRun CRD;
+- metadata-only uncached Secret existence checks and get-only Secret and
+  StorageClass RBAC;
+- AgentRun required schema, safe defaults, enum/range/reference validation,
+  prohibited resource/network/retry combinations, set-list uniqueness,
+  immutable execution intent, one-way cancellation, printer columns, and
+  status-subresource isolation against Kubernetes 1.36 envtest;
+- reconciler not-found, create, generation update, conditional finalizer,
+  deletion timestamp, optimistic status conflict/retry, duplicate reconcile,
+  invalid-spec terminal classification, deterministic names, bounded
+  exponential backoff and self-update predicate suppression;
+- golden isolated ServiceAccount/ConfigMap/PVC/NetworkPolicy/Job manifests;
+  trusted profile placement, tolerations, topology spread and runtime class;
+  exact resources/deadline/backoff/workspace/secret mounts; retained PVC
+  ownership; restricted-egress policy validation; configuration aliasing; and
+  mutations for privilege, escalation, writable root, host namespaces,
+  Kubernetes tokens, hostPath, Docker socket, and wildcard egress;
+- ordered server-side apply of ServiceAccount, configuration, and PVC;
+  matching-resource no-op behavior; preservation of external metadata;
+  missing-reference and storage-pending requeues; PVC-bound NetworkPolicy and
+  Job creation; conflicting pre-existing ownership; and prerequisite status
+  conditions against Kubernetes 1.36 envtest;
+- Job/Pod pending, scheduled, unschedulable, container-creating, active,
+  succeeded, failed, deadline, OOM, eviction, node-loss, image-pull,
+  configuration, nonzero-exit, missing-evidence, and missing-Job projections;
+  ownership-filtered Pod observation; strict result-evidence parsing; bounded
+  attempt history; terminal no-ops;
+  `WaitForFirstConsumer` binding; and no duplicate Job creation;
+- cancellation before Job creation, while pending, while running, after
+  observed success, repeated cancellation, already-missing Job convergence,
+  graceful delete, forced deadline, exact Job-owner Pod filtering, and
+  controller restart recovery;
+- retry allowlist intersection, every approved and prohibited category,
+  attempt ceiling, deterministic exponential capped jitter, restart recovery,
+  prior-attempt retention, current-field reset, new deterministic Job identity,
+  failed-Job retention, and Kubernetes 1.36 envtest Job creation;
+- cleanup during provisioning, running, and terminal state; retained-PVC
+  survival and released marker; every attempt and partial absence; partial API
+  failure/retry; ownership conflict; deadline/controller restart escalation;
+  finalizer-removal conflict/retry; envtest finalizer removal; and kind
+  retained-PVC survival after CR deletion;
+- a pinned kind 0.32.0 two-node cluster using Kubernetes 1.36.1 by digest,
+  proving real scheduling, PVC binding, Pod completion, missing-evidence
+  failure, attempt projection, one-Job idempotency, and a transient image-pull
+  failure advancing to a distinct second-attempt Job, plus retained AgentRun
+  deletion with finalizer completion and released PVC survival;
+- non-root Operator image and configured leader election, health, readiness,
+  authenticated metrics, and structured logging foundation;
+- non-root handoff image, health/readiness/metrics endpoints, deterministic
+  namespace and AgentRun projection, exact conflict behavior, real-API
+  crash-window replay, and proof that it cannot create Jobs or write status.
 
 ## Deployment
 

@@ -26,3 +26,13 @@ file. `scripts/bootstrap-topics.sh` is the reproducible topic entry point; it
 uses the `COMPOSE_PROJECT_NAME` value and fails when the broker is unavailable.
 The broker integration gate uses a separate Compose project and host port so it
 does not stop or mutate a developer's normal local stack.
+
+Phase 6.10 adds the optional `agentrun-handoff` service to the same root
+Compose file under the `kubernetes` profile. It mounts only the explicitly
+configured kubeconfig, uses a declared cluster-ID-to-context map, and has CPU
+and memory limits like every other Compose service. `.env.example` records all
+Scheduler execution-intent, handoff, database-role, kubeconfig, port, and
+resource-limit variables, including the bounded handoff processing timeout.
+The configured kubeconfig context must use only the Namespace and AgentRun
+permissions required by the handoff; administrator credentials are prohibited
+outside disposable local development.

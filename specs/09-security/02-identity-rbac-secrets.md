@@ -77,6 +77,30 @@ through Compose/runtime configuration. Kafka is an optional hint channel; its
 tenant and correlation metadata are accepted only after strict envelope,
 header, topic, and key validation.
 
+## Phase 6 Operator and handoff isolation
+
+The scheduled-intent consumer uses the distinct `agentforge_handoff` database
+role. It has `BYPASSRLS` only for its cross-tenant control-plane scope and may
+read the cluster registry, cluster tenant allowlist, and immutable handoff
+intents, then read/insert processed-event markers. It cannot mutate scheduling
+intent, read AgentRun prompts or source, relay outbox rows, or use the
+application/Scheduler credentials.
+
+Kubernetes access uses an explicitly configured kubeconfig whose every cluster
+ID maps to one known, unique context. The handoff identity must be limited to
+creating/reading the deterministic tenant Namespace and AgentRun objects; it
+cannot create Jobs, execution children, or write the AgentRun status
+subresource. Unknown, duplicate, disabled, unauthorized, or mismatched cluster
+intent is rejected before a Kubernetes write. Platform or cloud administrator
+credentials are prohibited.
+
+The Operator has the separate execution-controller identity. Referenced Secret
+existence is checked through uncached `PartialObjectMetadata` reads with
+get-only Secret RBAC, so secret payloads are neither read nor retained by the
+controller cache. StorageClass inspection is also uncached and get-only. Only
+the Operator owns execution resources and the AgentRun status subresource;
+untrusted runner Pods receive no Kubernetes API token.
+
 ## Secrets
 
 Store secrets in a cloud secret manager or Vault. Database rows hold references only. The agent accesses approved capabilities through brokers or scoped credentials. Every secret access is audited.

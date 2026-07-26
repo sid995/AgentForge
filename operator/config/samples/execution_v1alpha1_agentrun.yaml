@@ -1,0 +1,46 @@
+apiVersion: execution.agentforge.dev/v1alpha1
+kind: AgentRun
+metadata:
+  labels:
+    app.kubernetes.io/name: agentforge
+    app.kubernetes.io/component: agent-run
+    app.kubernetes.io/managed-by: scheduler
+  name: run-019b0000-0000-7000-8000-000000000004
+  namespace: tenant-019b0000-0000-7000-8000-000000000002
+spec:
+  tenantId: 019b0000-0000-7000-8000-000000000002
+  projectId: 019b0000-0000-7000-8000-000000000003
+  runId: 019b0000-0000-7000-8000-000000000004
+  attemptId: 019b0000-0000-7000-8000-000000000005
+  attempt: 1
+  runnerImage: ghcr.io/agentforge/runner@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  runtime: python-3.12
+  executionProfile: standard
+  taskRef: vault://tasks/run-example
+  timeoutSeconds: 1800
+  retryPolicy:
+    maxAttempts: 3
+    retryableFailureCategories:
+      - TRANSIENT_DEPENDENCY
+  resources:
+    requests:
+      cpuMillis: 1000
+      memoryMiB: 2048
+    limits:
+      cpuMillis: 2000
+      memoryMiB: 4096
+  workspace:
+    sizeGiB: 20
+    storageClassName: standard
+  network:
+    profile: RestrictedEgress
+    allowedDestinationsRef:
+      name: approved-egress
+  artifactDestinationRef:
+    name: artifact-store
+  configurationRefs:
+    - name: runner-config
+  secretRefs:
+    - name: runner-credentials
+  deployOnSuccess: false
+  desiredState: Running

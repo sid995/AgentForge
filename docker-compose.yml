@@ -10,6 +10,7 @@ services:
       POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:-agentforge-app}
       POSTGRES_RELAY_PASSWORD: ${POSTGRES_RELAY_PASSWORD:-agentforge-relay}
       POSTGRES_SCHEDULER_PASSWORD: ${POSTGRES_SCHEDULER_PASSWORD:-agentforge-scheduler}
+      POSTGRES_HANDOFF_PASSWORD: ${POSTGRES_HANDOFF_PASSWORD:-agentforge-handoff}
     ports:
       - "${POSTGRES_HOST_PORT:-15432}:5432"
     healthcheck:
@@ -68,11 +69,49 @@ services:
       AGENTFORGE_SCHEDULER_OWNER: ${AGENTFORGE_SCHEDULER_OWNER:-scheduler-local}
       AGENTFORGE_SCHEDULER_STRATEGY: ${AGENTFORGE_SCHEDULER_STRATEGY:-least-loaded}
       AGENTFORGE_SCHEDULER_KAFKA_HINTS_ENABLED: ${AGENTFORGE_SCHEDULER_KAFKA_HINTS_ENABLED:-false}
+      AGENTFORGE_SCHEDULER_RUNNER_IMAGES: ${AGENTFORGE_SCHEDULER_RUNNER_IMAGES:-{"python-3.12":"docker.io/library/busybox@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028"}}
+      AGENTFORGE_SCHEDULER_WORKSPACE_SIZE_GIB: ${AGENTFORGE_SCHEDULER_WORKSPACE_SIZE_GIB:-10}
+      AGENTFORGE_SCHEDULER_STORAGE_CLASS: ${AGENTFORGE_SCHEDULER_STORAGE_CLASS:-standard}
+      AGENTFORGE_SCHEDULER_ARTIFACT_DESTINATION_REF: ${AGENTFORGE_SCHEDULER_ARTIFACT_DESTINATION_REF:-artifact-store}
+      AGENTFORGE_SCHEDULER_CONFIGURATION_REFS: ${AGENTFORGE_SCHEDULER_CONFIGURATION_REFS:-}
+      AGENTFORGE_SCHEDULER_SECRET_REFS: ${AGENTFORGE_SCHEDULER_SECRET_REFS:-}
       AGENTFORGE_KAFKA_BROKERS: redpanda:9092
     ports:
       - "${SCHEDULER_HOST_PORT:-18081}:8081"
     depends_on:
       postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  agentrun-handoff:
+    profiles: ["kubernetes"]
+    cpus: ${HANDOFF_CPUS:-0.5}
+    mem_limit: ${HANDOFF_MEMORY_LIMIT:-256m}
+    build:
+      context: .
+      dockerfile: services/platform-api/Handoff.Dockerfile
+      args:
+        BUILD_VERSION: ${BUILD_VERSION:-development}
+        BUILD_COMMIT: ${BUILD_COMMIT:-unknown}
+        BUILD_TIME: ${BUILD_TIME:-unknown}
+    environment:
+      AGENTFORGE_ENVIRONMENT: ${AGENTFORGE_ENVIRONMENT:-development}
+      AGENTFORGE_DATABASE_URL: postgres://agentforge_handoff:${POSTGRES_HANDOFF_PASSWORD:-agentforge-handoff}@postgres:5432/${POSTGRES_DB:-agentforge}?sslmode=disable
+      AGENTFORGE_KAFKA_BROKERS: redpanda:9092
+      AGENTFORGE_HANDOFF_HTTP_ADDR: :8082
+      AGENTFORGE_HANDOFF_PROCESS_TIMEOUT: ${AGENTFORGE_HANDOFF_PROCESS_TIMEOUT:-30s}
+      AGENTFORGE_HANDOFF_KAFKA_GROUP: ${AGENTFORGE_HANDOFF_KAFKA_GROUP:-agentforge-agentrun-handoff-v1}
+      AGENTFORGE_HANDOFF_KUBECONFIG: /kubeconfig/config
+      AGENTFORGE_HANDOFF_CLUSTER_CONTEXTS: ${AGENTFORGE_HANDOFF_CLUSTER_CONTEXTS:-{"cluster-local":"kind-agentforge"}}
+      AGENTFORGE_HANDOFF_QUARANTINE_TENANT_ID: ${AGENTFORGE_HANDOFF_QUARANTINE_TENANT_ID:-019b0000-0000-7000-8000-000000000001}
+    volumes:
+      - ${AGENTFORGE_HANDOFF_KUBECONFIG:-./.local/kubeconfig}:/kubeconfig/config:ro
+    ports:
+      - "${HANDOFF_HOST_PORT:-18082}:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
         condition: service_healthy
     restart: unless-stopped
 

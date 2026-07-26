@@ -145,9 +145,12 @@ func TestSchedulerQueueOrderingLeasesConcurrencyAndRoleIsolation(t *testing.T) {
 		t.Fatalf("empty queue claimed=%#v err=%v", claimed, err)
 	}
 
-	var prompt string
-	if err := schedulerPool.Raw().QueryRowContext(ctx, `select prompt_reference from agent_runs where id = $1`, target.ID).Scan(&prompt); err == nil {
-		t.Fatal("scheduler role could read prompt reference")
+	if reclaimed[0].PromptReference == "" || reclaimed[0].MaxAttempts < 1 {
+		t.Fatalf("claim omitted the secure task reference or attempt ceiling: %#v", reclaimed[0])
+	}
+	var requestHash string
+	if err := schedulerPool.Raw().QueryRowContext(ctx, `select request_hash from agent_runs where id = $1`, target.ID).Scan(&requestHash); err == nil {
+		t.Fatal("scheduler role could read unrelated request integrity metadata")
 	}
 
 	closedPool := openPool(t, schedulerURL, 1)

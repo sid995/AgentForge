@@ -175,3 +175,13 @@ a permanent scheduling policy rejection. The transaction completes the run as
 `POLICY_REJECTED`, completes its current pending attempt as `CANCELLED`, and
 inserts the failed-event outbox row. No schema object from an already committed
 sub-phase is rewritten.
+
+## Phase 6.10 handoff role
+
+Migration `000011_agentrun_handoff` adds an immutable intent table keyed by
+the scheduled event ID, with tenant/run/attempt/cluster identity and validated
+JSON desired state. It grants the Scheduler narrow reads for the secure task
+reference and attempt ceiling plus intent insert/replay access. The separate
+`agentforge_handoff` role may read those intents and registered cluster/tenant
+authorization and may read or insert durable processed-event markers; it
+cannot update AgentRuns, attempts, reservations, or outbox rows.

@@ -63,8 +63,14 @@ func TestSchedulingIntentAtomicallyAssignsReservesAndEmits(t *testing.T) {
 	if err != nil || len(claimed) != 1 {
 		t.Fatalf("claim=%#v err=%v", claimed, err)
 	}
-	request := ports.SchedulingIntentRequest{Claim: claimed[0], LeaseOwner: "scheduler-intent", AttemptID: attempt.ID, AttemptVersion: attempt.Version, ClusterID: cluster.ID, ClusterFreshness: 5 * time.Minute, Strategy: "least-loaded", SelectionScore: 2500, BudgetMinorUnits: 100, ReservationTTL: 5 * time.Minute, CorrelationID: run.ID.String(), CausationID: "claim-intent", Now: now.Add(2 * time.Second)}
+	desired := domain.AgentRunDesiredState{RunnerImage: "registry.example.test/runner@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Runtime: run.Runtime, ExecutionProfile: "standard", TaskReference: run.PromptReference, TimeoutSeconds: run.TimeoutSeconds, MaxAttempts: run.MaxAttempts, InitialBackoffSeconds: 5, MaxBackoffSeconds: 300, RetryableFailureCategories: []domain.FailureCategory{domain.FailureTransientDependency}, CPUMillis: run.CPUMillis, MemoryMiB: run.MemoryMiB, CPULimitMillis: run.CPUMillis, MemoryLimitMiB: run.MemoryMiB, WorkspaceSizeGiB: 10, WorkspaceRetentionPolicy: "Delete", NetworkProfile: "Isolated", ArtifactDestinationRef: "artifact-store"}
+	request := ports.SchedulingIntentRequest{Claim: claimed[0], LeaseOwner: "scheduler-intent", AttemptID: attempt.ID, AttemptVersion: attempt.Version, ClusterID: cluster.ID, ClusterFreshness: 5 * time.Minute, Strategy: "least-loaded", SelectionScore: 2500, BudgetMinorUnits: 100, ReservationTTL: 5 * time.Minute, CorrelationID: run.ID.String(), CausationID: "claim-intent", Now: now.Add(2 * time.Second), DesiredState: desired}
 	repository := postgresadapter.NewSchedulingIntentRepository(schedulerPool)
+	mismatched := request
+	mismatched.DesiredState.TaskReference = "vault://tasks/other"
+	if _, err := repository.Schedule(ctx, mismatched); err == nil {
+		t.Fatal("mismatched desired state was accepted")
+	}
 	invalid := request
 	invalid.LeaseOwner = "wrong-owner"
 	if _, err := repository.Schedule(ctx, invalid); !errors.Is(err, domain.ErrVersionConflict) {
@@ -106,13 +112,18 @@ func TestSchedulingIntentAtomicallyAssignsReservesAndEmits(t *testing.T) {
 	if _, err := repository.Schedule(ctx, changed); !errors.Is(err, domain.ErrConflict) {
 		t.Fatalf("changed replay error=%v", err)
 	}
+	changed = request
+	changed.DesiredState.WorkspaceSizeGiB++
+	if _, err := repository.Schedule(ctx, changed); !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("changed desired-state replay error=%v", err)
+	}
 	var runStatus, attemptStatus, eventType string
-	var capacityCount, budgetCount int
-	if err := adminPool.Raw().QueryRowContext(ctx, `select run.status,attempt.status,event.event_type,(select count(*) from capacity_reservations where run_id=run.id),(select count(*) from budget_reservations where run_id=run.id) from agent_runs run join agent_run_attempts attempt on attempt.run_id=run.id join outbox_events event on event.run_id=run.id and event.event_type=$2 where run.id=$1`, run.ID, events.AgentRunScheduledType).Scan(&runStatus, &attemptStatus, &eventType, &capacityCount, &budgetCount); err != nil {
+	var capacityCount, budgetCount, handoffCount int
+	if err := adminPool.Raw().QueryRowContext(ctx, `select run.status,attempt.status,event.event_type,(select count(*) from capacity_reservations where run_id=run.id),(select count(*) from budget_reservations where run_id=run.id),(select count(*) from agentrun_handoff_intents where run_id=run.id) from agent_runs run join agent_run_attempts attempt on attempt.run_id=run.id join outbox_events event on event.run_id=run.id and event.event_type=$2 where run.id=$1`, run.ID, events.AgentRunScheduledType).Scan(&runStatus, &attemptStatus, &eventType, &capacityCount, &budgetCount, &handoffCount); err != nil {
 		t.Fatal(err)
 	}
-	if runStatus != "PROVISIONING" || attemptStatus != "STARTING" || eventType != events.AgentRunScheduledType || capacityCount != 1 || budgetCount != 1 {
-		t.Fatalf("state run=%s attempt=%s event=%s capacity=%d budget=%d", runStatus, attemptStatus, eventType, capacityCount, budgetCount)
+	if runStatus != "PROVISIONING" || attemptStatus != "STARTING" || eventType != events.AgentRunScheduledType || capacityCount != 1 || budgetCount != 1 || handoffCount != 1 {
+		t.Fatalf("state run=%s attempt=%s event=%s capacity=%d budget=%d handoff=%d", runStatus, attemptStatus, eventType, capacityCount, budgetCount, handoffCount)
 	}
 
 	waitRun, waitAttempt := mustRunAndAttempt(t, tenant.ID, project.ID, "wait-"+uuid.NewString(), now.Add(3*time.Second))

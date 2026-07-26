@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-required_tools=(git make bash awk find go docker)
-optional_tools=(kubectl helm kind terraform golangci-lint shellcheck)
+required_tools=(git make bash awk find go docker kubectl)
+optional_tools=(helm kind terraform golangci-lint shellcheck)
 missing=0
 
 for tool in "${required_tools[@]}"; do
@@ -18,7 +18,7 @@ for tool in "${optional_tools[@]}"; do
   if command -v "${tool}" >/dev/null 2>&1; then
     printf 'optional: %s (%s)\n' "${tool}" "$(command -v "${tool}")"
   else
-    printf 'optional (not required through Phase 5): %s unavailable\n' "${tool}"
+    printf 'optional (repository-pinned where required through Phase 6): %s unavailable\n' "${tool}"
   fi
 done
 

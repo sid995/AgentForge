@@ -32,3 +32,17 @@
 ## Deterministic test mode
 
 Provide a fake agent that generates known project templates and controlled failures. Integration tests must not require paid model calls.
+
+## Phase 6.6 terminal evidence contract
+
+Before exiting successfully, the runner writes a JSON object to
+`/dev/termination-log` with exactly these fields:
+
+```json
+{"schemaVersion":1,"artifactManifestRef":"s3://example/manifests/run.json"}
+```
+
+The payload is bounded to 4096 bytes. `schemaVersion` must be `1`, and
+`artifactManifestRef` must be a bounded URI-style secure reference. Exit code
+zero without valid evidence is not platform success. The Operator parses only
+this contract and never exposes arbitrary termination text.
