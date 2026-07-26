@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -31,6 +33,16 @@ type Config struct {
 	RequestTimeout      time.Duration
 	MaxRequestBodyBytes int64
 	Database            DatabaseConfig
+	DevelopmentIdentity *DevelopmentIdentityConfig
+}
+
+// DevelopmentIdentityConfig is an explicitly local-only opaque bearer identity.
+// It is replaced by OIDC and membership lookup in Phase 12.
+type DevelopmentIdentityConfig struct {
+	Token    string
+	TenantID uuid.UUID
+	Subject  string
+	Role     string
 }
 
 // DatabaseConfig contains the bounded PostgreSQL connection-pool settings.
@@ -91,8 +103,47 @@ func Load(lookup LookupEnv) (Config, error) {
 	if config.Database, err = database(lookup, config.Database); err != nil {
 		return Config{}, err
 	}
+	if config.DevelopmentIdentity, err = developmentIdentity(lookup, config.Environment); err != nil {
+		return Config{}, err
+	}
 
 	return config, nil
+}
+
+func developmentIdentity(lookup LookupEnv, environment string) (*DevelopmentIdentityConfig, error) {
+	const tokenKey = "AGENTFORGE_DEVELOPMENT_IDENTITY_TOKEN"
+	values := map[string]string{}
+	keys := []string{tokenKey, "AGENTFORGE_DEVELOPMENT_IDENTITY_TENANT_ID", "AGENTFORGE_DEVELOPMENT_IDENTITY_SUBJECT", "AGENTFORGE_DEVELOPMENT_IDENTITY_ROLE"}
+	configured := false
+	for _, key := range keys {
+		if value, ok := lookup(key); ok {
+			values[key] = strings.TrimSpace(value)
+			configured = true
+		}
+	}
+	if !configured {
+		return nil, nil
+	}
+	if environment != "development" && environment != "test" {
+		return nil, fmt.Errorf("%s is permitted only in development or test", tokenKey)
+	}
+	for _, key := range keys {
+		if values[key] == "" {
+			return nil, fmt.Errorf("%s must be configured with all development identity fields", tokenKey)
+		}
+	}
+	tenantID, err := uuid.Parse(values["AGENTFORGE_DEVELOPMENT_IDENTITY_TENANT_ID"])
+	if err != nil || tenantID == uuid.Nil {
+		return nil, fmt.Errorf("AGENTFORGE_DEVELOPMENT_IDENTITY_TENANT_ID must be a UUID")
+	}
+	if len(values["AGENTFORGE_DEVELOPMENT_IDENTITY_SUBJECT"]) > 255 {
+		return nil, fmt.Errorf("AGENTFORGE_DEVELOPMENT_IDENTITY_SUBJECT must contain at most 255 characters")
+	}
+	role := values["AGENTFORGE_DEVELOPMENT_IDENTITY_ROLE"]
+	if role != "developer" && role != "project-administrator" {
+		return nil, fmt.Errorf("AGENTFORGE_DEVELOPMENT_IDENTITY_ROLE must be developer or project-administrator")
+	}
+	return &DevelopmentIdentityConfig{Token: values[tokenKey], TenantID: tenantID, Subject: values["AGENTFORGE_DEVELOPMENT_IDENTITY_SUBJECT"], Role: role}, nil
 }
 
 func database(lookup LookupEnv, defaults DatabaseConfig) (DatabaseConfig, error) {
