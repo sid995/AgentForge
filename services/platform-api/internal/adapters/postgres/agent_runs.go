@@ -3,8 +3,10 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -33,15 +35,19 @@ func (repository *AgentRunRepository) Create(ctx context.Context, run domain.Age
 	if err != nil {
 		return err
 	}
+	idempotencyResponse, err := marshalIdempotencyResponse(run)
+	if err != nil {
+		return err
+	}
 	tx, err := repository.database.BeginTenant(ctx, run.TenantID)
 	if err != nil {
 		return translateError(err)
 	}
 	defer func() { _ = tx.Rollback() }()
 	_, err = tx.ExecContext(ctx, `
-		insert into agent_runs (id, tenant_id, project_id, prompt_reference, runtime, cpu_millis, memory_mib, timeout_seconds, max_attempts, attempt_count, status, failure_category, idempotency_key, request_hash, version, created_by, cancellation_reason, cancellation_requested_by, cancellation_requested_at, created_at, updated_at, completed_at)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, nullif($12, ''), $13, $14, $15, $16, nullif($17, ''), nullif($18, ''), $19, $20, $21, $22)`,
-		run.ID, run.TenantID, run.ProjectID, run.PromptReference, run.Runtime, run.CPUMillis, run.MemoryMiB, run.TimeoutSeconds, run.MaxAttempts, run.AttemptCount, run.Status, run.FailureCategory, run.IdempotencyKey, run.RequestHash, run.Version, run.CreatedBy, run.CancellationReason, run.CancellationRequestedBy, run.CancellationRequestedAt, run.CreatedAt, run.UpdatedAt, run.CompletedAt)
+		insert into agent_runs (id, tenant_id, project_id, prompt_reference, runtime, cpu_millis, memory_mib, timeout_seconds, max_attempts, attempt_count, status, failure_category, idempotency_key, request_hash, idempotency_response, version, created_by, cancellation_reason, cancellation_requested_by, cancellation_requested_at, created_at, updated_at, completed_at)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, nullif($12, ''), $13, $14, $15, $16, $17, nullif($18, ''), nullif($19, ''), $20, $21, $22, $23)`,
+		run.ID, run.TenantID, run.ProjectID, run.PromptReference, run.Runtime, run.CPUMillis, run.MemoryMiB, run.TimeoutSeconds, run.MaxAttempts, run.AttemptCount, run.Status, run.FailureCategory, run.IdempotencyKey, run.RequestHash, idempotencyResponse, run.Version, run.CreatedBy, run.CancellationReason, run.CancellationRequestedBy, run.CancellationRequestedAt, run.CreatedAt, run.UpdatedAt, run.CompletedAt)
 	if err != nil {
 		return translateError(err)
 	}
@@ -85,10 +91,63 @@ func (repository *AgentRunRepository) GetByIdempotencyKey(ctx context.Context, t
 	if err != nil {
 		return domain.AgentRun{}, translateError(err)
 	}
+	var storedResponse string
+	if err := tx.QueryRowContext(ctx, `select idempotency_response from agent_runs where tenant_id = $1 and idempotency_key = $2`, tenantID, key).Scan(&storedResponse); err != nil {
+		return domain.AgentRun{}, translateError(err)
+	}
+	if err := applyIdempotencyResponse(&run, storedResponse); err != nil {
+		return domain.AgentRun{}, err
+	}
 	if err := tx.Commit(); err != nil {
 		return domain.AgentRun{}, translateError(err)
 	}
 	return run, nil
+}
+
+type idempotencyResponse struct {
+	ID             uuid.UUID             `json:"id"`
+	ProjectID      uuid.UUID             `json:"projectId"`
+	Runtime        string                `json:"runtime"`
+	CPUMillis      int                   `json:"cpuMillis"`
+	MemoryMiB      int                   `json:"memoryMiB"`
+	TimeoutSeconds int                   `json:"timeoutSeconds"`
+	MaxAttempts    int                   `json:"maxAttempts"`
+	AttemptCount   int                   `json:"attemptCount"`
+	Status         domain.AgentRunStatus `json:"status"`
+	CreatedAt      time.Time             `json:"createdAt"`
+	UpdatedAt      time.Time             `json:"updatedAt"`
+}
+
+func marshalIdempotencyResponse(run domain.AgentRun) (string, error) {
+	response := idempotencyResponse{ID: run.ID, ProjectID: run.ProjectID, Runtime: run.Runtime, CPUMillis: run.CPUMillis, MemoryMiB: run.MemoryMiB, TimeoutSeconds: run.TimeoutSeconds, MaxAttempts: run.MaxAttempts, AttemptCount: run.AttemptCount, Status: run.Status, CreatedAt: run.CreatedAt.UTC(), UpdatedAt: run.UpdatedAt.UTC()}
+	payload, err := json.Marshal(response)
+	if err != nil {
+		return "", fmt.Errorf("marshal idempotency response: %w", err)
+	}
+	return string(payload), nil
+}
+
+func applyIdempotencyResponse(run *domain.AgentRun, payload string) error {
+	if payload == "" || payload == "{}" {
+		return nil
+	}
+	var response idempotencyResponse
+	if err := json.Unmarshal([]byte(payload), &response); err != nil {
+		return fmt.Errorf("decode stored idempotency response: %w", err)
+	}
+	if response.ID != run.ID || response.ProjectID != run.ProjectID || response.Status != domain.AgentRunQueued || response.AttemptCount != 1 || response.CreatedAt.IsZero() || response.UpdatedAt.IsZero() {
+		return fmt.Errorf("stored idempotency response is invalid")
+	}
+	run.Runtime = response.Runtime
+	run.CPUMillis = response.CPUMillis
+	run.MemoryMiB = response.MemoryMiB
+	run.TimeoutSeconds = response.TimeoutSeconds
+	run.MaxAttempts = response.MaxAttempts
+	run.AttemptCount = response.AttemptCount
+	run.Status = response.Status
+	run.CreatedAt = response.CreatedAt.UTC()
+	run.UpdatedAt = response.UpdatedAt.UTC()
+	return nil
 }
 
 // List returns a tenant-scoped, keyset-paginated run history.

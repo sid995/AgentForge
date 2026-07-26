@@ -1,0 +1,96 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "AgentForge Platform API",
+    "version": "v1",
+    "description": "Implemented Phase 3.3 AgentRun API surface. Production OIDC and resource RBAC replace the development identity adapter in Phase 12."
+  },
+  "paths": {
+    "/v1/projects/{projectId}/runs": {
+      "post": {
+        "operationId": "createAgentRun",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/ProjectID"},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CreateRunRequest"}}}
+        },
+        "responses": {
+          "202": {"description": "Run accepted", "headers": {"Location": {"schema": {"type": "string"}}, "Idempotent-Replay": {"schema": {"type": "string", "enum": ["true"]}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RunEnvelope"}}}},
+          "401": {"$ref": "#/components/responses/AuthenticationRequired"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "409": {"$ref": "#/components/responses/IdempotencyKeyReused"},
+          "413": {"$ref": "#/components/responses/RequestTooLarge"},
+          "422": {"$ref": "#/components/responses/Validation"}
+        }
+      },
+      "get": {
+        "operationId": "listProjectAgentRuns",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/ProjectID"},
+          {"$ref": "#/components/parameters/Limit"},
+          {"$ref": "#/components/parameters/Cursor"}
+        ],
+        "responses": {
+          "200": {"description": "Tenant-scoped run page", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RunList"}}}},
+          "401": {"$ref": "#/components/responses/AuthenticationRequired"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "422": {"$ref": "#/components/responses/Validation"}
+        }
+      }
+    },
+    "/v1/runs/{runId}": {
+      "get": {
+        "operationId": "getAgentRun",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/RunID"}],
+        "responses": {
+          "200": {"description": "Tenant-scoped run status", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RunEnvelope"}}}},
+          "401": {"$ref": "#/components/responses/AuthenticationRequired"},
+          "404": {"$ref": "#/components/responses/NotFound"},
+          "422": {"$ref": "#/components/responses/Validation"}
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {"bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "development opaque token"}},
+    "parameters": {
+      "ProjectID": {"name": "projectId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+      "RunID": {"name": "runId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+      "IdempotencyKey": {"name": "Idempotency-Key", "in": "header", "required": true, "schema": {"type": "string", "minLength": 1, "maxLength": 255}},
+      "Limit": {"name": "limit", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 50}},
+      "Cursor": {"name": "cursor", "in": "query", "schema": {"type": "string"}}
+    },
+    "schemas": {
+      "CreateRunRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["promptRef", "runtime", "resources", "timeoutSeconds", "maxAttempts"],
+        "properties": {
+          "promptRef": {"type": "string", "minLength": 1, "maxLength": 2048, "description": "A secure prompt reference; raw prompt content is never accepted."},
+          "runtime": {"type": "string", "minLength": 1, "maxLength": 120},
+          "resources": {"$ref": "#/components/schemas/ResourceRequest"},
+          "timeoutSeconds": {"type": "integer", "minimum": 1, "maximum": 86400},
+          "maxAttempts": {"type": "integer", "minimum": 1, "maximum": 10}
+        }
+      },
+      "ResourceRequest": {"type": "object", "additionalProperties": false, "required": ["cpuMillis", "memoryMiB"], "properties": {"cpuMillis": {"type": "integer", "minimum": 1, "maximum": 128000}, "memoryMiB": {"type": "integer", "minimum": 1, "maximum": 524288}}},
+      "Run": {"type": "object", "required": ["id", "projectId", "runtime", "resources", "timeoutSeconds", "maxAttempts", "attemptCount", "status", "createdAt", "updatedAt"], "properties": {"id": {"type": "string", "format": "uuid"}, "projectId": {"type": "string", "format": "uuid"}, "runtime": {"type": "string"}, "resources": {"$ref": "#/components/schemas/ResourceRequest"}, "timeoutSeconds": {"type": "integer"}, "maxAttempts": {"type": "integer"}, "attemptCount": {"type": "integer"}, "status": {"type": "string", "enum": ["QUEUED", "SCHEDULING", "CAPACITY_WAIT", "PROVISIONING", "RUNNING", "TESTING", "BUILDING", "SCANNING", "READY_TO_DEPLOY", "DEPLOYING", "CANCELLING", "SUCCEEDED", "CANCELLED", "PROVISIONING_FAILED", "EXECUTION_FAILED", "BUILD_FAILED", "POLICY_REJECTED", "DEPLOYMENT_FAILED", "TIMED_OUT"]}, "createdAt": {"type": "string", "format": "date-time"}, "updatedAt": {"type": "string", "format": "date-time"}}},
+      "RunEnvelope": {"type": "object", "required": ["data"], "properties": {"data": {"$ref": "#/components/schemas/Run"}}},
+      "RunList": {"type": "object", "required": ["data"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/Run"}}, "nextCursor": {"type": "string"}}},
+      "Error": {"type": "object", "required": ["error"], "properties": {"error": {"type": "object", "required": ["code", "message", "requestId", "retryable"], "properties": {"code": {"type": "string"}, "message": {"type": "string"}, "requestId": {"type": "string"}, "retryable": {"type": "boolean"}}}}}
+    },
+    "responses": {
+      "AuthenticationRequired": {"description": "Missing or invalid bearer credential", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+      "NotFound": {"description": "Resource is absent or outside the caller tenant", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+      "Validation": {"description": "Request is malformed or outside supported bounds", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+      "RequestTooLarge": {"description": "Request body exceeds configured limit", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+      "IdempotencyKeyReused": {"description": "Idempotency key is paired with a different effective request", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+    }
+  }
+}

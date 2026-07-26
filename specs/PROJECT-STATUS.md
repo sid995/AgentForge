@@ -1,10 +1,10 @@
 # AgentForge Project Status
 
-**Last updated:** 2026-07-23
+**Last updated:** 2026-07-26
 
 ## Current milestone
 
-Phase 6 complete; resume Phase 3.3 create/get/list run API
+Phase 3.3 implementation complete; validate PostgreSQL integration before Phase 3.4
 
 ## Overall state
 
@@ -38,6 +38,12 @@ remain explicit dependencies for their corresponding command integrations.
   RLS, and migration/application database roles
 - Phase 3.1 normalized AgentRun/attempt state machines and Phase 3.2 durable
   AgentRun/attempt persistence with optimistic concurrency and tenant RLS
+- Phase 3.3 implementation: authenticated create/get/project-list AgentRun API;
+  temporary
+  server-derived development identity, tenant-scoped authorization, canonical
+  request hashing and idempotent replay, secure prompt references, opaque
+  cursor pagination, executable OpenAPI contract, HTTP contract tests, and
+  PostgreSQL application integration coverage
 - Phase 4.1 event architecture and transactional-outbox ADR
 - Phase 4.2 transactional AgentRun/outbox insertion, isolated relay role,
   lease-based competing claims, durable publication retries, published-only
@@ -141,11 +147,12 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## In progress
 
-- None; Phase 6 is closed
+- Phase 3.3 validation: unit, race, vet, OpenAPI contract, and repository
+  verification pass; PostgreSQL integration and lint require a running local
+  Docker daemon and remain unverified in this checkout.
 
 ## Not started
 
-- Phase 3.3 create/get/list run API
 - Phase 3.4 cancellation command
 - Phase 3.5 retry command and Phase 3 audit
 - Agent Runner
@@ -161,6 +168,7 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Resume Phase 3.3 create/get/list run API.
-2. Implement Phase 3.4 cancellation and Phase 3.5 retry commands.
-3. Run the Phase 3 completion audit before beginning the Agent Runner.
+1. Start Docker and run `make test-integration` plus `make lint` to close the
+   Phase 3.3 validation gate.
+2. Implement Phase 3.4 cancellation command semantics.
+3. Implement Phase 3.5 retry command and run the Phase 3 completion audit.

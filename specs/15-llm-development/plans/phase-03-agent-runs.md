@@ -2,9 +2,17 @@
 
 ## Status
 
-In progress. Prompt 3.1 state-machine normalization was committed in `5c4a8fd`.
-Prompt 3.2 adds the durable persistence foundation; later prompts add the
-authenticated API, cancellation command, retry command, and completion audit.
+Phase 3.1 state-machine normalization was committed in `5c4a8fd`; Phase 3.2
+adds the durable persistence foundation. Phase 3.3 implementation is complete:
+the Platform
+API has authenticated create/get/project-list routes, server-derived temporary
+development identity, canonical request hashing and idempotent replay, opaque
+cursor pagination, an executable OpenAPI contract, HTTP contract tests, and a
+PostgreSQL application integration test. Unit, race, vet, OpenAPI contract,
+and repository verification pass; the Docker-dependent PostgreSQL integration
+and lint gates are unverified while the local Docker daemon is unavailable.
+Phase 3.4 cancellation, Phase 3.5 retry, and the Phase 3 completion audit
+remain next after that gate closes.
 
 ## Implemented persistence boundary
 
@@ -16,9 +24,12 @@ Run creation atomically inserts its first pending attempt. Repository reads,
 lists, and writes are tenant transactions with explicit predicates and forced
 PostgreSQL RLS. A stale run or attempt write maps to a stable version conflict.
 
-This sub-phase deliberately excludes HTTP identity, API routes, scheduling,
-workload creation, audit persistence, transactional outbox rows, and Kafka.
-Those behaviours are implemented only in their later documented sub-phases.
+Phase 3.2 deliberately excluded HTTP identity and API routes. Phase 3.3 adds a
+temporary server-configured opaque Bearer identity only in `development` and
+`test`; it never trusts a client tenant field/header and is explicitly replaced
+by Phase 12 OIDC/RBAC. The create path calls the existing atomic
+run/attempt/outbox repository transaction; it does not schedule or execute a
+workload. Audit persistence remains deferred.
 
 ## Acceptance evidence
 

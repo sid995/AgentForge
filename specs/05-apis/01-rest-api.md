@@ -39,8 +39,28 @@ header as a substitute.
 
 ## Runs
 
-- `POST /projects/{projectId}/runs`
-- `GET /runs/{runId}`
+Phase 3.3 implements the following authenticated tenant-scoped endpoints. The
+executable contract is [`contracts/openapi/platform-api.v1.json`](../../contracts/openapi/platform-api.v1.json).
+The temporary development identity accepts only a server-configured opaque
+Bearer token and derives the tenant, actor, and role from that configuration;
+it never accepts a tenant header or request-body tenant field. It is limited to
+`development` and `test` environments and is replaced by OIDC and resource RBAC
+in Phase 12.
+
+- `POST /v1/projects/{projectId}/runs` requires `Idempotency-Key`, accepts a
+  `promptRef` rather than raw prompt content, creates the run in `QUEUED` with
+  its first `PENDING` attempt and requested-event intent atomically, and returns
+  `202 Accepted`. Same-tenant key/request replays return the original run;
+  differing effective input returns `409 IDEMPOTENCY_KEY_REUSED`.
+- `GET /v1/runs/{runId}` returns only a run inside the resolved tenant.
+- `GET /v1/projects/{projectId}/runs` returns a tenant/project-scoped page with
+  a base64url opaque cursor and `limit` from 1 through 100.
+
+Run responses deliberately exclude the prompt reference, request hash, actor,
+and cancellation metadata. The Phase 3.3 request validates `promptRef`,
+runtime, CPU/memory request, timeout, and maximum attempts. It does not execute
+workloads or accept client status mutations.
+
 - `POST /runs/{runId}/cancel`
 - `POST /runs/{runId}/retry`
 - `GET /runs/{runId}/attempts`

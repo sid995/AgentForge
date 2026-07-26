@@ -96,6 +96,14 @@ pool controls are `AGENTFORGE_DATABASE_MAX_CONNS` (default `10`),
 `AGENTFORGE_DATABASE_CONNECT_TIMEOUT` (default `5s`). Do not use the local
 test credentials outside the Compose test environment.
 
+Phase 3.3 API routes require an `Authorization: Bearer` token resolved from
+the optional `AGENTFORGE_DEVELOPMENT_IDENTITY_*` configuration. Configure all
+four values together: opaque token, existing tenant UUID, subject, and role
+(`developer` or `project-administrator`). This adapter is permitted only in
+`development` or `test`, derives tenant scope only from server configuration,
+and must never be enabled with a production credential. Phase 12 replaces it
+with OIDC and resource-level RBAC.
+
 `AGENTFORGE_TEST_RELAY_DATABASE_URL` is integration-test-only and authenticates
 the cross-tenant outbox relay role. `POSTGRES_RELAY_PASSWORD` configures that
 role when a new local PostgreSQL volume is initialized. Existing volumes do not
