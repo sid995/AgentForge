@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -44,7 +45,7 @@ type ArtifactStore interface {
 }
 type filesystemStore struct{ root string }
 
-func LoadArtifactStore(configPath, workspace, secretRoot string) (ArtifactStore, error) {
+func LoadArtifactStore(configPath, workspace, secretRoot string, approvedSecretRefs []string) (ArtifactStore, error) {
 	contents, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("read artifact configuration: %w", err)
@@ -69,7 +70,7 @@ func LoadArtifactStore(configPath, workspace, secretRoot string) (ArtifactStore,
 		}
 		return filesystemStore{root: root}, nil
 	case "s3":
-		if config.Endpoint == "" || config.Bucket == "" || config.CredentialRef == "" || !referenceNamePattern.MatchString(config.CredentialRef) {
+		if config.Endpoint == "" || config.Bucket == "" || config.CredentialRef == "" || !referenceNamePattern.MatchString(config.CredentialRef) || !slices.Contains(approvedSecretRefs, config.CredentialRef) {
 			return nil, fmt.Errorf("S3 artifact configuration is invalid")
 		}
 		accessKey, err := os.ReadFile(filepath.Join(secretRoot, config.CredentialRef, "accessKey"))
@@ -286,6 +287,9 @@ func sourceSnapshot(workspace string) ([]byte, error) {
 	if err := filepath.WalkDir(workspace, func(path string, entry os.DirEntry, err error) error {
 		if err != nil || entry.IsDir() || strings.Contains(path, string(os.PathSeparator)+"artifacts"+string(os.PathSeparator)) {
 			return err
+		}
+		if entry.Type()&os.ModeSymlink != 0 {
+			return fmt.Errorf("source snapshot refuses symbolic links")
 		}
 		info, err := entry.Info()
 		if err != nil {

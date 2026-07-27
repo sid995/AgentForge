@@ -52,6 +52,27 @@ func TestRunRejectsSignatureMismatch(t *testing.T) {
 	}
 }
 
+func TestRunRejectsTaskPathTraversal(t *testing.T) {
+	temp := t.TempDir()
+	public, private, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	configPath := writeFixture(t, temp, public, private, "value")
+	contents, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	contents = []byte(strings.Replace(string(contents), "secret://task/envelope.json", "secret://task/nested/envelope.json", 1))
+	if err := os.WriteFile(configPath, contents, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	code, err := Run(context.Background(), Options{ConfigPath: configPath, Workspace: filepath.Join(temp, "workspace"), SecretRoot: filepath.Join(temp, "secrets"), ConfigRoot: filepath.Join(temp, "config")})
+	if code != ExitConfig || err == nil {
+		t.Fatalf("code=%d err=%v", code, err)
+	}
+}
+
 func writeFixture(t *testing.T, root string, public ed25519.PublicKey, private ed25519.PrivateKey, secret string) string {
 	t.Helper()
 	for _, path := range []string{filepath.Join(root, "secrets", "task"), filepath.Join(root, "secrets", "runner-secret"), filepath.Join(root, "config", "trust")} {

@@ -10,7 +10,7 @@ import (
 
 func TestFilesystemArtifactsAreConfinedAndVerified(t *testing.T) {
 	workspace := t.TempDir()
-	store, err := LoadArtifactStore(writeArtifactConfig(t, workspace, filepath.Join(workspace, "artifacts")), workspace, filepath.Join(workspace, "secrets"))
+	store, err := LoadArtifactStore(writeArtifactConfig(t, workspace, filepath.Join(workspace, "artifacts")), workspace, filepath.Join(workspace, "secrets"), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,6 +26,16 @@ func TestFilesystemArtifactsAreConfinedAndVerified(t *testing.T) {
 	}
 	if _, err := confinedArtifactRoot(workspace, t.TempDir()); err == nil {
 		t.Fatal("external artifact root accepted")
+	}
+}
+
+func TestSourceSnapshotRejectsSymlink(t *testing.T) {
+	workspace := t.TempDir()
+	if err := os.Symlink("/etc/hosts", filepath.Join(workspace, "outside")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sourceSnapshot(workspace); err == nil {
+		t.Fatal("symlink source was accepted")
 	}
 }
 

@@ -45,7 +45,7 @@ func TestS3CompatibleArtifactPublication(t *testing.T) {
 	if err := os.WriteFile(configPath, []byte(config), 0o640); err != nil {
 		t.Fatal(err)
 	}
-	store, err := LoadArtifactStore(configPath, root, secretRoot)
+	store, err := LoadArtifactStore(configPath, root, secretRoot, []string{"artifact-credential"})
 	if err != nil {
 		t.Fatal(err)
 	}

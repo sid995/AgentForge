@@ -36,7 +36,7 @@ func LoadSignedTask(config RuntimeConfig, secretRoot, configRoot string) (TaskEn
 	}
 	secretName := parsed.Host
 	key := filepath.Base(parsed.Path)
-	if key == "." || key == "/" || !slices.Contains(config.SecretRefs, secretName) || !referenceNamePattern.MatchString(secretName) {
+	if key == "." || key == "/" || parsed.Path != "/"+key || !slices.Contains(config.SecretRefs, secretName) || !referenceNamePattern.MatchString(secretName) {
 		return TaskEnvelope{}, fmt.Errorf("task reference is not an approved secret projection")
 	}
 	path := filepath.Join(secretRoot, secretName, key)

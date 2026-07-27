@@ -94,7 +94,7 @@ func Run(parent context.Context, options Options) (int, error) {
 	if err := sink.Emit("tests.passed", "controlled template checks passed"); err != nil {
 		return ExitInternal, err
 	}
-	store, err := LoadArtifactStore(options.ArtifactConfigPath, options.Workspace, options.SecretRoot)
+	store, err := LoadArtifactStore(options.ArtifactConfigPath, options.Workspace, options.SecretRoot, config.SecretRefs)
 	if err != nil {
 		return ExitArtifacts, err
 	}
