@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -145,6 +147,42 @@ func TestRetryRunRequiresEmptyObjectAndMapsCommandConflicts(t *testing.T) {
 		t.Fatalf("retry conflict status=%d", conflictResponse.Code)
 	}
 	assertErrorCode(t, conflictResponse, "RETRY_NOT_ALLOWED")
+}
+
+func TestRunErrorUsesStructuralValidationClassification(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "/v1/runs/invalid", nil)
+	request = request.WithContext(context.WithValue(request.Context(), requestIDKey, "req_test"))
+	validation := httptest.NewRecorder()
+	writeRunError(validation, request, errors.New("wrapped: "+domain.ErrValidation.Error()))
+	if validation.Code != http.StatusInternalServerError {
+		t.Fatalf("unwrapped validation status=%d, want internal", validation.Code)
+	}
+
+	classified := httptest.NewRecorder()
+	writeRunError(classified, request, fmt.Errorf("bad input: %w", domain.ErrValidation))
+	if classified.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("classified validation status=%d, want 422", classified.Code)
+	}
+	assertErrorCode(t, classified, "VALIDATION")
+}
+
+func TestRunResponsePreservesNullableLifecycleFields(t *testing.T) {
+	run := testRun()
+	run.FailureCategory = domain.FailureTransientDependency
+	run.CancellationReason = "operator requested"
+	run.CancellationRequestedBy = "developer@example.test"
+	requestedAt := run.UpdatedAt.Add(time.Minute)
+	completedAt := requestedAt.Add(time.Minute)
+	run.CancellationRequestedAt = &requestedAt
+	run.CompletedAt = &completedAt
+	response := responseForRun(run)
+	if response.FailureCategory == nil || response.CancellationReason == nil || response.CancellationRequestedAt == nil || response.CompletedAt == nil {
+		t.Fatalf("response omitted lifecycle fields: %#v", response)
+	}
+	unset := responseForRun(testRun())
+	if unset.FailureCategory != nil || unset.CancellationReason != nil || unset.CancellationRequestedAt != nil || unset.CompletedAt != nil {
+		t.Fatalf("response did not preserve unset fields as null pointers: %#v", unset)
+	}
 }
 
 func runTestAPI(t *testing.T, service *fakeRunService) *API {

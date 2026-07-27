@@ -459,14 +459,14 @@ func lockedCommandRun(ctx context.Context, tx *database.TenantTx, tenantID, runI
 
 func validateCancelRequest(request ports.CancelRunRequest) error {
 	if request.TenantID == uuid.Nil || request.RunID == uuid.Nil || strings.TrimSpace(request.CommandID) == "" || len(request.CommandID) > 255 || strings.TrimSpace(request.Actor) == "" || len(request.Actor) > 255 || strings.TrimSpace(request.Reason) == "" || len(request.Reason) > 500 || request.Now.IsZero() {
-		return fmt.Errorf("cancellation command is invalid")
+		return fmt.Errorf("%w: cancellation command is invalid", domain.ErrValidation)
 	}
 	return nil
 }
 
 func validateRetryRequest(request ports.RetryRunRequest) error {
 	if request.TenantID == uuid.Nil || request.RunID == uuid.Nil || strings.TrimSpace(request.CommandID) == "" || len(request.CommandID) > 255 || strings.TrimSpace(request.Actor) == "" || len(request.Actor) > 255 || request.Now.IsZero() {
-		return fmt.Errorf("retry command is invalid")
+		return fmt.Errorf("%w: retry command is invalid", domain.ErrValidation)
 	}
 	return nil
 }

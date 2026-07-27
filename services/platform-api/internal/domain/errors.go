@@ -3,6 +3,8 @@ package domain
 import "errors"
 
 var (
+	// ErrValidation marks client-supplied values that fail domain validation.
+	ErrValidation = errors.New("validation failed")
 	// ErrNotFound is returned when a resource is absent in the caller's tenant scope.
 	ErrNotFound = errors.New("resource not found")
 	// ErrConflict is returned when a database uniqueness constraint is violated.

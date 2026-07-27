@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -80,7 +79,8 @@ func New(options Options) *API {
 	}
 
 	var handler http.Handler = http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if isHandledRoute(request, api.runs != nil) {
+		_, pattern := mux.Handler(request)
+		if pattern != "" {
 			mux.ServeHTTP(writer, request)
 			return
 		}
@@ -93,23 +93,6 @@ func New(options Options) *API {
 	handler = requestContext(options.RequestIDGenerator, handler)
 	api.handler = handler
 	return api
-}
-
-func isHandledRoute(request *http.Request, runsEnabled bool) bool {
-	if request.Method == http.MethodGet && (request.URL.Path == "/health/live" || request.URL.Path == "/health/ready") {
-		return true
-	}
-	if !runsEnabled {
-		return false
-	}
-	parts := strings.Split(strings.Trim(request.URL.Path, "/"), "/")
-	if len(parts) == 3 && parts[0] == "v1" && parts[1] == "runs" {
-		return request.Method == http.MethodGet
-	}
-	if len(parts) == 4 && parts[0] == "v1" && parts[1] == "runs" && (parts[3] == "cancel" || parts[3] == "retry") {
-		return request.Method == http.MethodPost
-	}
-	return len(parts) == 4 && parts[0] == "v1" && parts[1] == "projects" && parts[3] == "runs" && (request.Method == http.MethodGet || request.Method == http.MethodPost)
 }
 
 // Handler returns the complete HTTP middleware chain.

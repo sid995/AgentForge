@@ -4,15 +4,15 @@
 
 ## Current milestone
 
-Phase 3 AgentRun API and command work verified
+Phase 3 AgentRun API and command implementation complete; lint validation pending
 
 ## Overall state
 
 Phase 2, the Phase 3.1/3.2 state-machine and persistence foundation, and Phase
 4, 5, and 6 are complete.
-At the user's direction, Phase 5 Scheduler was completed
-before Phase 3.3 through 3.5 API, cancellation, and retry commands. Those
-command gaps are now closed.
+At the user's direction, Phase 5 Scheduler was completed before Phase 3.3
+through 3.5 API, cancellation, and retry commands. Those command gaps are now
+closed; their Docker-dependent validation remains pending.
 
 ## Completed
 
@@ -148,6 +148,12 @@ command gaps are now closed.
   local prerequisites aligned with implemented behavior and deferred
   PostgreSQL lifecycle projection
 
+## In progress
+
+- Phase 3 validation: unit, race, vet, API/event contract, repository
+  verification, and PostgreSQL integration pass; lint remains unverified because
+  the pinned golangci-lint image pull stalled.
+
 ## Not started
 
 - Agent Runner
@@ -163,4 +169,5 @@ command gaps are now closed.
 
 ## Next tasks
 
-1. Begin the next approved product phase; Phase 3 is verified.
+1. Complete `make lint` after the pinned golangci-lint image is available to
+   close the Phase 3 validation gate and completion audit.

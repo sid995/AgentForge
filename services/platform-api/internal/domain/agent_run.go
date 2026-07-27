@@ -148,25 +148,25 @@ func NewAgentRun(input NewAgentRunInput, now time.Time) (AgentRun, error) {
 	input.RequestHash = strings.TrimSpace(input.RequestHash)
 	input.CreatedBy = strings.TrimSpace(input.CreatedBy)
 	if input.TenantID == uuid.Nil || input.ProjectID == uuid.Nil {
-		return AgentRun{}, fmt.Errorf("run tenant and project IDs are required")
+		return AgentRun{}, fmt.Errorf("%w: run tenant and project IDs are required", ErrValidation)
 	}
 	if len(input.PromptReference) == 0 || len(input.PromptReference) > 2048 {
-		return AgentRun{}, fmt.Errorf("prompt reference must contain 1 to 2048 characters")
+		return AgentRun{}, fmt.Errorf("%w: prompt reference must contain 1 to 2048 characters", ErrValidation)
 	}
 	if len(input.Runtime) == 0 || len(input.Runtime) > 120 {
-		return AgentRun{}, fmt.Errorf("runtime must contain 1 to 120 characters")
+		return AgentRun{}, fmt.Errorf("%w: runtime must contain 1 to 120 characters", ErrValidation)
 	}
 	if input.CPUMillis < 1 || input.CPUMillis > 128000 || input.MemoryMiB < 1 || input.MemoryMiB > 524288 {
-		return AgentRun{}, fmt.Errorf("resource request is outside supported bounds")
+		return AgentRun{}, fmt.Errorf("%w: resource request is outside supported bounds", ErrValidation)
 	}
 	if input.TimeoutSeconds < 1 || input.TimeoutSeconds > 86400 {
-		return AgentRun{}, fmt.Errorf("timeout must be between 1 and 86400 seconds")
+		return AgentRun{}, fmt.Errorf("%w: timeout must be between 1 and 86400 seconds", ErrValidation)
 	}
 	if input.MaxAttempts < 1 || input.MaxAttempts > 10 {
-		return AgentRun{}, fmt.Errorf("maximum attempts must be between 1 and 10")
+		return AgentRun{}, fmt.Errorf("%w: maximum attempts must be between 1 and 10", ErrValidation)
 	}
 	if len(input.IdempotencyKey) == 0 || len(input.IdempotencyKey) > 255 || len(input.RequestHash) == 0 || len(input.RequestHash) > 128 || len(input.CreatedBy) == 0 || len(input.CreatedBy) > 255 {
-		return AgentRun{}, fmt.Errorf("idempotency key, request hash, and actor are required")
+		return AgentRun{}, fmt.Errorf("%w: idempotency key, request hash, and actor are required", ErrValidation)
 	}
 	id, err := uuid.NewV7()
 	if err != nil {
@@ -285,7 +285,7 @@ type AgentRunAttempt struct {
 // NewAgentRunAttempt creates the pending attempt for a validated run number.
 func NewAgentRunAttempt(tenantID, runID uuid.UUID, number int, now time.Time) (AgentRunAttempt, error) {
 	if tenantID == uuid.Nil || runID == uuid.Nil || number < 1 {
-		return AgentRunAttempt{}, fmt.Errorf("attempt tenant, run, and number are required")
+		return AgentRunAttempt{}, fmt.Errorf("%w: attempt tenant, run, and number are required", ErrValidation)
 	}
 	id, err := uuid.NewV7()
 	if err != nil {

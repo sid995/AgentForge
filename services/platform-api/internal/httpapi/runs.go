@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,12 +40,17 @@ type runResponse struct {
 		CPUMillis int `json:"cpuMillis"`
 		MemoryMiB int `json:"memoryMiB"`
 	} `json:"resources"`
-	TimeoutSeconds int    `json:"timeoutSeconds"`
-	MaxAttempts    int    `json:"maxAttempts"`
-	AttemptCount   int    `json:"attemptCount"`
-	Status         string `json:"status"`
-	CreatedAt      string `json:"createdAt"`
-	UpdatedAt      string `json:"updatedAt"`
+	TimeoutSeconds          int     `json:"timeoutSeconds"`
+	MaxAttempts             int     `json:"maxAttempts"`
+	AttemptCount            int     `json:"attemptCount"`
+	Status                  string  `json:"status"`
+	FailureCategory         *string `json:"failureCategory"`
+	CancellationReason      *string `json:"cancellationReason"`
+	CancellationRequestedBy *string `json:"cancellationRequestedBy"`
+	CancellationRequestedAt *string `json:"cancellationRequestedAt"`
+	CompletedAt             *string `json:"completedAt"`
+	CreatedAt               string  `json:"createdAt"`
+	UpdatedAt               string  `json:"updatedAt"`
 }
 
 type runsResponse struct {
@@ -205,7 +209,27 @@ func responseForRun(run domain.AgentRun) runResponse {
 	response := runResponse{ID: run.ID.String(), ProjectID: run.ProjectID.String(), Runtime: run.Runtime, TimeoutSeconds: run.TimeoutSeconds, MaxAttempts: run.MaxAttempts, AttemptCount: run.AttemptCount, Status: string(run.Status), CreatedAt: run.CreatedAt.UTC().Format(time.RFC3339Nano), UpdatedAt: run.UpdatedAt.UTC().Format(time.RFC3339Nano)}
 	response.Resources.CPUMillis = run.CPUMillis
 	response.Resources.MemoryMiB = run.MemoryMiB
+	response.FailureCategory = optionalString(string(run.FailureCategory))
+	response.CancellationReason = optionalString(run.CancellationReason)
+	response.CancellationRequestedBy = optionalString(run.CancellationRequestedBy)
+	response.CancellationRequestedAt = optionalTime(run.CancellationRequestedAt)
+	response.CompletedAt = optionalTime(run.CompletedAt)
 	return response
+}
+
+func optionalString(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+func optionalTime(value *time.Time) *string {
+	if value == nil {
+		return nil
+	}
+	formatted := value.UTC().Format(time.RFC3339Nano)
+	return &formatted
 }
 
 func pathUUID(writer http.ResponseWriter, request *http.Request, name string) (uuid.UUID, bool) {
@@ -256,15 +280,13 @@ func writeRunError(writer http.ResponseWriter, request *http.Request, err error)
 		writeError(writer, request, http.StatusConflict, "RUN_TERMINAL", "The run has reached a terminal state.", false)
 	case errors.Is(err, domain.ErrRetryNotAllowed):
 		writeError(writer, request, http.StatusConflict, "RETRY_NOT_ALLOWED", "The run is not eligible for retry.", false)
+	case errors.Is(err, domain.ErrValidation):
+		writeError(writer, request, http.StatusUnprocessableEntity, "VALIDATION", "Request fields are invalid.", false)
 	case errors.Is(err, domain.ErrConflict), errors.Is(err, domain.ErrVersionConflict):
 		writeError(writer, request, http.StatusConflict, "CONFLICT", "The request conflicts with current state.", false)
 	case errors.Is(err, domain.ErrForbidden):
 		writeError(writer, request, http.StatusForbidden, "AUTHORIZATION", "The caller is not authorized for this resource.", false)
 	default:
-		if strings.Contains(err.Error(), "required") || strings.Contains(err.Error(), "must ") || strings.Contains(err.Error(), "outside supported bounds") {
-			writeError(writer, request, http.StatusUnprocessableEntity, "VALIDATION", "Request fields are invalid.", false)
-			return
-		}
 		writeError(writer, request, http.StatusInternalServerError, "INTERNAL", "An internal error occurred.", false)
 	}
 }

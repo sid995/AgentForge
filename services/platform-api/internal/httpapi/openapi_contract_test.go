@@ -26,7 +26,7 @@ func TestOpenAPIContractDocumentsImplementedRunRoutes(t *testing.T) {
 	if contract.OpenAPI != "3.1.1" {
 		t.Fatalf("OpenAPI version=%q", contract.OpenAPI)
 	}
-	for _, path := range []string{"/v1/projects/{projectId}/runs", "/v1/runs/{runId}"} {
+	for _, path := range []string{"/v1/projects/{projectId}/runs", "/v1/runs/{runId}", "/v1/runs/{runId}/cancel", "/v1/runs/{runId}/retry"} {
 		if _, ok := contract.Paths[path]; !ok {
 			t.Fatalf("OpenAPI contract is missing %s", path)
 		}
