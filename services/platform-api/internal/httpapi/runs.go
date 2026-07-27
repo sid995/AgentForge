@@ -29,6 +29,10 @@ type createRunRequest struct {
 	MaxAttempts    int `json:"maxAttempts"`
 }
 
+type cancelRunRequest struct {
+	Reason string `json:"reason"`
+}
+
 type runResponse struct {
 	ID        string `json:"id"`
 	ProjectID string `json:"projectId"`
@@ -109,6 +113,60 @@ func (api *API) getRun(writer http.ResponseWriter, request *http.Request) {
 	}{Data: responseForRun(run)})
 }
 
+func (api *API) cancelRun(writer http.ResponseWriter, request *http.Request) {
+	caller, ok := api.authenticate(writer, request)
+	if !ok {
+		return
+	}
+	runID, ok := pathUUID(writer, request, "runId")
+	if !ok {
+		return
+	}
+	var body cancelRunRequest
+	if err := decodeJSON(request, &body); err != nil {
+		writeRequestDecodeError(writer, request, err)
+		return
+	}
+	result, err := api.runs.Cancel(request.Context(), caller, runID, request.Header.Get("Idempotency-Key"), body.Reason)
+	if err != nil {
+		writeRunError(writer, request, err)
+		return
+	}
+	writeCommandResponse(writer, result)
+}
+
+func (api *API) retryRun(writer http.ResponseWriter, request *http.Request) {
+	caller, ok := api.authenticate(writer, request)
+	if !ok {
+		return
+	}
+	runID, ok := pathUUID(writer, request, "runId")
+	if !ok {
+		return
+	}
+	if err := decodeEmptyJSON(request); err != nil {
+		writeRequestDecodeError(writer, request, err)
+		return
+	}
+	result, err := api.runs.Retry(request.Context(), caller, runID, request.Header.Get("Idempotency-Key"))
+	if err != nil {
+		writeRunError(writer, request, err)
+		return
+	}
+	writeCommandResponse(writer, result)
+}
+
+func writeCommandResponse(writer http.ResponseWriter, result ports.RunCommandResult) {
+	if result.Replayed {
+		writer.Header().Set("Idempotent-Replay", "true")
+	}
+	writer.Header().Set("Content-Type", jsonContentType)
+	writer.WriteHeader(http.StatusAccepted)
+	_ = json.NewEncoder(writer).Encode(struct {
+		Data runResponse `json:"data"`
+	}{Data: responseForRun(result.Run)})
+}
+
 func (api *API) listRuns(writer http.ResponseWriter, request *http.Request) {
 	caller, ok := api.authenticate(writer, request)
 	if !ok {
@@ -174,6 +232,11 @@ func decodeJSON(request *http.Request, destination any) error {
 	return nil
 }
 
+func decodeEmptyJSON(request *http.Request) error {
+	var body struct{}
+	return decodeJSON(request, &body)
+}
+
 func writeRequestDecodeError(writer http.ResponseWriter, request *http.Request, err error) {
 	var tooLarge *http.MaxBytesError
 	if errors.As(err, &tooLarge) {
@@ -189,6 +252,10 @@ func writeRunError(writer http.ResponseWriter, request *http.Request, err error)
 		writeError(writer, request, http.StatusNotFound, "NOT_FOUND", "The requested resource was not found.", false)
 	case errors.Is(err, runs.ErrIdempotencyKeyReused):
 		writeError(writer, request, http.StatusConflict, "IDEMPOTENCY_KEY_REUSED", "The idempotency key was used with a different request.", false)
+	case errors.Is(err, domain.ErrRunTerminal):
+		writeError(writer, request, http.StatusConflict, "RUN_TERMINAL", "The run has reached a terminal state.", false)
+	case errors.Is(err, domain.ErrRetryNotAllowed):
+		writeError(writer, request, http.StatusConflict, "RETRY_NOT_ALLOWED", "The run is not eligible for retry.", false)
 	case errors.Is(err, domain.ErrConflict), errors.Is(err, domain.ErrVersionConflict):
 		writeError(writer, request, http.StatusConflict, "CONFLICT", "The request conflicts with current state.", false)
 	case errors.Is(err, domain.ErrForbidden):

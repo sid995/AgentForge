@@ -96,6 +96,28 @@ type AgentRunFailedPayload struct {
 	Reason          string                 `json:"reason"`
 }
 
+// AgentRunCancelRequestedPayload intentionally excludes the user-provided
+// cancellation reason, which may contain sensitive contextual information.
+type AgentRunCancelRequestedPayload struct {
+	ProjectID     uuid.UUID             `json:"projectId"`
+	RunID         uuid.UUID             `json:"runId"`
+	Status        domain.AgentRunStatus `json:"status"`
+	AttemptNumber int                   `json:"attemptNumber"`
+	RequestedBy   string                `json:"requestedBy"`
+	CommandID     string                `json:"commandId"`
+}
+
+type AgentRunRetryRequestedPayload struct {
+	ProjectID       uuid.UUID              `json:"projectId"`
+	RunID           uuid.UUID              `json:"runId"`
+	Status          domain.AgentRunStatus  `json:"status"`
+	AttemptNumber   int                    `json:"attemptNumber"`
+	PreviousStatus  domain.AgentRunStatus  `json:"previousStatus"`
+	PreviousFailure domain.FailureCategory `json:"previousFailureCategory"`
+	RequestedBy     string                 `json:"requestedBy"`
+	CommandID       string                 `json:"commandId"`
+}
+
 // newEvent constructs and serializes a typed event before its business transaction begins.
 func newEvent(
 	eventType string,
@@ -180,4 +202,16 @@ func NewAgentRunCapacityWait(run domain.AgentRun, reasonCode, reason string, nex
 func NewAgentRunSchedulingRejected(run domain.AgentRun, reasonCode, reason, correlationID, causationID string) (OutboxEvent, error) {
 	payload := AgentRunFailedPayload{ProjectID: run.ProjectID, RunID: run.ID, Status: run.Status, FailureCategory: run.FailureCategory, AttemptNumber: run.AttemptCount, ReasonCode: reasonCode, Reason: reason}
 	return newEvent(AgentRunFailedType, 1, run.UpdatedAt, "scheduler", run.TenantID, &run.ProjectID, &run.ID, "AgentRun", run.ID, run.Version, correlationID, causationID, payload)
+}
+
+// NewAgentRunCancelRequested records the accepted durable cancellation intent.
+func NewAgentRunCancelRequested(run domain.AgentRun, commandID string) (OutboxEvent, error) {
+	payload := AgentRunCancelRequestedPayload{ProjectID: run.ProjectID, RunID: run.ID, Status: run.Status, AttemptNumber: run.AttemptCount, RequestedBy: run.CancellationRequestedBy, CommandID: commandID}
+	return newEvent(AgentRunCancelRequestedType, 1, run.UpdatedAt, "platform-api", run.TenantID, &run.ProjectID, &run.ID, "AgentRun", run.ID, run.Version, commandID, commandID, payload)
+}
+
+// NewAgentRunRetryRequested records an authorized new attempt request.
+func NewAgentRunRetryRequested(run domain.AgentRun, previousStatus domain.AgentRunStatus, previousFailure domain.FailureCategory, actor, commandID string) (OutboxEvent, error) {
+	payload := AgentRunRetryRequestedPayload{ProjectID: run.ProjectID, RunID: run.ID, Status: run.Status, AttemptNumber: run.AttemptCount, PreviousStatus: previousStatus, PreviousFailure: previousFailure, RequestedBy: actor, CommandID: commandID}
+	return newEvent(AgentRunRetryRequestedType, 1, run.UpdatedAt, "platform-api", run.TenantID, &run.ProjectID, &run.ID, "AgentRun", run.ID, run.Version, commandID, commandID, payload)
 }

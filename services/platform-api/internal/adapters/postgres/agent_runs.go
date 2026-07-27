@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -301,6 +302,190 @@ func (repository *AgentRunRepository) SaveAttempt(ctx context.Context, attempt d
 		return domain.AgentRunAttempt{}, translateError(err)
 	}
 	return updated, nil
+}
+
+// Cancel transitions a non-terminal run to CANCELLING and writes the paired
+// cancellation event in the same tenant transaction. It never contacts Kubernetes.
+func (repository *AgentRunRepository) Cancel(ctx context.Context, request ports.CancelRunRequest) (ports.RunCommandResult, error) {
+	if err := validateCancelRequest(request); err != nil {
+		return ports.RunCommandResult{}, err
+	}
+	tx, err := repository.database.BeginTenant(ctx, request.TenantID)
+	if err != nil {
+		return ports.RunCommandResult{}, translateError(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	run, commandType, commandID, commandResponse, err := lockedCommandRun(ctx, tx, request.TenantID, request.RunID)
+	if err != nil {
+		return ports.RunCommandResult{}, err
+	}
+	if commandType == "CANCEL" && commandID == request.CommandID {
+		if err := applyCommandResponse(&run, commandResponse); err != nil {
+			return ports.RunCommandResult{}, err
+		}
+		if err := tx.Commit(); err != nil {
+			return ports.RunCommandResult{}, translateError(err)
+		}
+		return ports.RunCommandResult{Run: run, Replayed: true}, nil
+	}
+	if run.Status == domain.AgentRunCancelling || run.Status == domain.AgentRunCancelled {
+		if err := tx.Commit(); err != nil {
+			return ports.RunCommandResult{}, translateError(err)
+		}
+		return ports.RunCommandResult{Run: run, Replayed: true}, nil
+	}
+	if run.Status.IsTerminal() {
+		return ports.RunCommandResult{}, domain.ErrRunTerminal
+	}
+	expectedVersion := run.Version
+	run.CancellationReason = request.Reason
+	run.CancellationRequestedBy = request.Actor
+	requestedAt := request.Now.UTC()
+	run.CancellationRequestedAt = &requestedAt
+	if err := run.Transition(domain.AgentRunCancelling, "", request.Now); err != nil {
+		return ports.RunCommandResult{}, err
+	}
+	run.Version++
+	response, err := marshalIdempotencyResponse(run)
+	if err != nil {
+		return ports.RunCommandResult{}, err
+	}
+	result, err := tx.ExecContext(ctx, `
+		update agent_runs set status=$1,version=version+1,updated_at=$2,
+			cancellation_reason=$3,cancellation_requested_by=$4,cancellation_requested_at=$5,
+			scheduler_lease_owner=null,scheduler_lease_expires_at=null,scheduler_next_eligible_at=null,
+			last_command_type='CANCEL',last_command_id=$6,last_command_response=$7
+		where tenant_id=$8 and id=$9 and version=$10`,
+		run.Status, run.UpdatedAt, run.CancellationReason, run.CancellationRequestedBy, run.CancellationRequestedAt,
+		request.CommandID, response, run.TenantID, run.ID, expectedVersion)
+	if err != nil {
+		return ports.RunCommandResult{}, translateError(err)
+	}
+	if count, _ := result.RowsAffected(); count != 1 {
+		return ports.RunCommandResult{}, domain.ErrVersionConflict
+	}
+	event, err := events.NewAgentRunCancelRequested(run, request.CommandID)
+	if err != nil {
+		return ports.RunCommandResult{}, err
+	}
+	if err := insertOutboxEvent(ctx, tx, event); err != nil {
+		return ports.RunCommandResult{}, translateError(err)
+	}
+	if err := tx.Commit(); err != nil {
+		return ports.RunCommandResult{}, translateError(err)
+	}
+	return ports.RunCommandResult{Run: run}, nil
+}
+
+// Retry adds a next pending attempt and the paired event atomically.
+func (repository *AgentRunRepository) Retry(ctx context.Context, request ports.RetryRunRequest) (ports.RunCommandResult, error) {
+	if err := validateRetryRequest(request); err != nil {
+		return ports.RunCommandResult{}, err
+	}
+	tx, err := repository.database.BeginTenant(ctx, request.TenantID)
+	if err != nil {
+		return ports.RunCommandResult{}, translateError(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	run, commandType, commandID, commandResponse, err := lockedCommandRun(ctx, tx, request.TenantID, request.RunID)
+	if err != nil {
+		return ports.RunCommandResult{}, err
+	}
+	if commandType == "RETRY" && commandID == request.CommandID {
+		if err := applyCommandResponse(&run, commandResponse); err != nil {
+			return ports.RunCommandResult{}, err
+		}
+		if err := tx.Commit(); err != nil {
+			return ports.RunCommandResult{}, translateError(err)
+		}
+		return ports.RunCommandResult{Run: run, Replayed: true}, nil
+	}
+	if !run.CanRetry() {
+		return ports.RunCommandResult{}, domain.ErrRetryNotAllowed
+	}
+	previousStatus, previousFailure := run.Status, run.FailureCategory
+	expectedVersion := run.Version
+	if err := run.Transition(domain.AgentRunQueued, "", request.Now); err != nil {
+		return ports.RunCommandResult{}, err
+	}
+	run.Version++
+	attempt, err := domain.NewAgentRunAttempt(run.TenantID, run.ID, run.AttemptCount, request.Now)
+	if err != nil {
+		return ports.RunCommandResult{}, err
+	}
+	response, err := marshalIdempotencyResponse(run)
+	if err != nil {
+		return ports.RunCommandResult{}, err
+	}
+	result, err := tx.ExecContext(ctx, `
+		update agent_runs set status='QUEUED',failure_category=null,attempt_count=$1,version=version+1,updated_at=$2,completed_at=null,
+			scheduler_lease_owner=null,scheduler_lease_expires_at=null,scheduler_next_eligible_at=null,
+			last_command_type='RETRY',last_command_id=$3,last_command_response=$4
+		where tenant_id=$5 and id=$6 and version=$7`,
+		run.AttemptCount, run.UpdatedAt, request.CommandID, response, run.TenantID, run.ID, expectedVersion)
+	if err != nil {
+		return ports.RunCommandResult{}, translateError(err)
+	}
+	if count, _ := result.RowsAffected(); count != 1 {
+		return ports.RunCommandResult{}, domain.ErrVersionConflict
+	}
+	if err := insertAttempt(ctx, tx, attempt); err != nil {
+		return ports.RunCommandResult{}, translateError(err)
+	}
+	event, err := events.NewAgentRunRetryRequested(run, previousStatus, previousFailure, request.Actor, request.CommandID)
+	if err != nil {
+		return ports.RunCommandResult{}, err
+	}
+	if err := insertOutboxEvent(ctx, tx, event); err != nil {
+		return ports.RunCommandResult{}, translateError(err)
+	}
+	if err := tx.Commit(); err != nil {
+		return ports.RunCommandResult{}, translateError(err)
+	}
+	return ports.RunCommandResult{Run: run}, nil
+}
+
+func lockedCommandRun(ctx context.Context, tx *database.TenantTx, tenantID, runID uuid.UUID) (domain.AgentRun, string, string, string, error) {
+	run, err := scanAgentRun(tx.QueryRowContext(ctx, agentRunSelect+` where tenant_id=$1 and id=$2 for update`, tenantID, runID))
+	if err != nil {
+		return domain.AgentRun{}, "", "", "", translateError(err)
+	}
+	var commandType, commandID, commandResponse sql.NullString
+	if err := tx.QueryRowContext(ctx, `select last_command_type,last_command_id,last_command_response::text from agent_runs where tenant_id=$1 and id=$2`, tenantID, runID).Scan(&commandType, &commandID, &commandResponse); err != nil {
+		return domain.AgentRun{}, "", "", "", translateError(err)
+	}
+	return run, commandType.String, commandID.String, commandResponse.String, nil
+}
+
+func validateCancelRequest(request ports.CancelRunRequest) error {
+	if request.TenantID == uuid.Nil || request.RunID == uuid.Nil || strings.TrimSpace(request.CommandID) == "" || len(request.CommandID) > 255 || strings.TrimSpace(request.Actor) == "" || len(request.Actor) > 255 || strings.TrimSpace(request.Reason) == "" || len(request.Reason) > 500 || request.Now.IsZero() {
+		return fmt.Errorf("cancellation command is invalid")
+	}
+	return nil
+}
+
+func validateRetryRequest(request ports.RetryRunRequest) error {
+	if request.TenantID == uuid.Nil || request.RunID == uuid.Nil || strings.TrimSpace(request.CommandID) == "" || len(request.CommandID) > 255 || strings.TrimSpace(request.Actor) == "" || len(request.Actor) > 255 || request.Now.IsZero() {
+		return fmt.Errorf("retry command is invalid")
+	}
+	return nil
+}
+
+func applyCommandResponse(run *domain.AgentRun, payload string) error {
+	if payload == "" {
+		return fmt.Errorf("stored command response is missing")
+	}
+	var response idempotencyResponse
+	if err := json.Unmarshal([]byte(payload), &response); err != nil {
+		return fmt.Errorf("decode stored command response: %w", err)
+	}
+	if response.ID != run.ID || response.ProjectID != run.ProjectID || response.Status == "" || response.AttemptCount < 1 || response.CreatedAt.IsZero() || response.UpdatedAt.IsZero() {
+		return fmt.Errorf("stored command response is invalid")
+	}
+	run.Runtime, run.CPUMillis, run.MemoryMiB = response.Runtime, response.CPUMillis, response.MemoryMiB
+	run.TimeoutSeconds, run.MaxAttempts, run.AttemptCount = response.TimeoutSeconds, response.MaxAttempts, response.AttemptCount
+	run.Status, run.CreatedAt, run.UpdatedAt = response.Status, response.CreatedAt.UTC(), response.UpdatedAt.UTC()
+	return nil
 }
 
 func (repository *AgentRunRepository) saveError(ctx context.Context, tx *database.TenantTx, tenantID, runID uuid.UUID, cause error) error {

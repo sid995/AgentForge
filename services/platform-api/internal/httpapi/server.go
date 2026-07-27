@@ -37,6 +37,8 @@ type RunService interface {
 	Create(context.Context, identity.Identity, uuid.UUID, runs.CreateInput) (domain.AgentRun, bool, error)
 	Get(context.Context, identity.Identity, uuid.UUID) (domain.AgentRun, error)
 	List(context.Context, identity.Identity, uuid.UUID, ports.AgentRunPage) ([]domain.AgentRun, error)
+	Cancel(context.Context, identity.Identity, uuid.UUID, string, string) (ports.RunCommandResult, error)
+	Retry(context.Context, identity.Identity, uuid.UUID, string) (ports.RunCommandResult, error)
 }
 
 // API exposes the Platform API HTTP handler and process readiness state.
@@ -73,6 +75,8 @@ func New(options Options) *API {
 		mux.HandleFunc("POST /v1/projects/{projectId}/runs", api.createRun)
 		mux.HandleFunc("GET /v1/projects/{projectId}/runs", api.listRuns)
 		mux.HandleFunc("GET /v1/runs/{runId}", api.getRun)
+		mux.HandleFunc("POST /v1/runs/{runId}/cancel", api.cancelRun)
+		mux.HandleFunc("POST /v1/runs/{runId}/retry", api.retryRun)
 	}
 
 	var handler http.Handler = http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -101,6 +105,9 @@ func isHandledRoute(request *http.Request, runsEnabled bool) bool {
 	parts := strings.Split(strings.Trim(request.URL.Path, "/"), "/")
 	if len(parts) == 3 && parts[0] == "v1" && parts[1] == "runs" {
 		return request.Method == http.MethodGet
+	}
+	if len(parts) == 4 && parts[0] == "v1" && parts[1] == "runs" && (parts[3] == "cancel" || parts[3] == "retry") {
+		return request.Method == http.MethodPost
 	}
 	return len(parts) == 4 && parts[0] == "v1" && parts[1] == "projects" && parts[3] == "runs" && (request.Method == http.MethodGet || request.Method == http.MethodPost)
 }

@@ -102,6 +102,51 @@ func TestGetAndListRunsAreTenantScopedAndCursorPaginated(t *testing.T) {
 	}
 }
 
+func TestCancelRunAcceptsReasonAndReturnsStableCommandResponse(t *testing.T) {
+	service := &fakeRunService{run: testRun()}
+	service.run.Status = domain.AgentRunCancelling
+	api := runTestAPI(t, service)
+	request := httptest.NewRequest(http.MethodPost, "/v1/runs/"+service.run.ID.String()+"/cancel", bytes.NewBufferString(`{"reason":"stop after current safe point"}`))
+	request.Header.Set("Authorization", "Bearer local-token")
+	request.Header.Set("Idempotency-Key", "cancel-key-1")
+	response := httptest.NewRecorder()
+	api.Handler().ServeHTTP(response, request)
+
+	if response.Code != http.StatusAccepted || service.cancel.RunID != service.run.ID || service.cancel.CommandID != "cancel-key-1" || service.cancel.Reason != "stop after current safe point" || service.cancel.Caller.TenantID != service.tenantID {
+		t.Fatalf("cancel response=%d call=%#v", response.Code, service.cancel)
+	}
+	if bytes.Contains(response.Body.Bytes(), []byte("safe point")) {
+		t.Fatalf("cancel response leaked reason: %s", response.Body.String())
+	}
+}
+
+func TestRetryRunRequiresEmptyObjectAndMapsCommandConflicts(t *testing.T) {
+	service := &fakeRunService{run: testRun()}
+	service.run.Status = domain.AgentRunQueued
+	service.run.AttemptCount = 2
+	api := runTestAPI(t, service)
+	path := "/v1/runs/" + service.run.ID.String() + "/retry"
+	request := httptest.NewRequest(http.MethodPost, path, bytes.NewBufferString(`{}`))
+	request.Header.Set("Authorization", "Bearer local-token")
+	request.Header.Set("Idempotency-Key", "retry-key-1")
+	response := httptest.NewRecorder()
+	api.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusAccepted || service.retry.RunID != service.run.ID || service.retry.CommandID != "retry-key-1" || service.retry.Caller.TenantID != service.tenantID {
+		t.Fatalf("retry response=%d call=%#v", response.Code, service.retry)
+	}
+
+	service.retryErr = domain.ErrRetryNotAllowed
+	conflict := httptest.NewRequest(http.MethodPost, path, bytes.NewBufferString(`{}`))
+	conflict.Header.Set("Authorization", "Bearer local-token")
+	conflict.Header.Set("Idempotency-Key", "retry-key-2")
+	conflictResponse := httptest.NewRecorder()
+	api.Handler().ServeHTTP(conflictResponse, conflict)
+	if conflictResponse.Code != http.StatusConflict {
+		t.Fatalf("retry conflict status=%d", conflictResponse.Code)
+	}
+	assertErrorCode(t, conflictResponse, "RETRY_NOT_ALLOWED")
+}
+
 func runTestAPI(t *testing.T, service *fakeRunService) *API {
 	t.Helper()
 	service.tenantID = uuid.Must(uuid.NewV7())
@@ -131,6 +176,17 @@ type runListCall struct {
 	ProjectID uuid.UUID
 	Page      ports.AgentRunPage
 }
+type runCancelCall struct {
+	Caller    identity.Identity
+	RunID     uuid.UUID
+	CommandID string
+	Reason    string
+}
+type runRetryCall struct {
+	Caller    identity.Identity
+	RunID     uuid.UUID
+	CommandID string
+}
 type fakeRunService struct {
 	tenantID  uuid.UUID
 	run       domain.AgentRun
@@ -138,7 +194,11 @@ type fakeRunService struct {
 	create    runCreateCall
 	get       runGetCall
 	list      runListCall
+	cancel    runCancelCall
+	retry     runRetryCall
 	createErr error
+	cancelErr error
+	retryErr  error
 }
 
 func (service *fakeRunService) Create(_ context.Context, caller identity.Identity, projectID uuid.UUID, input runs.CreateInput) (domain.AgentRun, bool, error) {
@@ -161,6 +221,20 @@ func (service *fakeRunService) List(_ context.Context, caller identity.Identity,
 		return nil, domain.ErrNotFound
 	}
 	return service.items, nil
+}
+func (service *fakeRunService) Cancel(_ context.Context, caller identity.Identity, runID uuid.UUID, commandID, reason string) (ports.RunCommandResult, error) {
+	service.cancel = runCancelCall{Caller: caller, RunID: runID, CommandID: commandID, Reason: reason}
+	if service.cancelErr != nil {
+		return ports.RunCommandResult{}, service.cancelErr
+	}
+	return ports.RunCommandResult{Run: service.run}, nil
+}
+func (service *fakeRunService) Retry(_ context.Context, caller identity.Identity, runID uuid.UUID, commandID string) (ports.RunCommandResult, error) {
+	service.retry = runRetryCall{Caller: caller, RunID: runID, CommandID: commandID}
+	if service.retryErr != nil {
+		return ports.RunCommandResult{}, service.retryErr
+	}
+	return ports.RunCommandResult{Run: service.run}, nil
 }
 
 var _ RunService = (*fakeRunService)(nil)

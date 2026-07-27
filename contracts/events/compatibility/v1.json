@@ -188,6 +188,26 @@
       }
     },
     {
+      "schema": "agent-run.cancel-requested.v1.schema.json",
+      "required": {
+        "/required": ["aggregateId", "aggregateType", "aggregateVersion", "causationId", "correlationId", "eventId", "eventType", "occurredAt", "payload", "producer", "projectId", "runId", "schemaVersion", "tenantId"],
+        "/properties/payload/required": ["attemptNumber", "commandId", "projectId", "requestedBy", "runId", "status"]
+      },
+      "fields": {
+        "/properties/eventId": "ref:#/$defs/uuidV7", "/properties/eventType": "const:string:agent-run.cancel-requested.v1", "/properties/schemaVersion": "const:number:1", "/properties/occurredAt": "type:string", "/properties/producer": "const:string:platform-api", "/properties/tenantId": "ref:#/$defs/uuidV7", "/properties/projectId": "ref:#/$defs/uuidV7", "/properties/runId": "ref:#/$defs/uuidV7", "/properties/aggregateType": "const:string:AgentRun", "/properties/aggregateId": "ref:#/$defs/uuidV7", "/properties/aggregateVersion": "type:integer", "/properties/correlationId": "type:string", "/properties/causationId": "type:string", "/properties/payload": "type:object", "/properties/payload/properties/projectId": "ref:#/$defs/uuidV7", "/properties/payload/properties/runId": "ref:#/$defs/uuidV7", "/properties/payload/properties/status": "const:string:CANCELLING", "/properties/payload/properties/attemptNumber": "type:integer", "/properties/payload/properties/requestedBy": "type:string", "/properties/payload/properties/commandId": "type:string"
+      }
+    },
+    {
+      "schema": "agent-run.retry-requested.v1.schema.json",
+      "required": {
+        "/required": ["aggregateId", "aggregateType", "aggregateVersion", "causationId", "correlationId", "eventId", "eventType", "occurredAt", "payload", "producer", "projectId", "runId", "schemaVersion", "tenantId"],
+        "/properties/payload/required": ["attemptNumber", "commandId", "previousFailureCategory", "previousStatus", "projectId", "requestedBy", "runId", "status"]
+      },
+      "fields": {
+        "/properties/eventId": "ref:#/$defs/uuidV7", "/properties/eventType": "const:string:agent-run.retry-requested.v1", "/properties/schemaVersion": "const:number:1", "/properties/occurredAt": "type:string", "/properties/producer": "const:string:platform-api", "/properties/tenantId": "ref:#/$defs/uuidV7", "/properties/projectId": "ref:#/$defs/uuidV7", "/properties/runId": "ref:#/$defs/uuidV7", "/properties/aggregateType": "const:string:AgentRun", "/properties/aggregateId": "ref:#/$defs/uuidV7", "/properties/aggregateVersion": "type:integer", "/properties/correlationId": "type:string", "/properties/causationId": "type:string", "/properties/payload": "type:object", "/properties/payload/properties/projectId": "ref:#/$defs/uuidV7", "/properties/payload/properties/runId": "ref:#/$defs/uuidV7", "/properties/payload/properties/status": "const:string:QUEUED", "/properties/payload/properties/attemptNumber": "type:integer", "/properties/payload/properties/previousStatus": "type:string", "/properties/payload/properties/previousFailureCategory": "const:string:TRANSIENT_DEPENDENCY", "/properties/payload/properties/requestedBy": "type:string", "/properties/payload/properties/commandId": "type:string"
+      }
+    },
+    {
       "schema": "event-delivery.dead-lettered.v1.schema.json",
       "required": {
         "/required": [

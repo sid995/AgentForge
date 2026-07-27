@@ -107,6 +107,22 @@ func (service *Service) List(ctx context.Context, caller identity.Identity, proj
 	return service.runs.List(ctx, caller.TenantID, page)
 }
 
+// Cancel records a durable cancellation request. It does not contact Kubernetes.
+func (service *Service) Cancel(ctx context.Context, caller identity.Identity, runID uuid.UUID, commandID, reason string) (ports.RunCommandResult, error) {
+	if !caller.CanManageRuns() {
+		return ports.RunCommandResult{}, identity.ErrUnauthorized
+	}
+	return service.runs.Cancel(ctx, ports.CancelRunRequest{TenantID: caller.TenantID, RunID: runID, CommandID: commandID, Reason: reason, Actor: caller.Subject, Now: service.now()})
+}
+
+// Retry creates the next attempt only for an explicitly retryable terminal run.
+func (service *Service) Retry(ctx context.Context, caller identity.Identity, runID uuid.UUID, commandID string) (ports.RunCommandResult, error) {
+	if !caller.CanManageRuns() {
+		return ports.RunCommandResult{}, identity.ErrUnauthorized
+	}
+	return service.runs.Retry(ctx, ports.RetryRunRequest{TenantID: caller.TenantID, RunID: runID, CommandID: commandID, Actor: caller.Subject, Now: service.now()})
+}
+
 func hashRequest(projectID uuid.UUID, input CreateInput) (string, error) {
 	payload, err := json.Marshal(struct {
 		ProjectID       uuid.UUID `json:"projectId"`

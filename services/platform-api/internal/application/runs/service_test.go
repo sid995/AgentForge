@@ -53,11 +53,49 @@ func TestGetDoesNotPermitViewer(t *testing.T) {
 	}
 }
 
+func TestCancelAndRetryDeriveTenantAndActor(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	runID := uuid.Must(uuid.NewV7())
+	now := time.Date(2026, 7, 27, 9, 0, 0, 0, time.UTC)
+	repository := &runRepository{commandResult: ports.RunCommandResult{Run: domain.AgentRun{ID: runID}}}
+	service := NewService(repository, projectRepository{}, func() time.Time { return now })
+	caller := identity.Identity{TenantID: tenantID, Subject: "developer@example.test", Role: identity.RoleDeveloper}
+
+	if _, err := service.Cancel(context.Background(), caller, runID, "cancel-key", "requested by operator"); err != nil {
+		t.Fatalf("Cancel() error=%v", err)
+	}
+	if repository.cancel.TenantID != tenantID || repository.cancel.RunID != runID || repository.cancel.Actor != caller.Subject || !repository.cancel.Now.Equal(now) {
+		t.Fatalf("Cancel() request=%#v", repository.cancel)
+	}
+	if _, err := service.Retry(context.Background(), caller, runID, "retry-key"); err != nil {
+		t.Fatalf("Retry() error=%v", err)
+	}
+	if repository.retry.TenantID != tenantID || repository.retry.RunID != runID || repository.retry.Actor != caller.Subject || !repository.retry.Now.Equal(now) {
+		t.Fatalf("Retry() request=%#v", repository.retry)
+	}
+}
+
+func TestCancelAndRetryRejectUnauthorizedCaller(t *testing.T) {
+	service := NewService(&runRepository{}, projectRepository{}, time.Now)
+	caller := identity.Identity{TenantID: uuid.Must(uuid.NewV7()), Subject: "viewer@example.test", Role: "viewer"}
+	if _, err := service.Cancel(context.Background(), caller, uuid.Must(uuid.NewV7()), "cancel-key", "reason"); !errors.Is(err, identity.ErrUnauthorized) {
+		t.Fatalf("Cancel() error=%v, want ErrUnauthorized", err)
+	}
+	if _, err := service.Retry(context.Background(), caller, uuid.Must(uuid.NewV7()), "retry-key"); !errors.Is(err, identity.ErrUnauthorized) {
+		t.Fatalf("Retry() error=%v, want ErrUnauthorized", err)
+	}
+}
+
 func validInput() CreateInput {
 	return CreateInput{PromptReference: "vault://prompts/request-1", Runtime: "python-3.12", CPUMillis: 1000, MemoryMiB: 2048, TimeoutSeconds: 1800, MaxAttempts: 3, IdempotencyKey: "idempotency-key-1"}
 }
 
-type runRepository struct{ created *domain.AgentRun }
+type runRepository struct {
+	created       *domain.AgentRun
+	cancel        ports.CancelRunRequest
+	retry         ports.RetryRunRequest
+	commandResult ports.RunCommandResult
+}
 
 func (repository *runRepository) Create(_ context.Context, run domain.AgentRun, _ domain.AgentRunAttempt) error {
 	if repository.created != nil {
@@ -93,6 +131,14 @@ func (repository *runRepository) ListAttempts(context.Context, uuid.UUID, uuid.U
 }
 func (repository *runRepository) SaveAttempt(context.Context, domain.AgentRunAttempt, int64) (domain.AgentRunAttempt, error) {
 	return domain.AgentRunAttempt{}, nil
+}
+func (repository *runRepository) Cancel(_ context.Context, request ports.CancelRunRequest) (ports.RunCommandResult, error) {
+	repository.cancel = request
+	return repository.commandResult, nil
+}
+func (repository *runRepository) Retry(_ context.Context, request ports.RetryRunRequest) (ports.RunCommandResult, error) {
+	repository.retry = request
+	return repository.commandResult, nil
 }
 
 type projectRepository struct {

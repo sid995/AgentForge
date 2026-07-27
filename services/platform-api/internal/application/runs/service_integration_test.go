@@ -4,6 +4,7 @@ package runs
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -81,6 +82,86 @@ func TestServiceCreatesAndReplaysTenantScopedRun(t *testing.T) {
 	}
 }
 
+func TestServiceCancellationAndRetryAreTransactionalAndIdempotent(t *testing.T) {
+	ctx := context.Background()
+	migrationURL := requiredIntegrationEnvironment(t, "AGENTFORGE_TEST_DATABASE_URL")
+	appURL := requiredIntegrationEnvironment(t, "AGENTFORGE_TEST_APP_DATABASE_URL")
+	if err := migrations.Apply(migrationURL, integrationMigrationDirectory(t)); err != nil {
+		t.Fatalf("apply migrations: %v", err)
+	}
+	adminPool := openIntegrationPool(t, migrationURL)
+	defer adminPool.Close()
+	appPool := openIntegrationPool(t, appURL)
+	defer appPool.Close()
+
+	now := time.Date(2026, 7, 27, 10, 0, 0, 0, time.UTC)
+	tenant, err := domain.NewTenant("commands-"+uuid.NewString()[:8], "Commands tenant", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := postgresadapter.NewTenantRepository(adminPool).Create(ctx, tenant); err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+	project, err := domain.NewProject(tenant.ID, "Commands Project", "https://example.test/commands.git", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	projects := postgresadapter.NewProjectRepository(appPool)
+	if err := projects.Create(ctx, project); err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	service := NewService(postgresadapter.NewAgentRunRepository(appPool), projects, func() time.Time { return now })
+	caller := identity.Identity{TenantID: tenant.ID, Subject: "developer@example.test", Role: identity.RoleDeveloper}
+
+	cancelled, _, err := service.Create(ctx, caller, project.ID, CreateInput{PromptReference: "vault://prompts/" + uuid.NewString(), Runtime: "python-3.12", CPUMillis: 1000, MemoryMiB: 2048, TimeoutSeconds: 1800, MaxAttempts: 3, IdempotencyKey: "cancel-" + uuid.NewString()})
+	if err != nil {
+		t.Fatalf("create cancellation run: %v", err)
+	}
+	cancelResult, err := service.Cancel(ctx, caller, cancelled.ID, "cancel-command", "requested by test")
+	if err != nil || cancelResult.Replayed || cancelResult.Run.Status != domain.AgentRunCancelling || cancelResult.Run.CancellationRequestedBy != caller.Subject {
+		t.Fatalf("cancel result=%#v error=%v", cancelResult, err)
+	}
+	if got := outboxEventTypesForRun(t, adminPool, cancelled.ID); len(got) != 2 || got[1] != "agent-run.cancel-requested.v1" {
+		t.Fatalf("cancellation outbox=%v", got)
+	}
+	replayedCancel, err := service.Cancel(ctx, caller, cancelled.ID, "cancel-command", "requested by test")
+	if err != nil || !replayedCancel.Replayed || replayedCancel.Run.Status != domain.AgentRunCancelling {
+		t.Fatalf("cancel replay=%#v error=%v", replayedCancel, err)
+	}
+	if got := outboxEventTypesForRun(t, adminPool, cancelled.ID); len(got) != 2 {
+		t.Fatalf("cancel replay inserted events=%v", got)
+	}
+
+	retryable, _, err := service.Create(ctx, caller, project.ID, CreateInput{PromptReference: "vault://prompts/" + uuid.NewString(), Runtime: "python-3.12", CPUMillis: 1000, MemoryMiB: 2048, TimeoutSeconds: 1800, MaxAttempts: 3, IdempotencyKey: "retry-" + uuid.NewString()})
+	if err != nil {
+		t.Fatalf("create retry run: %v", err)
+	}
+	if _, err := adminPool.Raw().ExecContext(ctx, `update agent_runs set status='EXECUTION_FAILED', failure_category='TRANSIENT_DEPENDENCY', completed_at=$1, updated_at=$1, version=version+1 where id=$2`, now.Add(time.Minute), retryable.ID); err != nil {
+		t.Fatalf("make run retryable: %v", err)
+	}
+	retryResult, err := service.Retry(ctx, caller, retryable.ID, "retry-command")
+	if err != nil || retryResult.Replayed || retryResult.Run.Status != domain.AgentRunQueued || retryResult.Run.AttemptCount != 2 {
+		t.Fatalf("retry result=%#v error=%v", retryResult, err)
+	}
+	if got := outboxEventTypesForRun(t, adminPool, retryable.ID); len(got) != 2 || got[1] != "agent-run.retry-requested.v1" {
+		t.Fatalf("retry outbox=%v", got)
+	}
+	var attempts int
+	if err := adminPool.Raw().QueryRowContext(ctx, `select count(*) from agent_run_attempts where run_id=$1`, retryable.ID).Scan(&attempts); err != nil || attempts != 2 {
+		t.Fatalf("retry attempt count=%d error=%v", attempts, err)
+	}
+	replayedRetry, err := service.Retry(ctx, caller, retryable.ID, "retry-command")
+	if err != nil || !replayedRetry.Replayed || replayedRetry.Run.AttemptCount != 2 {
+		t.Fatalf("retry replay=%#v error=%v", replayedRetry, err)
+	}
+	if got := outboxEventTypesForRun(t, adminPool, retryable.ID); len(got) != 2 {
+		t.Fatalf("retry replay inserted events=%v", got)
+	}
+	if _, err := service.Retry(ctx, caller, retryable.ID, "different-command"); !errors.Is(err, domain.ErrRetryNotAllowed) {
+		t.Fatalf("retry from queued error=%v, want ErrRetryNotAllowed", err)
+	}
+}
+
 func countOutboxEvents(t *testing.T, pool *database.Pool, runID uuid.UUID) int {
 	t.Helper()
 	var count int
@@ -88,6 +169,27 @@ func countOutboxEvents(t *testing.T, pool *database.Pool, runID uuid.UUID) int {
 		t.Fatalf("count outbox events: %v", err)
 	}
 	return count
+}
+
+func outboxEventTypesForRun(t *testing.T, pool *database.Pool, runID uuid.UUID) []string {
+	t.Helper()
+	rows, err := pool.Raw().QueryContext(context.Background(), `select event_type from outbox_events where run_id=$1 order by created_at, event_id`, runID)
+	if err != nil {
+		t.Fatalf("list outbox event types: %v", err)
+	}
+	defer rows.Close()
+	var types []string
+	for rows.Next() {
+		var eventType string
+		if err := rows.Scan(&eventType); err != nil {
+			t.Fatalf("scan outbox event type: %v", err)
+		}
+		types = append(types, eventType)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate outbox event types: %v", err)
+	}
+	return types
 }
 
 func openIntegrationPool(t *testing.T, url string) *database.Pool {

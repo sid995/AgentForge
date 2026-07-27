@@ -16,13 +16,15 @@ import (
 )
 
 const (
-	AgentRunRequestedType    = "agent-run.requested.v1"
-	AgentRunScheduledType    = "agent-run.scheduled.v1"
-	AgentRunCapacityWaitType = "agent-run.capacity-wait.v1"
-	AgentRunFailedType       = "agent-run.failed.v1"
-	maxHeaderValueLength     = 512
-	maxHeaderCount           = 32
-	maxHeaderBytes           = 4096
+	AgentRunRequestedType       = "agent-run.requested.v1"
+	AgentRunScheduledType       = "agent-run.scheduled.v1"
+	AgentRunCapacityWaitType    = "agent-run.capacity-wait.v1"
+	AgentRunFailedType          = "agent-run.failed.v1"
+	AgentRunCancelRequestedType = "agent-run.cancel-requested.v1"
+	AgentRunRetryRequestedType  = "agent-run.retry-requested.v1"
+	maxHeaderValueLength        = 512
+	maxHeaderCount              = 32
+	maxHeaderBytes              = 4096
 )
 
 var traceparentPattern = regexp.MustCompile(`^[\da-f]{2}-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$`)
@@ -90,6 +92,10 @@ func ValidateEnvelope(envelope Envelope) error {
 		return validateAgentRunCapacityWait(envelope)
 	case AgentRunFailedType:
 		return validateAgentRunFailed(envelope)
+	case AgentRunCancelRequestedType:
+		return validateAgentRunCancelRequested(envelope)
+	case AgentRunRetryRequestedType:
+		return validateAgentRunRetryRequested(envelope)
 	case DeliveryDeadLetteredType:
 		return validateDeadLetter(envelope)
 	default:
@@ -100,7 +106,7 @@ func ValidateEnvelope(envelope Envelope) error {
 // TopicAccepts reports whether an event type may be published to a physical topic.
 func TopicAccepts(eventType, topic string) bool {
 	switch eventType {
-	case AgentRunRequestedType, AgentRunScheduledType, AgentRunCapacityWaitType, AgentRunFailedType:
+	case AgentRunRequestedType, AgentRunScheduledType, AgentRunCapacityWaitType, AgentRunFailedType, AgentRunCancelRequestedType, AgentRunRetryRequestedType:
 		return topic == AgentRunLifecycleTopic || topic == "agentforge.agent-run.lifecycle.retry.1m.v1" || topic == "agentforge.agent-run.lifecycle.retry.5m.v1" || topic == "agentforge.agent-run.lifecycle.retry.30m.v1"
 	case DeliveryDeadLetteredType:
 		return topic == AgentRunDLQTopic
@@ -112,7 +118,7 @@ func TopicAccepts(eventType, topic string) bool {
 // ExpectedPartitionKey derives the contract key without provider-specific types.
 func ExpectedPartitionKey(envelope Envelope) (string, error) {
 	switch envelope.EventType {
-	case AgentRunRequestedType, AgentRunScheduledType, AgentRunCapacityWaitType, AgentRunFailedType:
+	case AgentRunRequestedType, AgentRunScheduledType, AgentRunCapacityWaitType, AgentRunFailedType, AgentRunCancelRequestedType, AgentRunRetryRequestedType:
 		return envelope.AggregateID.String(), nil
 	case DeliveryDeadLetteredType:
 		var payload DeadLetterPayload
@@ -192,6 +198,44 @@ func validateAgentRunFailed(envelope Envelope) error {
 	}
 	if payload.ProjectID != *envelope.ProjectID || payload.RunID != *envelope.RunID || !payload.Status.IsTerminal() || payload.Status == domain.AgentRunSucceeded || payload.Status == domain.AgentRunCancelled || !payload.FailureCategory.IsValid() || payload.AttemptNumber < 1 || strings.TrimSpace(payload.ReasonCode) == "" || len(payload.ReasonCode) > 80 || strings.TrimSpace(payload.Reason) == "" || len(payload.Reason) > 500 {
 		return fmt.Errorf("run-failed payload constraints are invalid")
+	}
+	return nil
+}
+
+func validateAgentRunCancelRequested(envelope Envelope) error {
+	if err := validateRunEventMetadata(envelope); err != nil {
+		return err
+	}
+	var payload AgentRunCancelRequestedPayload
+	decoder := json.NewDecoder(bytes.NewReader(envelope.Payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&payload); err != nil {
+		return fmt.Errorf("decode cancellation payload: %w", err)
+	}
+	if err := requireEOF(decoder); err != nil {
+		return err
+	}
+	if payload.ProjectID != *envelope.ProjectID || payload.RunID != *envelope.RunID || payload.Status != domain.AgentRunCancelling || payload.AttemptNumber < 1 || strings.TrimSpace(payload.RequestedBy) == "" || len(payload.RequestedBy) > 255 || strings.TrimSpace(payload.CommandID) == "" || len(payload.CommandID) > 255 {
+		return fmt.Errorf("cancellation payload constraints are invalid")
+	}
+	return nil
+}
+
+func validateAgentRunRetryRequested(envelope Envelope) error {
+	if err := validateRunEventMetadata(envelope); err != nil {
+		return err
+	}
+	var payload AgentRunRetryRequestedPayload
+	decoder := json.NewDecoder(bytes.NewReader(envelope.Payload))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&payload); err != nil {
+		return fmt.Errorf("decode retry payload: %w", err)
+	}
+	if err := requireEOF(decoder); err != nil {
+		return err
+	}
+	if payload.ProjectID != *envelope.ProjectID || payload.RunID != *envelope.RunID || payload.Status != domain.AgentRunQueued || payload.AttemptNumber < 2 || !payload.PreviousStatus.IsTerminal() || payload.PreviousStatus == domain.AgentRunSucceeded || payload.PreviousStatus == domain.AgentRunCancelled || payload.PreviousFailure != domain.FailureTransientDependency || strings.TrimSpace(payload.RequestedBy) == "" || len(payload.RequestedBy) > 255 || strings.TrimSpace(payload.CommandID) == "" || len(payload.CommandID) > 255 {
+		return fmt.Errorf("retry payload constraints are invalid")
 	}
 	return nil
 }

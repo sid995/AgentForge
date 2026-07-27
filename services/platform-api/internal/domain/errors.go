@@ -17,4 +17,8 @@ var (
 	ErrCapacityUnavailable = errors.New("execution capacity is unavailable")
 	// ErrBudgetUnavailable indicates a temporary lack of tenant budget.
 	ErrBudgetUnavailable = errors.New("tenant budget is unavailable")
+	// ErrRunTerminal is returned when a command cannot change a terminal run.
+	ErrRunTerminal = errors.New("run has reached a terminal state")
+	// ErrRetryNotAllowed is returned when a run is not an eligible manual retry.
+	ErrRetryNotAllowed = errors.New("run is not eligible for retry")
 )
