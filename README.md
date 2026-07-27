@@ -78,6 +78,16 @@ make lint-controller
 make build-operator
 ```
 
+For the complete local validation, integration, and image-build workflow, run:
+
+```bash
+make check-all
+```
+
+This runs every repository gate except the external Kubernetes kind lifecycle
+test. When Docker and the pinned kind node image are available, use
+`make check-all-kind` to include that gate.
+
 Generation downloads version-pinned tools into ignored `operator/bin/` paths.
 Phase 6.6 also handles `WaitForFirstConsumer` binding and observed lifecycle;
 Phase 6.7 adds cancellation before new work, graceful Job termination, and a

@@ -1,6 +1,6 @@
 # Local Prerequisites
 
-## Required through Phase 6
+## Required through Phase 7
 
 - Git
 - GNU Make or a compatible `make`
@@ -54,7 +54,7 @@ The local environment specification adds PostgreSQL, Redis, Redpanda or Kafka,
 MinIO, Argo CD, and observability dependencies only in their respective
 implementation phases. Do not add them during Phase 0.
 
-## Phase 1 through Phase 6 commands
+## Full local validation commands through Phase 7
 
 ```bash
 make help
@@ -69,9 +69,21 @@ make bootstrap-topics
 make operator-manifests operator-generate
 make test-controller
 make lint-controller
+make lint
+make test-runner-integration
 make build-operator
 make build-handoff
+make build-platform-api
+make build-scheduler
+make build-runner
+make check-all
 ```
+
+`make check-all` runs the complete local validation, integration, and image-build
+workflow in order. It excludes `make test-controller-kind`, which is kept
+explicit because it requires the pinned kind node image and a working Docker
+daemon. Run `make check-all-kind` when those Kubernetes prerequisites are
+available.
 
 `make lint` uses a local `golangci-lint` v2 installation when present. If it is
 absent, it runs the pinned `golangci/golangci-lint:v2.9.0` container through the
@@ -146,3 +158,9 @@ developer's current Kubernetes context. `make test-controller-kind` creates an
 isolated pinned kind 0.32.0/Kubernetes 1.36.1 cluster and proves actual Job,
 retry, and retained-PVC behavior; unlike envtest it requires a working Docker
 daemon and fails clearly when that prerequisite is unavailable.
+
+`make test-runner-integration` starts the pinned MinIO service in an isolated
+Compose project, runs the Runner's S3-compatible artifact tests, and removes
+the test volume. `make build-runner` builds the non-root Runner image. The
+Runner's runtime configuration and Secret mounts are supplied by the Operator
+workload; they are not developer `.env` settings.

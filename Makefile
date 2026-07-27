@@ -7,7 +7,7 @@ BUILD_VERSION ?= development
 BUILD_COMMIT ?= unknown
 BUILD_TIME ?= unknown
 
-.PHONY: help check-tools format lint lint-controller test verify-event-contracts test-integration test-events-integration test-controller test-controller-kind operator-manifests operator-generate migrate bootstrap-topics build-platform-api build-scheduler build-handoff build-operator verify
+.PHONY: help check-tools format lint lint-controller test verify-event-contracts test-integration test-events-integration test-runner-integration test-controller test-controller-kind operator-manifests operator-generate migrate bootstrap-topics build-platform-api build-scheduler build-handoff build-operator build-runner check-all check-all-kind verify
 
 help:
 	@printf '%s\n' 'AgentForge development targets:'
@@ -30,6 +30,8 @@ help:
 	@printf '%s\n' '  build-handoff      Build the AgentRun handoff container image (BUILD_VERSION, BUILD_COMMIT, BUILD_TIME are supported)'
 	@printf '%s\n' '  build-operator     Build the Agent Operator container image'
 	@printf '%s\n' '  build-runner       Build the deterministic Agent Runner container image'
+	@printf '%s\n' '  check-all          Run all local checks, integrations, and image builds except the kind gate'
+	@printf '%s\n' '  check-all-kind     Run check-all plus the pinned Kubernetes kind lifecycle gate'
 	@printf '%s\n' '  verify            Validate repository controls and documentation inventory'
 
 check-tools:
@@ -146,6 +148,12 @@ build-runner:
 		--build-arg BUILD_TIME="$(BUILD_TIME)" \
 		--tag agentforge/runner:dev \
 		--file agent-runner/Dockerfile .
+
+check-all:
+	@$(MAKE) check-tools format lint test verify-event-contracts test-integration test-events-integration test-runner-integration test-controller build-platform-api build-scheduler build-handoff build-operator build-runner verify
+
+check-all-kind: check-all
+	@$(MAKE) test-controller-kind
 
 verify:
 	@scripts/verify-repository.sh
