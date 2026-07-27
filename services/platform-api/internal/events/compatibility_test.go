@@ -115,6 +115,18 @@ func TestEventContractProducerOutputMatchesSchemas(t *testing.T) {
 		t.Fatal(err)
 	}
 	validateSerializedContract(t, "agent-run.failed.v1", failed.Serialized)
+	cancellingRun := domain.AgentRun{ID: run.ID, TenantID: run.TenantID, ProjectID: run.ProjectID, Status: domain.AgentRunCancelling, AttemptCount: 1, Version: 2, CancellationRequestedBy: "developer@example.test", UpdatedAt: run.UpdatedAt}
+	cancel, err := NewAgentRunCancelRequested(cancellingRun, "cancel-command")
+	if err != nil {
+		t.Fatal(err)
+	}
+	validateSerializedContract(t, "agent-run.cancel-requested.v1", cancel.Serialized)
+	retryRun := domain.AgentRun{ID: run.ID, TenantID: run.TenantID, ProjectID: run.ProjectID, Status: domain.AgentRunQueued, AttemptCount: 2, Version: 3, UpdatedAt: run.UpdatedAt}
+	retry, err := NewAgentRunRetryRequested(retryRun, domain.AgentRunExecutionFailed, domain.FailureTransientDependency, "developer@example.test", "retry-command")
+	if err != nil {
+		t.Fatal(err)
+	}
+	validateSerializedContract(t, "agent-run.retry-requested.v1", retry.Serialized)
 	now := time.Date(2026, 7, 21, 14, 0, 0, 0, time.UTC)
 	dlq, err := NewDeadLetter(DeadLetterSource{Envelope: requested.Envelope, Topic: requested.Topic, Partition: 1, Offset: 9, Key: []byte(requested.PartitionKey), Headers: HeadersForEnvelope(requested.Envelope), Value: requested.Serialized}, "scheduler.v1", "INVARIANT_FAILED", "event violates scheduler invariant", 1, now, now)
 	if err != nil {

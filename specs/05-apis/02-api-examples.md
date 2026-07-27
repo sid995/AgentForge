@@ -27,12 +27,11 @@ Content-Type: application/json
 
 ```json
 {
-  "prompt": "Build a bookmark API with tests",
+  "promptRef": "vault://agentforge/prompts/0191...",
   "runtime": "python-3.12",
   "resources": {"cpuMillis": 1000, "memoryMiB": 2048},
   "timeoutSeconds": 1800,
-  "maxAttempts": 3,
-  "deployment": {"enabled": true, "environment": "dev"}
+  "maxAttempts": 3
 }
 ```
 
@@ -40,11 +39,20 @@ Content-Type: application/json
 {
   "data": {
     "id": "0191...",
+    "projectId": "0190...",
+    "runtime": "python-3.12",
+    "resources": {"cpuMillis": 1000, "memoryMiB": 2048},
     "status": "QUEUED",
-    "createdAt": "2026-07-20T16:00:00Z"
+    "attemptCount": 1,
+    "createdAt": "2026-07-20T16:00:00Z",
+    "updatedAt": "2026-07-20T16:00:00Z"
   }
 }
 ```
+
+The current Phase 3.3 API accepts a secure prompt reference only; it does not
+accept raw prompts or deployment options. The response intentionally does not
+return the prompt reference.
 
 ## Error envelope
 

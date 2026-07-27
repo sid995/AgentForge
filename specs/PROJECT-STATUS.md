@@ -1,18 +1,18 @@
 # AgentForge Project Status
 
-**Last updated:** 2026-07-23
+**Last updated:** 2026-07-27
 
 ## Current milestone
 
-Phase 6 complete; resume Phase 3.3 create/get/list run API
+Phase 3 AgentRun API and command work verified
 
 ## Overall state
 
 Phase 2, the Phase 3.1/3.2 state-machine and persistence foundation, and Phase
 4, 5, and 6 are complete.
-At the user's direction, Phase 5 Scheduler was completed
-before Phase 3.3 through 3.5 API, cancellation, and retry commands. Those gaps
-remain explicit dependencies for their corresponding command integrations.
+At the user's direction, Phase 5 Scheduler was completed before Phase 3.3
+through 3.5 API, cancellation, and retry commands. Those command gaps are now
+closed and validated.
 
 ## Completed
 
@@ -38,6 +38,15 @@ remain explicit dependencies for their corresponding command integrations.
   RLS, and migration/application database roles
 - Phase 3.1 normalized AgentRun/attempt state machines and Phase 3.2 durable
   AgentRun/attempt persistence with optimistic concurrency and tenant RLS
+- Phase 3.3 implementation: authenticated create/get/project-list AgentRun API;
+  temporary
+  server-derived development identity, tenant-scoped authorization, canonical
+  request hashing and idempotent replay, secure prompt references, opaque
+  cursor pagination, executable OpenAPI contract, HTTP contract tests, and
+  PostgreSQL application integration coverage
+- Phase 3.4/3.5 implementation: authenticated durable cancel/retry commands,
+  safe command receipts, monotonic retry attempts, transactional lifecycle
+  outbox events, executable OpenAPI/event contracts, and unit/integration tests
 - Phase 4.1 event architecture and transactional-outbox ADR
 - Phase 4.2 transactional AgentRun/outbox insertion, isolated relay role,
   lease-based competing claims, durable publication retries, published-only
@@ -141,13 +150,8 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## In progress
 
-- None; Phase 6 is closed
-
 ## Not started
 
-- Phase 3.3 create/get/list run API
-- Phase 3.4 cancellation command
-- Phase 3.5 retry command and Phase 3 audit
 - Agent Runner
 - Model Gateway
 - Build and deployment services
@@ -161,6 +165,4 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Resume Phase 3.3 create/get/list run API.
-2. Implement Phase 3.4 cancellation and Phase 3.5 retry commands.
-3. Run the Phase 3 completion audit before beginning the Agent Runner.
+1. Begin the next approved product phase; Phase 3 is verified.

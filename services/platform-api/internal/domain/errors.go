@@ -3,6 +3,8 @@ package domain
 import "errors"
 
 var (
+	// ErrValidation marks client-supplied values that fail domain validation.
+	ErrValidation = errors.New("validation failed")
 	// ErrNotFound is returned when a resource is absent in the caller's tenant scope.
 	ErrNotFound = errors.New("resource not found")
 	// ErrConflict is returned when a database uniqueness constraint is violated.
@@ -17,4 +19,8 @@ var (
 	ErrCapacityUnavailable = errors.New("execution capacity is unavailable")
 	// ErrBudgetUnavailable indicates a temporary lack of tenant budget.
 	ErrBudgetUnavailable = errors.New("tenant budget is unavailable")
+	// ErrRunTerminal is returned when a command cannot change a terminal run.
+	ErrRunTerminal = errors.New("run has reached a terminal state")
+	// ErrRetryNotAllowed is returned when a run is not an eligible manual retry.
+	ErrRetryNotAllowed = errors.New("run is not eligible for retry")
 )

@@ -46,6 +46,19 @@ transaction. It creates the isolated cross-tenant handoff role when absent and
 grants only intent/cluster authorization reads plus processed-event marker
 reads/inserts. No workflow table write privilege is granted.
 
+Phase 3.3 adds `000012_agent_run_idempotency_response`. It appends a non-null
+JSONB snapshot column to `agent_runs` for exact create-command replay. New
+rows store only the safe public response shape; legacy rows retain the empty
+object default because no authenticated API had created them. The local down
+migration drops the appended column; production rollback uses a corrective
+forward migration when accepted replay records must be retained.
+
+Phase 3.4/3.5 add `000013_agent_run_command_receipts`. It appends constrained
+latest command type, command ID, and safe JSONB response fields to `agent_runs`
+for cancel/retry replay. The local down migration drops only these appended
+fields; production rollback uses a corrective forward migration after receipts
+have been accepted.
+
 ## Naming and ordering
 
 Migration files use a six-digit, increasing version and a kebab-case purpose:

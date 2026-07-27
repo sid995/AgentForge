@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 func TestLoadDefaults(t *testing.T) {
@@ -20,6 +22,32 @@ func TestLoadDefaults(t *testing.T) {
 	}
 	if config.Database.MaxConns != 10 || config.Database.MaxIdleConns != 5 || config.Database.AcquireTimeout != 5*time.Second {
 		t.Fatalf("Load() database config = %#v", config.Database)
+	}
+}
+
+func TestLoadDevelopmentIdentity(t *testing.T) {
+	tenantID := uuid.Must(uuid.NewV7())
+	configuration, err := Load(testLookup(map[string]string{
+		"AGENTFORGE_DEVELOPMENT_IDENTITY_TOKEN":     "local-token",
+		"AGENTFORGE_DEVELOPMENT_IDENTITY_TENANT_ID": tenantID.String(),
+		"AGENTFORGE_DEVELOPMENT_IDENTITY_SUBJECT":   "developer@example.test",
+		"AGENTFORGE_DEVELOPMENT_IDENTITY_ROLE":      "developer",
+	}))
+	if err != nil || configuration.DevelopmentIdentity == nil || configuration.DevelopmentIdentity.TenantID != tenantID {
+		t.Fatalf("Load() development identity=%#v error=%v", configuration.DevelopmentIdentity, err)
+	}
+}
+
+func TestLoadRejectsDevelopmentIdentityOutsideLocalEnvironment(t *testing.T) {
+	_, err := Load(testLookup(map[string]string{
+		"AGENTFORGE_ENVIRONMENT":                    "production",
+		"AGENTFORGE_DEVELOPMENT_IDENTITY_TOKEN":     "local-token",
+		"AGENTFORGE_DEVELOPMENT_IDENTITY_TENANT_ID": uuid.Must(uuid.NewV7()).String(),
+		"AGENTFORGE_DEVELOPMENT_IDENTITY_SUBJECT":   "developer@example.test",
+		"AGENTFORGE_DEVELOPMENT_IDENTITY_ROLE":      "developer",
+	}))
+	if err == nil || !strings.Contains(err.Error(), "AGENTFORGE_DEVELOPMENT_IDENTITY_TOKEN") {
+		t.Fatalf("Load() error=%v, want development identity validation", err)
 	}
 }
 

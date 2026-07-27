@@ -11,10 +11,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/sid995/agentforge/services/platform-api/internal/adapters/postgres"
+	"github.com/sid995/agentforge/services/platform-api/internal/application/runs"
 	"github.com/sid995/agentforge/services/platform-api/internal/buildinfo"
 	"github.com/sid995/agentforge/services/platform-api/internal/config"
 	"github.com/sid995/agentforge/services/platform-api/internal/database"
 	"github.com/sid995/agentforge/services/platform-api/internal/httpapi"
+	"github.com/sid995/agentforge/services/platform-api/internal/identity"
 	"github.com/sid995/agentforge/services/platform-api/internal/logging"
 )
 
@@ -39,12 +42,25 @@ func run() error {
 		return err
 	}
 	defer databasePool.Close()
+	var resolver identity.Resolver
+	if configuration.DevelopmentIdentity != nil {
+		resolver, err = identity.NewDevelopmentResolver([]identity.DevelopmentCredential{{
+			Token:    configuration.DevelopmentIdentity.Token,
+			Identity: identity.Identity{TenantID: configuration.DevelopmentIdentity.TenantID, Subject: configuration.DevelopmentIdentity.Subject, Role: identity.Role(configuration.DevelopmentIdentity.Role)},
+		}})
+		if err != nil {
+			return err
+		}
+	}
+	runService := runs.NewService(postgres.NewAgentRunRepository(databasePool), postgres.NewProjectRepository(databasePool), nil)
 	api := httpapi.New(httpapi.Options{
 		Logger:              logger,
 		Build:               buildinfo.Current(),
 		RequestTimeout:      configuration.RequestTimeout,
 		MaxRequestBodyBytes: configuration.MaxRequestBodyBytes,
 		Readiness:           databasePool.Ping,
+		IdentityResolver:    resolver,
+		Runs:                runService,
 	})
 	server := &http.Server{
 		Handler:           api.Handler(),
