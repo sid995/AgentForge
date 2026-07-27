@@ -9,14 +9,12 @@ API has authenticated create/get/project-list routes, server-derived temporary
 development identity, canonical request hashing and idempotent replay, opaque
 cursor pagination, an executable OpenAPI contract, HTTP contract tests, and a
 PostgreSQL application integration test. Unit, race, vet, OpenAPI contract,
-and repository verification pass; the Docker-dependent PostgreSQL integration
-and lint gates are unverified while the local Docker daemon is unavailable.
+repository verification, PostgreSQL integration, and lint gates pass.
 Phase 3.4/3.5 are implemented in `db6eed6`: authenticated commands persist
 tenant-scoped durable cancellation/retry state, a safe latest-command receipt,
 monotonic retry attempts, and paired versioned outbox events. They intentionally
 do not contact Kubernetes or project Operator status into PostgreSQL. The Phase
-3 completion audit remains subject to the Docker-dependent integration/lint
-gate.
+3 completion audit is verified.
 
 ## Implemented persistence boundary
 

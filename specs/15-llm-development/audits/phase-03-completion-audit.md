@@ -1,7 +1,7 @@
 # Phase 3 Completion Audit
 
 **Date:** 2026-07-27
-**Status:** Implemented; Docker-dependent verification remains pending.
+**Status:** Verified.
 
 ## Scope and evidence
 
@@ -18,9 +18,9 @@
 
 - Passed: `go test ./services/platform-api/...`
 - Passed: `make verify-event-contracts`
-- Pending: `make test-integration` and `make lint`; the local Docker daemon is
-  unavailable. The checked-in integration test covers command receipt replay,
-  retry attempt insertion, and paired outbox events when PostgreSQL is present.
+- Passed: `make test-integration` and `make lint`.
+- The integration suite covers command receipt replay, retry attempt insertion,
+  and paired outbox events against PostgreSQL.
 
 ## Boundaries
 

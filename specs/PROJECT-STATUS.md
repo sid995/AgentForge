@@ -4,15 +4,15 @@
 
 ## Current milestone
 
-Phase 3 implementation complete; close Docker-dependent validation gate
+Phase 3 AgentRun API and command work verified
 
 ## Overall state
 
 Phase 2, the Phase 3.1/3.2 state-machine and persistence foundation, and Phase
 4, 5, and 6 are complete.
 At the user's direction, Phase 5 Scheduler was completed
-before Phase 3.3 through 3.5 API, cancellation, and retry commands. Those gaps
-remain explicit dependencies for their corresponding command integrations.
+before Phase 3.3 through 3.5 API, cancellation, and retry commands. Those
+command gaps are now closed.
 
 ## Completed
 
@@ -148,15 +148,8 @@ remain explicit dependencies for their corresponding command integrations.
   local prerequisites aligned with implemented behavior and deferred
   PostgreSQL lifecycle projection
 
-## In progress
-
-- Phase 3 validation: unit, race, vet, API/event contract, and repository
-  verification pass; PostgreSQL integration and lint require a running local
-  Docker daemon and remain unverified in this checkout.
-
 ## Not started
 
-- Phase 3 completion database/lint validation audit
 - Agent Runner
 - Model Gateway
 - Build and deployment services
@@ -170,5 +163,4 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## Next tasks
 
-1. Start Docker and run `make test-integration` plus `make lint` to close the
-   Phase 3 validation gate and completion audit.
+1. Begin the next approved product phase; Phase 3 is verified.
