@@ -36,6 +36,8 @@ func LoadSignedTask(config RuntimeConfig, secretRoot, configRoot string) (TaskEn
 	}
 	secretName := parsed.Host
 	key := filepath.Base(parsed.Path)
+	// url.Parse accepts paths that filepath.Base normalizes. Require the exact
+	// one-segment form so encoded or nested paths cannot select another mount key.
 	if key == "." || key == "/" || parsed.Path != "/"+key || !slices.Contains(config.SecretRefs, secretName) || !referenceNamePattern.MatchString(secretName) {
 		return TaskEnvelope{}, fmt.Errorf("task reference is not an approved secret projection")
 	}
@@ -70,6 +72,8 @@ func LoadSignedTask(config RuntimeConfig, secretRoot, configRoot string) (TaskEn
 		return TaskEnvelope{}, fmt.Errorf("task signing key is invalid")
 	}
 	signature, err := base64.StdEncoding.DecodeString(string(signatureText))
+	// Verify the bytes as mounted, not a re-marshaled JSON value: signatures bind
+	// the precise envelope the runner will execute.
 	if err != nil || !ed25519.Verify(ed25519.PublicKey(publicKey), body, signature) {
 		return TaskEnvelope{}, fmt.Errorf("task signature is invalid")
 	}

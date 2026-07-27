@@ -80,6 +80,8 @@ func (executor Executor) Run(ctx context.Context, arguments []string, workingDir
 	command.Dir = directory
 	command.Env = minimalEnvironment(environment)
 	command.Stdout, command.Stderr = stdout, stderr
+	// Put the command in its own process group so cancellation also reaches
+	// descendants that outlive the immediate Python process.
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := command.Start(); err != nil {
 		return CommandResult{}, fmt.Errorf("start command: %w", err)
@@ -130,6 +132,8 @@ func confinedDirectory(workspace, requested string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%w: resolve working directory", ErrCommandPolicy)
 	}
+	// Checking the resolved path (rather than just the lexical input) prevents a
+	// directory inside the workspace from escaping through an internal symlink.
 	relative, err := filepath.Rel(workspace, resolved)
 	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(os.PathSeparator)) {
 		return "", fmt.Errorf("%w: working directory escapes workspace", ErrCommandPolicy)
@@ -147,6 +151,8 @@ func validateEnvironment(environment map[string]string) error {
 }
 
 func minimalEnvironment(environment map[string]string) []string {
+	// Do not inherit the container environment: it can contain proxy settings,
+	// credentials, or interpreter knobs that would make execution non-repeatable.
 	values := []string{"HOME=/home/agent", "PATH=/usr/local/bin:/usr/bin:/bin", "TMPDIR=/tmp", "LANG=C.UTF-8"}
 	keys := make([]string, 0, len(environment))
 	for key := range environment {
@@ -183,6 +189,8 @@ type boundedBuffer struct {
 }
 
 func (buffer *boundedBuffer) Write(value []byte) (int, error) {
+	// Retain only a bounded prefix and return the original byte count, so the
+	// caller can classify overflow without allocating for attacker-controlled logs.
 	remaining := buffer.limit - len(buffer.bytes)
 	if remaining > 0 {
 		if len(value) > remaining {

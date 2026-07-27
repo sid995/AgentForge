@@ -42,6 +42,8 @@ func (repository *OutboxRepository) Claim(ctx context.Context, owner string, now
 		return nil, fmt.Errorf("begin outbox claim: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+	// Claim-and-lease is deliberately separate from broker publication: a worker
+	// crash may duplicate delivery, but cannot lose a committed outbox event.
 	rows, err := tx.QueryContext(ctx, `
 		with claimable as (
 			select event_id from outbox_events

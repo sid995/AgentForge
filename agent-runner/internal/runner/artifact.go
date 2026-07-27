@@ -137,6 +137,8 @@ func (store filesystemStore) Put(_ context.Context, key, contentType string, con
 	if err := temporary.Close(); err != nil {
 		return ArtifactObject{}, err
 	}
+	// Rename is atomic within this directory, so a reader can observe either the
+	// prior artifact or the complete replacement, never the temporary upload.
 	if err := os.Rename(temporary.Name(), path); err != nil {
 		return ArtifactObject{}, err
 	}
@@ -227,6 +229,8 @@ type ResultManifest struct {
 }
 
 func publishArtifacts(ctx context.Context, store ArtifactStore, config RuntimeConfig, workspace string, trajectory []byte, results []CommandResult) (string, error) {
+	// Scope every key to the authenticated execution identity. This makes attempts
+	// immutable peers instead of letting a retry overwrite another attempt's proof.
 	prefix := strings.Join([]string{"tenants", config.TenantID, "projects", config.ProjectID, "runs", config.RunID, "attempts", fmt.Sprintf("%d", config.Attempt)}, "/")
 	snapshot, err := sourceSnapshot(workspace)
 	if err != nil {
@@ -250,6 +254,8 @@ func publishArtifacts(ctx context.Context, store ArtifactStore, config RuntimeCo
 		return "", err
 	}
 	key := prefix + "/result-manifest.json"
+	// The manifest is the publication commit point: consumers must not treat a
+	// run as successful until every referenced object has been verified first.
 	if _, err := putVerified(ctx, store, key, "application/json", contents); err != nil {
 		return "", err
 	}
@@ -261,6 +267,9 @@ func putVerified(ctx context.Context, store ArtifactStore, key, contentType stri
 	for attempt := 0; attempt < 3; attempt++ {
 		result, err := store.Put(ctx, key, contentType, contents)
 		if err == nil {
+			// A successful upload response does not prove that an S3-compatible backend
+			// retained the exact bytes. Verify size and caller-supplied SHA-256 metadata
+			// before allowing the manifest to refer to this object.
 			head, headErr := store.Head(ctx, key)
 			if headErr == nil && head.Size == result.Size && head.SHA256 == result.SHA256 {
 				return result, nil
@@ -289,6 +298,8 @@ func sourceSnapshot(workspace string) ([]byte, error) {
 			return err
 		}
 		if entry.Type()&os.ModeSymlink != 0 {
+			// Opening a symlink would make the snapshot's boundary depend on its
+			// target; reject it rather than accidentally archiving host-visible data.
 			return fmt.Errorf("source snapshot refuses symbolic links")
 		}
 		info, err := entry.Info()
