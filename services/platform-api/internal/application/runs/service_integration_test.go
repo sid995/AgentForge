@@ -67,7 +67,7 @@ func TestServiceCreatesAndReplaysTenantScopedRun(t *testing.T) {
 	if countOutboxEvents(t, adminPool, created.ID) != 1 {
 		t.Fatal("idempotent replay created another outbox event")
 	}
-	if _, err := adminPool.Raw().ExecContext(ctx, `update agent_runs set status = 'SCHEDULING', version = version + 1 where id = $1`, created.ID); err != nil {
+	if _, err := adminPool.Raw().ExecContext(ctx, `update agent_runs set status = 'SCHEDULING', scheduler_lease_owner = 'integration-test', scheduler_lease_expires_at = $2, version = version + 1 where id = $1`, created.ID, now.Add(time.Minute)); err != nil {
 		t.Fatalf("advance run after initial response: %v", err)
 	}
 	replayedRun, replayed, err = service.Create(ctx, caller, project.ID, input)
