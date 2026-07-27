@@ -1,7 +1,7 @@
 # Phase 3 Completion Audit
 
 **Date:** 2026-07-27
-**Status:** Implemented; validation incomplete.
+**Status:** Verified.
 
 ## Scope and evidence
 
@@ -20,8 +20,7 @@
 - Passed: `make verify-event-contracts`
 - Passed: `make test-integration` (`migrations applied` and integration suite
   completed).
-- Pending: `make lint`; the pinned golangci-lint image pull stalled and was
-  interrupted, so lint remains unverified.
+- Passed: `make lint` (platform API and Operator lint both reported `0 issues`).
 - The checked-in integration suite covers command receipt replay, retry attempt
   insertion, and paired outbox events against PostgreSQL.
 
