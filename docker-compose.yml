@@ -115,6 +115,23 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  minio:
+    profiles: ["runner"]
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    cpus: ${RUNNER_MINIO_CPUS:-0.5}
+    mem_limit: ${RUNNER_MINIO_MEMORY_LIMIT:-256m}
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${RUNNER_MINIO_ROOT_USER:-agentforge-runner}
+      MINIO_ROOT_PASSWORD: ${RUNNER_MINIO_ROOT_PASSWORD:-agentforge-runner-secret}
+    ports:
+      - "${RUNNER_MINIO_HOST_PORT:-19000}:9000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://127.0.0.1:9000/minio/health/live"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
 volumes:
   postgres-data:
   redpanda-data:

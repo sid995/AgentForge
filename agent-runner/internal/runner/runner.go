@@ -1,7 +1,9 @@
 package runner
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -24,9 +26,9 @@ const (
 )
 
 type Options struct {
-	ConfigPath, Workspace  string
-	LogWriter              io.Writer
-	SecretRoot, ConfigRoot string
+	ConfigPath, Workspace                                          string
+	LogWriter                                                      io.Writer
+	SecretRoot, ConfigRoot, ArtifactConfigPath, TerminationLogPath string
 }
 
 func Run(parent context.Context, options Options) (int, error) {
@@ -42,6 +44,12 @@ func Run(parent context.Context, options Options) (int, error) {
 	if options.ConfigRoot == "" {
 		options.ConfigRoot = defaultConfigRoot
 	}
+	if options.ArtifactConfigPath == "" {
+		options.ArtifactConfigPath = "/etc/agentforge/artifacts/config.json"
+	}
+	if options.TerminationLogPath == "" {
+		options.TerminationLogPath = "/dev/termination-log"
+	}
 	config, err := LoadRuntimeConfig(options.ConfigPath)
 	if err != nil {
 		return ExitConfig, err
@@ -54,7 +62,8 @@ func Run(parent context.Context, options Options) (int, error) {
 		return ExitInternal, fmt.Errorf("create workspace: %w", err)
 	}
 	redactor := NewRedactor(options.SecretRoot, config.SecretRefs)
-	sink := NewTrajectorySink(options.LogWriter, redactor)
+	var trajectory bytes.Buffer
+	sink := NewTrajectorySink(io.MultiWriter(options.LogWriter, &trajectory), redactor)
 	ctx, cancel := context.WithTimeout(parent, time.Duration(config.TimeoutSeconds)*time.Second)
 	defer cancel()
 	heartbeatsDone := make(chan struct{})
@@ -69,7 +78,8 @@ func Run(parent context.Context, options Options) (int, error) {
 	if err := sink.Emit("workspace.ready", "controlled template created"); err != nil {
 		return ExitInternal, err
 	}
-	if _, err := runTests(ctx, options.Workspace, task, sink); err != nil {
+	results, err := runTests(ctx, options.Workspace, task, sink)
+	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return ExitDeadline, err
 		}
@@ -84,7 +94,33 @@ func Run(parent context.Context, options Options) (int, error) {
 	if err := sink.Emit("tests.passed", "controlled template checks passed"); err != nil {
 		return ExitInternal, err
 	}
-	return ExitArtifacts, fmt.Errorf("artifact publication is unavailable until Phase 7.4")
+	store, err := LoadArtifactStore(options.ArtifactConfigPath, options.Workspace, options.SecretRoot)
+	if err != nil {
+		return ExitArtifacts, err
+	}
+	reference, err := publishArtifacts(ctx, store, config, options.Workspace, trajectory.Bytes(), results)
+	if err != nil {
+		return ExitArtifacts, err
+	}
+	if err := writeTerminationEvidence(options.TerminationLogPath, reference); err != nil {
+		return ExitArtifacts, err
+	}
+	_ = sink.Emit("run.succeeded", "mandatory artifacts are durable")
+	return ExitSuccess, nil
+}
+
+func writeTerminationEvidence(path, reference string) error {
+	contents, err := json.Marshal(struct {
+		SchemaVersion       int    `json:"schemaVersion"`
+		ArtifactManifestRef string `json:"artifactManifestRef"`
+	}{SchemaVersion: 1, ArtifactManifestRef: reference})
+	if err != nil {
+		return err
+	}
+	if len(contents) > 4096 {
+		return fmt.Errorf("termination evidence exceeds limit")
+	}
+	return os.WriteFile(path, contents, 0o640)
 }
 
 func emitHeartbeats(ctx context.Context, done <-chan struct{}, sink *TrajectorySink) {

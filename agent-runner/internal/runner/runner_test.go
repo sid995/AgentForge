@@ -20,8 +20,9 @@ func TestRunLoadsSignedTaskAndRedactsLogs(t *testing.T) {
 	}
 	configPath := writeFixture(t, temp, public, private, "secret-value")
 	var logs strings.Builder
-	code, err := Run(context.Background(), Options{ConfigPath: configPath, Workspace: filepath.Join(temp, "workspace"), SecretRoot: filepath.Join(temp, "secrets"), ConfigRoot: filepath.Join(temp, "config"), LogWriter: &logs})
-	if code != ExitArtifacts || err == nil {
+	terminationLog := filepath.Join(temp, "termination-log")
+	code, err := Run(context.Background(), Options{ConfigPath: configPath, Workspace: filepath.Join(temp, "workspace"), SecretRoot: filepath.Join(temp, "secrets"), ConfigRoot: filepath.Join(temp, "config"), ArtifactConfigPath: filepath.Join(temp, "artifacts-config.json"), TerminationLogPath: terminationLog, LogWriter: &logs})
+	if code != ExitSuccess || err != nil {
 		t.Fatalf("code=%d err=%v", code, err)
 	}
 	if !strings.Contains(logs.String(), "workspace.ready") || strings.Contains(logs.String(), "secret-value") {
@@ -29,6 +30,9 @@ func TestRunLoadsSignedTaskAndRedactsLogs(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(temp, "workspace", "app.py")); err != nil {
 		t.Fatal(err)
+	}
+	if contents, err := os.ReadFile(terminationLog); err != nil || !strings.Contains(string(contents), "result-manifest.json") {
+		t.Fatalf("termination evidence=%s err=%v", contents, err)
 	}
 }
 
@@ -71,6 +75,10 @@ func writeFixture(t *testing.T, root string, public ed25519.PublicKey, private e
 	config := `{"schemaVersion":1,"tenantId":"tenant","projectId":"project","runId":"run","attemptId":"attempt","attempt":1,"taskRef":"secret://task/envelope.json","timeoutSeconds":30,"configurationRefs":["trust"],"secretRefs":["runner-secret","task"],"artifactDestinationRef":"artifacts"}`
 	path := filepath.Join(root, "runtime.json")
 	if err := os.WriteFile(path, []byte(config), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	artifactConfig := fmt.Sprintf(`{"schemaVersion":1,"backend":"filesystem","root":%q}`, filepath.Join(root, "workspace", "artifacts"))
+	if err := os.WriteFile(filepath.Join(root, "artifacts-config.json"), []byte(artifactConfig), 0o640); err != nil {
 		t.Fatal(err)
 	}
 	return path

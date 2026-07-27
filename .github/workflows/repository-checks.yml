@@ -52,6 +52,8 @@ jobs:
         run: make test-integration
       - name: Integration-test Kafka contracts
         run: make test-events-integration
+      - name: Integration-test Runner artifacts
+        run: make test-runner-integration
       - name: Build Platform API image
         run: make build-platform-api
       - name: Build Scheduler image

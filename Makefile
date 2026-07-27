@@ -86,6 +86,13 @@ test-events-integration:
 		COMPOSE_PROJECT_NAME=agentforge-events-integration scripts/bootstrap-topics.sh; \
 		AGENTFORGE_TEST_KAFKA_BROKERS='127.0.0.1:29092' go test -count=1 -tags=brokerintegration ./services/platform-api/internal/adapters/kafka
 
+test-runner-integration:
+	@set -euo pipefail; \
+		cleanup() { docker compose -f docker-compose.yml -p agentforge-runner-integration --profile runner down --volumes --remove-orphans; }; \
+		trap cleanup EXIT; \
+		RUNNER_MINIO_HOST_PORT=29000 docker compose -f docker-compose.yml -p agentforge-runner-integration --profile runner up --detach --wait minio; \
+		AGENTFORGE_TEST_MINIO_ENDPOINT='127.0.0.1:29000' AGENTFORGE_TEST_MINIO_ACCESS_KEY='agentforge-runner' AGENTFORGE_TEST_MINIO_SECRET_KEY='agentforge-runner-secret' go test -count=1 -tags=runnerintegration ./agent-runner/internal/runner
+
 test-controller:
 	@$(MAKE) -C operator test
 	@KUBEBUILDER_ASSETS="$$(operator/bin/setup-envtest use 1.36.0 --bin-dir "$(CURDIR)/operator/bin" -p path)" go test -count=1 -tags=controllerintegration ./services/platform-api/internal/application/handoff
