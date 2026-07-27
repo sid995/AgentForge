@@ -59,3 +59,19 @@ PVC has no controller owner and that its bounded owner-UID and retention
 markers match before recording handoff. Ownership conflicts remain visible
 until the bounded escalation deadline, and escalation releases only the CR
 finalizer; it does not issue destructive storage operations.
+
+## Phase 7 Runner execution and artifacts
+
+The non-root Runner accepts only signed task envelopes projected through
+approved Secret mounts. Public verification keys come from a non-secret
+configuration mount; raw task content, signatures, and secret values are never
+logged. The deterministic implementation accepts only an explicit Python argv
+allowlist, relative workspace paths, two safe environment variables, bounded
+output, and process-group cancellation. It does not invoke a shell or receive a
+Kubernetes API token, cloud key, model-provider key, or arbitrary source
+credential.
+
+Artifact configuration is non-secret and selects a workspace-confined local
+root or an S3 endpoint. S3 credentials are read only from an approved Secret
+projection. Mandatory objects are hash-verified before a manifest is written;
+termination evidence is withheld on every publication failure.

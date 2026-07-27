@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 3 AgentRun API and command work verified
+Phase 7 Agent Runner implemented; pinned kind gate pending local image availability
 
 ## Overall state
 
@@ -13,6 +13,11 @@ Phase 2, the Phase 3.1/3.2 state-machine and persistence foundation, and Phase
 At the user's direction, Phase 5 Scheduler was completed before Phase 3.3
 through 3.5 API, cancellation, and retry commands. Those command gaps are now
 closed and validated.
+Phase 7 adds the deterministic non-root Runner, signed mounted-secret task
+verification, confined execution, ordered heartbeats/trajectory, and mandatory
+filesystem or S3-compatible artifacts. The repository's pinned kind image
+could not be pulled in the current local environment, so the Phase 7 kind gate
+remains explicitly unverified pending that prerequisite.
 
 ## Completed
 
@@ -147,12 +152,22 @@ closed and validated.
   handoff/Operator ownership, security, telemetry, tests, CI, milestones, and
   local prerequisites aligned with implemented behavior and deferred
   PostgreSQL lifecycle projection
+- Phase 7.1 Runner protocol and ADR-005: versioned runtime/task/trajectory,
+  manifest, exit, cancellation, and artifact contracts
+- Phase 7.2 deterministic Runner module and non-root image, signed Ed25519
+  mounted-secret task verification, controlled Python workspace, redaction,
+  heartbeats, deadline, and SIGTERM handling
+- Phase 7.3 explicit argv command executor with workspace/symlink confinement,
+  trusted executable/environment policy, bounded output, and process-group
+  cancellation
+- Phase 7.4 manifest-last mandatory artifacts through confined filesystem and
+  MinIO/S3-compatible adapters, checksum verification/retry, root MinIO test
+  profile, and a Runner-specific kind lifecycle scenario
 
 ## In progress
 
 ## Not started
 
-- Agent Runner
 - Model Gateway
 - Build and deployment services
 - Cloud infrastructure
@@ -165,4 +180,7 @@ closed and validated.
 
 ## Next tasks
 
-1. Begin the next approved product phase; Phase 3 is verified.
+1. Restore the pinned kind node image and run `make test-controller-kind` to
+   complete the Phase 7 real-Kubernetes gate.
+2. Begin Phase 8 artifact metadata and controlled-access work only after the
+   Phase 7 kind gate is verified.

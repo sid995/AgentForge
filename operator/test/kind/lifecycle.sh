@@ -39,7 +39,9 @@ fi
 "${kubectl_bin}" apply -f config/crd/bases/execution.agentforge.dev_agentruns.yaml
 "${kubectl_bin}" wait --for=condition=Established customresourcedefinition/agentruns.execution.agentforge.dev --timeout=60s
 "${kubectl_bin}" create namespace agentforge-kind-lifecycle
-"${kubectl_bin}" create configmap artifact-store --namespace agentforge-kind-lifecycle --from-literal=destination=kind-test
+"${kubectl_bin}" create configmap artifact-store --namespace agentforge-kind-lifecycle --from-literal='config.json={"schemaVersion":1,"backend":"filesystem","root":"/workspace/artifacts"}'
+"${kubectl_bin}" create configmap runner-trust --namespace agentforge-kind-lifecycle --from-file=task-trust.json=test/kind/runner-task-trust.json
+"${kubectl_bin}" create secret generic runner-task --namespace agentforge-kind-lifecycle --from-file=envelope.json=test/kind/runner-task.json --from-file=envelope.json.sig=test/kind/runner-task.json.sig
 "${kubectl_bin}" apply -f - <<'YAML'
 apiVersion: scheduling.k8s.io/v1
 kind: PriorityClass
@@ -55,6 +57,100 @@ YAML
     --health-probe-bind-address=0 \
     --leader-elect=false >"${manager_log}" 2>&1 &
 manager_pid="$!"
+
+(cd .. && docker build --tag agentforge/runner:kind --file agent-runner/Dockerfile .)
+runner_image="$(docker image inspect agentforge/runner:kind --format '{{index .RepoDigests 0}}')"
+if [[ -z "${runner_image}" ]]; then
+    printf '%s\n' 'runner kind gate could not resolve a digest-qualified image' >&2
+    exit 1
+fi
+"${kind_bin}" load docker-image --name "${cluster_name}" agentforge/runner:kind
+
+"${kubectl_bin}" apply -f - <<YAML
+apiVersion: execution.agentforge.dev/v1alpha1
+kind: AgentRun
+metadata:
+  name: lifecycle-runner-success
+  namespace: agentforge-kind-lifecycle
+spec:
+  tenantId: 019b0000-0000-7000-8000-000000000041
+  projectId: 019b0000-0000-7000-8000-000000000042
+  runId: 019b0000-0000-7000-8000-000000000043
+  attemptId: 019b0000-0000-7000-8000-000000000044
+  attempt: 1
+  runnerImage: ${runner_image}
+  runtime: python-3.12
+  executionProfile: standard
+  taskRef: secret://runner-task/envelope.json
+  timeoutSeconds: 120
+  retryPolicy:
+    maxAttempts: 1
+    initialBackoffSeconds: 5
+    maxBackoffSeconds: 30
+  resources:
+    requests:
+      cpuMillis: 100
+      memoryMiB: 128
+    limits:
+      cpuMillis: 200
+      memoryMiB: 256
+  workspace:
+    sizeGiB: 1
+    storageClassName: standard
+    retentionPolicy: Retain
+  network:
+    profile: Isolated
+  artifactDestinationRef:
+    name: artifact-store
+  configurationRefs:
+    - name: runner-trust
+  secretRefs:
+    - name: runner-task
+  desiredState: Running
+YAML
+
+deadline=$((SECONDS + 300))
+runner_phase=""
+while (( SECONDS < deadline )); do
+    runner_phase="$("${kubectl_bin}" get agentrun lifecycle-runner-success --namespace agentforge-kind-lifecycle -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+    if [[ "${runner_phase}" == "Succeeded" ]]; then
+        break
+    fi
+    if ! kill -0 "${manager_pid}" 2>/dev/null; then
+        break
+    fi
+    sleep 2
+done
+runner_manifest="$("${kubectl_bin}" get agentrun lifecycle-runner-success --namespace agentforge-kind-lifecycle -o jsonpath='{.status.artifactManifestRef}' 2>/dev/null || true)"
+runner_pod="$("${kubectl_bin}" get pods --namespace agentforge-kind-lifecycle -l execution.agentforge.dev/run-id=019b0000-0000-7000-8000-000000000043 -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
+runner_pvc="$("${kubectl_bin}" get persistentvolumeclaims --namespace agentforge-kind-lifecycle -l execution.agentforge.dev/run-id=019b0000-0000-7000-8000-000000000043 -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)"
+if [[ "${runner_phase}" != "Succeeded" || "${runner_manifest}" != file://*result-manifest.json || -z "${runner_pod}" || -z "${runner_pvc}" ]]; then
+    printf 'runner result invalid: phase=%s manifest=%s pod=%s pvc=%s\n' "${runner_phase}" "${runner_manifest}" "${runner_pod}" "${runner_pvc}" >&2
+    sed -n '1,240p' "${manager_log}" >&2
+    exit 1
+fi
+"${kubectl_bin}" delete pod "${runner_pod}" --namespace agentforge-kind-lifecycle --wait=true
+"${kubectl_bin}" apply -f - <<YAML
+apiVersion: v1
+kind: Pod
+metadata:
+  name: artifact-reader
+  namespace: agentforge-kind-lifecycle
+spec:
+  restartPolicy: Never
+  containers:
+    - name: reader
+      image: docker.io/library/busybox@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028
+      command: ["sh", "-c", "test -f /workspace/artifacts/tenants/019b0000-0000-7000-8000-000000000041/projects/019b0000-0000-7000-8000-000000000042/runs/019b0000-0000-7000-8000-000000000043/attempts/1/result-manifest.json"]
+      volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+  volumes:
+    - name: workspace
+      persistentVolumeClaim:
+        claimName: ${runner_pvc}
+YAML
+"${kubectl_bin}" wait --for=jsonpath='{.status.phase}'=Succeeded pod/artifact-reader --namespace agentforge-kind-lifecycle --timeout=120s
 
 "${kubectl_bin}" apply -f test/kind/agentrun.yaml
 deadline=$((SECONDS + 300))
