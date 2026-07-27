@@ -29,6 +29,7 @@ help:
 	@printf '%s\n' '  build-scheduler    Build the Scheduler container image (BUILD_VERSION, BUILD_COMMIT, BUILD_TIME are supported)'
 	@printf '%s\n' '  build-handoff      Build the AgentRun handoff container image (BUILD_VERSION, BUILD_COMMIT, BUILD_TIME are supported)'
 	@printf '%s\n' '  build-operator     Build the Agent Operator container image'
+	@printf '%s\n' '  build-runner       Build the deterministic Agent Runner container image'
 	@printf '%s\n' '  verify            Validate repository controls and documentation inventory'
 
 check-tools:
@@ -47,6 +48,11 @@ lint:
 	else \
 		docker run --rm --volume "$(CURDIR):/workspace" --workdir /workspace/services/platform-api $(GOLANGCI_LINT_IMAGE) golangci-lint run ./...; \
 	fi
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		cd agent-runner && golangci-lint run ./...; \
+	else \
+		docker run --rm --volume "$(CURDIR):/workspace" --workdir /workspace/agent-runner $(GOLANGCI_LINT_IMAGE) golangci-lint run ./...; \
+	fi
 	@$(MAKE) -C operator lint
 
 lint-controller:
@@ -54,6 +60,7 @@ lint-controller:
 
 test:
 	@go test ./services/platform-api/...
+	@go test ./agent-runner/...
 
 verify-event-contracts:
 	@go test -count=1 ./services/platform-api/internal/events -run '^TestEventContract'
@@ -124,6 +131,14 @@ build-handoff:
 
 build-operator:
 	@$(MAKE) -C operator docker-build IMG=agentforge/operator:dev
+
+build-runner:
+	@docker build \
+		--build-arg BUILD_VERSION="$(BUILD_VERSION)" \
+		--build-arg BUILD_COMMIT="$(BUILD_COMMIT)" \
+		--build-arg BUILD_TIME="$(BUILD_TIME)" \
+		--tag agentforge/runner:dev \
+		--file agent-runner/Dockerfile .
 
 verify:
 	@scripts/verify-repository.sh

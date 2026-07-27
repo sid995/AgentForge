@@ -28,7 +28,7 @@ metadata:
 ---
 apiVersion: v1
 data:
-  config.json: '{"artifactDestinationRef":"artifact-store","attempt":1,"attemptId":"019b0000-0000-7000-8000-000000000005","configurationRefs":["a-policy-config","z-runner-config"],"deployOnSuccess":false,"projectId":"019b0000-0000-7000-8000-000000000003","runId":"019b0000-0000-7000-8000-000000000004","runtime":"python-3.12","secretRefs":["artifact-credential","source-credential"],"taskRef":"vault://tasks/run-example","tenantId":"019b0000-0000-7000-8000-000000000002"}'
+  config.json: '{"artifactDestinationRef":"artifact-store","attempt":1,"attemptId":"019b0000-0000-7000-8000-000000000005","configurationRefs":["a-policy-config","z-runner-config"],"deployOnSuccess":false,"projectId":"019b0000-0000-7000-8000-000000000003","runId":"019b0000-0000-7000-8000-000000000004","runtime":"python-3.12","schemaVersion":1,"secretRefs":["artifact-credential","source-credential"],"taskRef":"vault://tasks/run-example","tenantId":"019b0000-0000-7000-8000-000000000002","timeoutSeconds":1800}'
 immutable: true
 kind: ConfigMap
 metadata:

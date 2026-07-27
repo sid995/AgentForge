@@ -261,9 +261,11 @@ func (b *Builder) buildConfigMap(context *buildContext) *corev1.ConfigMap {
 		"projectId":              context.run.Spec.ProjectID,
 		"runId":                  context.run.Spec.RunID,
 		"runtime":                context.run.Spec.Runtime,
+		"schemaVersion":          1,
 		"secretRefs":             secretRefs,
 		"taskRef":                context.run.Spec.TaskRef,
 		"tenantId":               context.run.Spec.TenantID,
+		"timeoutSeconds":         context.run.Spec.TimeoutSeconds,
 	})
 	if err != nil {
 		panic(fmt.Sprintf("marshal bounded runner configuration: %v", err))
