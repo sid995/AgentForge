@@ -45,8 +45,8 @@ func LoadRuntimeConfig(path string) (RuntimeConfig, error) {
 		return RuntimeConfig{}, fmt.Errorf("runtime config has unsupported schema or bounds")
 	}
 	for _, value := range []string{config.TenantID, config.ProjectID, config.RunID, config.AttemptID, config.ArtifactDestinationRef} {
-		if value == "" {
-			return RuntimeConfig{}, fmt.Errorf("runtime config has missing identity")
+		if !referenceNamePattern.MatchString(value) || filepath.Base(value) != value {
+			return RuntimeConfig{}, fmt.Errorf("runtime config contains an invalid identity")
 		}
 	}
 	if err := validateReferences(config.ConfigurationRefs); err != nil {

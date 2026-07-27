@@ -34,7 +34,7 @@ func TestSourceSnapshotRejectsSymlink(t *testing.T) {
 	if err := os.Symlink("/etc/hosts", filepath.Join(workspace, "outside")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := sourceSnapshot(workspace); err == nil {
+	if _, err := sourceSnapshot(workspace, ""); err == nil {
 		t.Fatal("symlink source was accepted")
 	}
 }

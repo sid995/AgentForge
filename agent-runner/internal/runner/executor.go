@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -76,6 +77,10 @@ func (executor Executor) Run(ctx context.Context, arguments []string, workingDir
 		limit = maximumCommandOutput
 	}
 	stdout, stderr := &boundedBuffer{limit: limit}, &boundedBuffer{limit: limit}
+	outputLimit := make(chan struct{})
+	var outputLimitOnce sync.Once
+	signalOutputLimit := func() { outputLimitOnce.Do(func() { close(outputLimit) }) }
+	stdout.signal, stderr.signal = signalOutputLimit, signalOutputLimit
 	command := exec.Command(arguments[0], arguments[1:]...)
 	command.Dir = directory
 	command.Env = minimalEnvironment(environment)
@@ -100,6 +105,15 @@ func (executor Executor) Run(ctx context.Context, arguments []string, workingDir
 			waitErr = <-wait
 		}
 		return commandResult(arguments, stdout, stderr, waitErr), ctx.Err()
+	case <-outputLimit:
+		terminateProcessGroup(command.Process)
+		select {
+		case waitErr = <-wait:
+		case <-time.After(commandTerminationWait):
+			_ = syscall.Kill(-command.Process.Pid, syscall.SIGKILL)
+			waitErr = <-wait
+		}
+		return commandResult(arguments, stdout, stderr, waitErr), ErrOutputLimit
 	}
 	result := commandResult(arguments, stdout, stderr, waitErr)
 	if stdout.exceeded || stderr.exceeded {
@@ -186,6 +200,7 @@ type boundedBuffer struct {
 	bytes    []byte
 	limit    int
 	exceeded bool
+	signal   func()
 }
 
 func (buffer *boundedBuffer) Write(value []byte) (int, error) {
@@ -196,12 +211,18 @@ func (buffer *boundedBuffer) Write(value []byte) (int, error) {
 		if len(value) > remaining {
 			buffer.bytes = append(buffer.bytes, value[:remaining]...)
 			buffer.exceeded = true
+			if buffer.signal != nil {
+				buffer.signal()
+			}
 			return len(value), ErrOutputLimit
 		}
 		buffer.bytes = append(buffer.bytes, value...)
 	}
 	if len(value) > remaining {
 		buffer.exceeded = true
+		if buffer.signal != nil {
+			buffer.signal()
+		}
 		return len(value), ErrOutputLimit
 	}
 	return len(value), nil

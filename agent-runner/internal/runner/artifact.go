@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -82,7 +83,7 @@ func LoadArtifactStore(configPath, workspace, secretRoot string, approvedSecretR
 			return nil, fmt.Errorf("read artifact secret key: %w", err)
 		}
 		sessionToken, _ := os.ReadFile(filepath.Join(secretRoot, config.CredentialRef, "sessionToken"))
-		client, err := minio.New(config.Endpoint, &minio.Options{Creds: credentials.NewStaticV4(string(accessKey), string(secretKey), string(sessionToken)), Secure: config.Secure, Region: config.Region})
+		client, err := minio.New(config.Endpoint, &minio.Options{Creds: credentials.NewStaticV4(strings.TrimSpace(string(accessKey)), strings.TrimSpace(string(secretKey)), strings.TrimSpace(string(sessionToken))), Secure: config.Secure, Region: config.Region, TrailingHeaders: true})
 		if err != nil {
 			return nil, fmt.Errorf("create S3 artifact client: %w", err)
 		}
@@ -187,25 +188,22 @@ func (store s3Store) fullKey(key string) string {
 }
 func (store s3Store) Put(ctx context.Context, key, contentType string, contents []byte) (ArtifactObject, error) {
 	object := artifactObject(key, contentType, contents)
-	_, err := store.client.PutObject(ctx, store.bucket, store.fullKey(key), bytes.NewReader(contents), int64(len(contents)), minio.PutObjectOptions{ContentType: contentType, UserMetadata: map[string]string{"X-Amz-Meta-Sha256": object.SHA256}})
+	_, err := store.client.PutObject(ctx, store.bucket, store.fullKey(key), bytes.NewReader(contents), int64(len(contents)), minio.PutObjectOptions{ContentType: contentType, Checksum: minio.ChecksumSHA256, UserMetadata: map[string]string{"X-Amz-Meta-Sha256": object.SHA256}})
 	if err != nil {
 		return ArtifactObject{}, err
 	}
 	return object, nil
 }
 func (store s3Store) Head(ctx context.Context, key string) (ArtifactObject, error) {
-	info, err := store.client.StatObject(ctx, store.bucket, store.fullKey(key), minio.StatObjectOptions{})
+	info, err := store.client.StatObject(ctx, store.bucket, store.fullKey(key), minio.StatObjectOptions{Checksum: true})
 	if err != nil {
 		return ArtifactObject{}, err
 	}
-	hash := ""
-	for name, value := range info.UserMetadata {
-		if strings.EqualFold(name, "X-Amz-Meta-Sha256") || strings.EqualFold(name, "sha256") {
-			hash = value
-			break
-		}
+	digest, err := base64.StdEncoding.DecodeString(info.ChecksumSHA256)
+	if err != nil || len(digest) != sha256.Size {
+		return ArtifactObject{}, fmt.Errorf("S3 object checksum is invalid")
 	}
-	return ArtifactObject{Key: key, ContentType: info.ContentType, SHA256: hash, Size: info.Size}, nil
+	return ArtifactObject{Key: key, ContentType: info.ContentType, SHA256: hex.EncodeToString(digest), Size: info.Size}, nil
 }
 func (store s3Store) Reference(key string) string {
 	return "s3://" + store.bucket + "/" + store.fullKey(key)
@@ -232,7 +230,11 @@ func publishArtifacts(ctx context.Context, store ArtifactStore, config RuntimeCo
 	// Scope every key to the authenticated execution identity. This makes attempts
 	// immutable peers instead of letting a retry overwrite another attempt's proof.
 	prefix := strings.Join([]string{"tenants", config.TenantID, "projects", config.ProjectID, "runs", config.RunID, "attempts", fmt.Sprintf("%d", config.Attempt)}, "/")
-	snapshot, err := sourceSnapshot(workspace)
+	artifactRoot := ""
+	if filesystem, ok := store.(filesystemStore); ok {
+		artifactRoot = filesystem.root
+	}
+	snapshot, err := sourceSnapshot(workspace, artifactRoot)
 	if err != nil {
 		return "", err
 	}
@@ -289,13 +291,25 @@ func putVerified(ctx context.Context, store ArtifactStore, key, contentType stri
 	}
 	return ArtifactObject{}, fmt.Errorf("publish %s: %w", key, last)
 }
-func sourceSnapshot(workspace string) ([]byte, error) {
+func sourceSnapshot(workspace, artifactRoot string) ([]byte, error) {
 	var output bytes.Buffer
 	gzipWriter := gzip.NewWriter(&output)
 	archive := tar.NewWriter(gzipWriter)
 	if err := filepath.WalkDir(workspace, func(path string, entry os.DirEntry, err error) error {
-		if err != nil || entry.IsDir() || strings.Contains(path, string(os.PathSeparator)+"artifacts"+string(os.PathSeparator)) {
+		if err != nil {
 			return err
+		}
+		if artifactRoot != "" {
+			relative, relativeErr := filepath.Rel(artifactRoot, path)
+			if relativeErr == nil && (relative == "." || (relative != ".." && !strings.HasPrefix(relative, ".."+string(os.PathSeparator)))) {
+				if entry.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+		}
+		if entry.IsDir() {
+			return nil
 		}
 		if entry.Type()&os.ModeSymlink != 0 {
 			// Opening a symlink would make the snapshot's boundary depend on its
@@ -340,11 +354,18 @@ func sourceSnapshot(workspace string) ([]byte, error) {
 	return output.Bytes(), nil
 }
 func testReport(results []CommandResult) []byte {
+	passed := true
+	for _, result := range results {
+		if result.ExitCode != 0 {
+			passed = false
+			break
+		}
+	}
 	value, _ := json.Marshal(struct {
 		SchemaVersion int             `json:"schemaVersion"`
 		Passed        bool            `json:"passed"`
 		Commands      []CommandResult `json:"commands"`
-	}{SchemaVersion: 1, Passed: true, Commands: results})
+	}{SchemaVersion: 1, Passed: passed, Commands: results})
 	return value
 }
 func commandOutput(results []CommandResult, stdout bool) []byte {

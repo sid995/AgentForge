@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -61,13 +62,18 @@ func Run(parent context.Context, options Options) (int, error) {
 	if err := os.MkdirAll(options.Workspace, 0o750); err != nil {
 		return ExitInternal, fmt.Errorf("create workspace: %w", err)
 	}
-	redactor := NewRedactor(options.SecretRoot, config.SecretRefs)
+	redactor, err := NewRedactor(options.SecretRoot, config.SecretRefs)
+	if err != nil {
+		return ExitConfig, err
+	}
 	var trajectory bytes.Buffer
 	sink := NewTrajectorySink(io.MultiWriter(options.LogWriter, &trajectory), redactor)
 	ctx, cancel := context.WithTimeout(parent, time.Duration(config.TimeoutSeconds)*time.Second)
 	defer cancel()
 	heartbeatsDone := make(chan struct{})
-	defer close(heartbeatsDone)
+	var stopHeartbeats sync.Once
+	stop := func() { stopHeartbeats.Do(func() { close(heartbeatsDone) }) }
+	defer stop()
 	go emitHeartbeats(ctx, heartbeatsDone, sink)
 	if err := sink.Emit("run.started", "deterministic runner started"); err != nil {
 		return ExitInternal, err
@@ -94,6 +100,7 @@ func Run(parent context.Context, options Options) (int, error) {
 	if err := sink.Emit("tests.passed", "controlled template checks passed"); err != nil {
 		return ExitInternal, err
 	}
+	stop()
 	store, err := LoadArtifactStore(options.ArtifactConfigPath, options.Workspace, options.SecretRoot, config.SecretRefs)
 	if err != nil {
 		return ExitArtifacts, err

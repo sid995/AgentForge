@@ -1,19 +1,21 @@
 package runner
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
 type Redactor struct{ values []string }
 
-func NewRedactor(secretRoot string, references []string) Redactor {
+func NewRedactor(secretRoot string, references []string) (Redactor, error) {
 	values := make([]string, 0)
 	for _, reference := range references {
 		entries, err := os.ReadDir(filepath.Join(secretRoot, reference))
 		if err != nil {
-			continue
+			return Redactor{}, fmt.Errorf("read secret projection %q: %w", reference, err)
 		}
 		for _, entry := range entries {
 			if entry.IsDir() {
@@ -25,7 +27,8 @@ func NewRedactor(secretRoot string, references []string) Redactor {
 			}
 		}
 	}
-	return Redactor{values: values}
+	slices.SortFunc(values, func(left, right string) int { return len(right) - len(left) })
+	return Redactor{values: values}, nil
 }
 
 func (redactor Redactor) Redact(value string) string {

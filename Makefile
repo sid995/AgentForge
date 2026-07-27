@@ -13,12 +13,13 @@ help:
 	@printf '%s\n' 'AgentForge development targets:'
 	@printf '%s\n' '  check-tools       Check Phase 0 through Phase 6 prerequisites'
 	@printf '%s\n' '  format            Format tracked Go source'
-	@printf '%s\n' '  lint              Run Platform API and Operator static analysis'
+	@printf '%s\n' '  lint              Run Platform API, Agent Runner, and Operator static analysis'
 	@printf '%s\n' '  lint-controller   Run Operator static analysis'
-	@printf '%s\n' '  test              Run Platform API unit tests'
+	@printf '%s\n' '  test              Run Platform API and Agent Runner unit tests'
 	@printf '%s\n' '  verify-event-contracts Validate event schemas, compatibility, and fixtures'
 	@printf '%s\n' '  test-integration  Run PostgreSQL integration tests in Docker Compose'
 	@printf '%s\n' '  test-events-integration Run Kafka contract tests against isolated Redpanda'
+	@printf '%s\n' '  test-runner-integration Run Agent Runner artifact tests against isolated MinIO'
 	@printf '%s\n' '  test-controller   Generate manifests and run Operator envtest coverage'
 	@printf '%s\n' '  test-controller-kind Run the pinned Operator kind lifecycle gate'
 	@printf '%s\n' '  operator-manifests Regenerate Operator CRD and RBAC manifests'
@@ -92,8 +93,9 @@ test-runner-integration:
 	@set -euo pipefail; \
 		cleanup() { docker compose -f docker-compose.yml -p agentforge-runner-integration --profile runner down --volumes --remove-orphans; }; \
 		trap cleanup EXIT; \
-		RUNNER_MINIO_HOST_PORT=29000 docker compose -f docker-compose.yml -p agentforge-runner-integration --profile runner up --detach --wait minio; \
-		AGENTFORGE_TEST_MINIO_ENDPOINT='127.0.0.1:29000' AGENTFORGE_TEST_MINIO_ACCESS_KEY='agentforge-runner' AGENTFORGE_TEST_MINIO_SECRET_KEY='agentforge-runner-secret' go test -count=1 -tags=runnerintegration ./agent-runner/internal/runner
+		runner_access_key="$${RUNNER_MINIO_ROOT_USER:-agentforge-runner}"; runner_secret_key="$${RUNNER_MINIO_ROOT_PASSWORD:-agentforge-runner-secret}"; \
+		RUNNER_MINIO_HOST_PORT=29000 RUNNER_MINIO_ROOT_USER="$$runner_access_key" RUNNER_MINIO_ROOT_PASSWORD="$$runner_secret_key" docker compose -f docker-compose.yml -p agentforge-runner-integration --profile runner up --detach --wait minio; \
+		AGENTFORGE_TEST_MINIO_ENDPOINT='127.0.0.1:29000' AGENTFORGE_TEST_MINIO_ACCESS_KEY="$$runner_access_key" AGENTFORGE_TEST_MINIO_SECRET_KEY="$$runner_secret_key" go test -count=1 -tags=runnerintegration ./agent-runner/internal/runner
 
 test-controller:
 	@$(MAKE) -C operator test
