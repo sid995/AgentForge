@@ -159,6 +159,11 @@ isolated pinned kind 0.32.0/Kubernetes 1.36.1 cluster and proves actual Job,
 retry, and retained-PVC behavior; unlike envtest it requires a working Docker
 daemon and fails clearly when that prerequisite is unavailable.
 
+For the Compose handoff service, `AGENTFORGE_HANDOFF_KUBECONFIG` must point to
+the kubeconfig file itself (for example `./.local/kubeconfig/config`), not its
+parent directory. Docker bind mounts a missing source path as a directory,
+which produces `read /kubeconfig/config: is a directory` inside the container.
+
 `make test-runner-integration` starts the pinned MinIO service in an isolated
 Compose project, runs the Runner's S3-compatible artifact tests, and removes
 the test volume. `make build-runner` builds the non-root Runner image. The

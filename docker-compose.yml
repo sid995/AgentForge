@@ -105,7 +105,7 @@ services:
       AGENTFORGE_HANDOFF_CLUSTER_CONTEXTS: ${AGENTFORGE_HANDOFF_CLUSTER_CONTEXTS:-{"cluster-local":"kind-agentforge"}}
       AGENTFORGE_HANDOFF_QUARANTINE_TENANT_ID: ${AGENTFORGE_HANDOFF_QUARANTINE_TENANT_ID:-019b0000-0000-7000-8000-000000000001}
     volumes:
-      - ${AGENTFORGE_HANDOFF_KUBECONFIG:-./.local/kubeconfig}:/kubeconfig/config:ro
+      - ${AGENTFORGE_HANDOFF_KUBECONFIG:-./.local/kubeconfig/config}:/kubeconfig/config:ro
     ports:
       - "${HANDOFF_HOST_PORT:-18082}:8082"
     depends_on:
