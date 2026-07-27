@@ -69,12 +69,15 @@ func Run(parent context.Context, options Options) (int, error) {
 	if err := sink.Emit("workspace.ready", "controlled template created"); err != nil {
 		return ExitInternal, err
 	}
-	if err := deterministicChecks(ctx, options.Workspace, task); err != nil {
+	if _, err := runTests(ctx, options.Workspace, task, sink); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return ExitDeadline, err
 		}
 		if errors.Is(err, context.Canceled) {
 			return ExitCancelled, err
+		}
+		if errors.Is(err, ErrCommandPolicy) {
+			return ExitPolicy, err
 		}
 		return ExitCommand, err
 	}
@@ -109,16 +112,26 @@ func writePythonTemplate(workspace, template string) error {
 	return os.WriteFile(filepath.Join(workspace, "test_app.py"), []byte("import unittest\nfrom app import add\n\nclass AppTest(unittest.TestCase):\n    def test_add(self):\n        self.assertEqual(add(2, 3), 5)\n\nif __name__ == '__main__':\n    unittest.main()\n"), 0o640)
 }
 
-func deterministicChecks(ctx context.Context, workspace string, task TaskEnvelope) error {
+func runTests(ctx context.Context, workspace string, task TaskEnvelope, sink *TrajectorySink) ([]CommandResult, error) {
 	for _, name := range []string{"app.py", "test_app.py"} {
 		if _, err := os.Stat(filepath.Join(workspace, name)); err != nil {
-			return fmt.Errorf("controlled template check: %w", err)
+			return nil, fmt.Errorf("controlled template check: %w", err)
 		}
 	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
+	executor := DefaultExecutor(workspace)
+	results := make([]CommandResult, 0, len(task.Tests))
+	for _, command := range task.Tests {
+		if err := sink.Emit("command.started", command[0]); err != nil {
+			return nil, err
+		}
+		result, err := executor.Run(ctx, command, ".", map[string]string{"PYTHONDONTWRITEBYTECODE": "1"})
+		results = append(results, result)
+		if err != nil {
+			return results, err
+		}
+		if err := sink.Emit("command.finished", "controlled command completed"); err != nil {
+			return nil, err
+		}
 	}
-	return nil
+	return results, nil
 }

@@ -55,7 +55,7 @@ func writeFixture(t *testing.T, root string, public ed25519.PublicKey, private e
 			t.Fatal(err)
 		}
 	}
-	body := []byte(`{"schemaVersion":1,"keyId":"test","tenantId":"tenant","projectId":"project","runId":"run","attemptId":"attempt","attempt":1,"template":"python-basic","tests":[["/usr/local/bin/python3","-m","unittest"]]}`)
+	body := []byte(fmt.Sprintf(`{"schemaVersion":1,"keyId":"test","tenantId":"tenant","projectId":"project","runId":"run","attemptId":"attempt","attempt":1,"template":"python-basic","tests":[["%s","-m","unittest"]]}`, defaultPythonExecutable()))
 	if err := os.WriteFile(filepath.Join(root, "secrets", "task", "envelope.json"), body, 0o600); err != nil {
 		t.Fatal(err)
 	}
