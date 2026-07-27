@@ -11,12 +11,11 @@ Phase 4.4 implements the processed-event transaction, duplicate no-op,
 transient retry routing, poison-message DLQ envelope, and sanitized malformed
 message quarantine.
 
-Phase 3.1 and 3.2 are present, but the create-run API and cancellation/retry
-application commands from Phase 3.3 through 3.5 are not. Phase 4.2 can attach
-`agent-run.requested.v1` to the existing transactional run repository create
-operation. Cancellation and retry event insertion remain mandatory integration
-work once those commands exist; Phase 4 must not claim those command paths are
-verified before then.
+Phase 3 creates, cancellation, and retry commands each write their state change
+and typed lifecycle outbox intent in one tenant transaction. Cancellation and
+retry remain durable API commands only: no command synchronously contacts
+Kubernetes, and PostgreSQL lifecycle projection from the Operator remains a
+separate integration boundary.
 
 ## Delivery guarantees and failure model
 

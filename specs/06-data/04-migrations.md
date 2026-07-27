@@ -53,6 +53,12 @@ object default because no authenticated API had created them. The local down
 migration drops the appended column; production rollback uses a corrective
 forward migration when accepted replay records must be retained.
 
+Phase 3.4/3.5 add `000013_agent_run_command_receipts`. It appends constrained
+latest command type, command ID, and safe JSONB response fields to `agent_runs`
+for cancel/retry replay. The local down migration drops only these appended
+fields; production rollback uses a corrective forward migration after receipts
+have been accepted.
+
 ## Naming and ordering
 
 Migration files use a six-digit, increasing version and a kebab-case purpose:

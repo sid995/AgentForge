@@ -39,7 +39,7 @@ header as a substitute.
 
 ## Runs
 
-Phase 3.3 implements the following authenticated tenant-scoped endpoints. The
+Phase 3 implements the following authenticated tenant-scoped endpoints. The
 executable contract is [`contracts/openapi/platform-api.v1.json`](../../contracts/openapi/platform-api.v1.json).
 The temporary development identity accepts only a server-configured opaque
 Bearer token and derives the tenant, actor, and role from that configuration;
@@ -57,12 +57,19 @@ in Phase 12.
   a base64url opaque cursor and `limit` from 1 through 100.
 
 Run responses deliberately exclude the prompt reference, request hash, actor,
-and cancellation metadata. The Phase 3.3 request validates `promptRef`,
+and cancellation metadata. The create request validates `promptRef`,
 runtime, CPU/memory request, timeout, and maximum attempts. It does not execute
 workloads or accept client status mutations.
 
-- `POST /runs/{runId}/cancel`
-- `POST /runs/{runId}/retry`
+- `POST /v1/runs/{runId}/cancel` requires `Idempotency-Key` and a bounded
+  reason. It atomically records `CANCELLING`, cancellation metadata, a safe
+  command receipt, and `agent-run.cancel-requested.v1`; it never contacts
+  Kubernetes. A terminal non-cancelled run returns `409 RUN_TERMINAL`.
+- `POST /v1/runs/{runId}/retry` requires `Idempotency-Key` and `{}`. It
+  atomically creates the next `PENDING` attempt, returns the run to `QUEUED`,
+  records a safe command receipt, and emits `agent-run.retry-requested.v1`.
+  Only a `TRANSIENT_DEPENDENCY` terminal failure below `maxAttempts` is eligible;
+  otherwise it returns `409 RETRY_NOT_ALLOWED`.
 - `GET /runs/{runId}/attempts`
 - `GET /runs/{runId}/trajectory`
 - `GET /runs/{runId}/artifacts`

@@ -1,10 +1,10 @@
 # AgentForge Project Status
 
-**Last updated:** 2026-07-26
+**Last updated:** 2026-07-27
 
 ## Current milestone
 
-Phase 3.3 implementation complete; validate PostgreSQL integration before Phase 3.4
+Phase 3 implementation complete; close Docker-dependent validation gate
 
 ## Overall state
 
@@ -44,6 +44,9 @@ remain explicit dependencies for their corresponding command integrations.
   request hashing and idempotent replay, secure prompt references, opaque
   cursor pagination, executable OpenAPI contract, HTTP contract tests, and
   PostgreSQL application integration coverage
+- Phase 3.4/3.5 implementation: authenticated durable cancel/retry commands,
+  safe command receipts, monotonic retry attempts, transactional lifecycle
+  outbox events, executable OpenAPI/event contracts, and unit/integration tests
 - Phase 4.1 event architecture and transactional-outbox ADR
 - Phase 4.2 transactional AgentRun/outbox insertion, isolated relay role,
   lease-based competing claims, durable publication retries, published-only
@@ -147,14 +150,13 @@ remain explicit dependencies for their corresponding command integrations.
 
 ## In progress
 
-- Phase 3.3 validation: unit, race, vet, OpenAPI contract, and repository
+- Phase 3 validation: unit, race, vet, API/event contract, and repository
   verification pass; PostgreSQL integration and lint require a running local
   Docker daemon and remain unverified in this checkout.
 
 ## Not started
 
-- Phase 3.4 cancellation command
-- Phase 3.5 retry command and Phase 3 audit
+- Phase 3 completion database/lint validation audit
 - Agent Runner
 - Model Gateway
 - Build and deployment services
@@ -169,6 +171,4 @@ remain explicit dependencies for their corresponding command integrations.
 ## Next tasks
 
 1. Start Docker and run `make test-integration` plus `make lint` to close the
-   Phase 3.3 validation gate.
-2. Implement Phase 3.4 cancellation command semantics.
-3. Implement Phase 3.5 retry command and run the Phase 3 completion audit.
+   Phase 3 validation gate and completion audit.

@@ -11,8 +11,12 @@ cursor pagination, an executable OpenAPI contract, HTTP contract tests, and a
 PostgreSQL application integration test. Unit, race, vet, OpenAPI contract,
 and repository verification pass; the Docker-dependent PostgreSQL integration
 and lint gates are unverified while the local Docker daemon is unavailable.
-Phase 3.4 cancellation, Phase 3.5 retry, and the Phase 3 completion audit
-remain next after that gate closes.
+Phase 3.4/3.5 are implemented in `db6eed6`: authenticated commands persist
+tenant-scoped durable cancellation/retry state, a safe latest-command receipt,
+monotonic retry attempts, and paired versioned outbox events. They intentionally
+do not contact Kubernetes or project Operator status into PostgreSQL. The Phase
+3 completion audit remains subject to the Docker-dependent integration/lint
+gate.
 
 ## Implemented persistence boundary
 
@@ -35,7 +39,6 @@ workload. Audit persistence remains deferred.
 
 - Domain tests cover valid and prohibited run/attempt transitions, retry guards,
   terminal state handling, and bounded input validation.
-- PostgreSQL integration tests apply migrations, create and list runs/attempts,
-  enforce idempotency uniqueness and RLS isolation, reject stale attempt writes,
-  and prove concurrent cancellation writes cannot silently overwrite one
-  another.
+- PostgreSQL integration coverage applies migrations and verifies create,
+  durable cancellation/retry receipt replay, monotonic attempt insertion, and
+  paired outbox event types when the integration database is available.

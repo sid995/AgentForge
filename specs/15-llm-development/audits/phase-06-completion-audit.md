@@ -140,7 +140,7 @@ cannot, while manifest security and mutation tests cover the policy contract.
 |---|---|---|
 | Medium | Observed Kubernetes lifecycle is not yet projected back into PostgreSQL. The Phase 6 Operator preserves status-subresource ownership and does not invent the later runner/lifecycle event contract. | Agent Runner and lifecycle integration |
 | Medium | Production deployment, scoped multi-cluster kubeconfigs, Kafka ACL/TLS, high availability, and GitOps manifests are not part of the local handoff packaging. | Infrastructure, security, and delivery phases |
-| Medium | Phase 3.3 create/get/list API, Phase 3.4 cancellation command, and Phase 3.5 retry command remain absent; their HTTP/authentication and command-race behavior is not claimed here. | Resume Phase 3 |
+| Medium | Phase 3 API create/cancellation/retry commands are implemented separately; Operator status is still not projected back into PostgreSQL, so API cancellation remains a durable request rather than Kubernetes termination. | Lifecycle integration |
 | Low | The local kind CNI does not prove production NetworkPolicy enforcement or production admission/runtime sandbox configuration. | Security and production cluster validation |
 | Low | Local PostgreSQL and Redpanda use development-only credentials, resource ceilings, and topology. | Infrastructure and operations |
 

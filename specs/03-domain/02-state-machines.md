@@ -137,9 +137,9 @@ are trusted internal commands, not client status mutations.
 
 ## Cancellation and completion races
 
-Cancellation is a durable request, not a workload termination command. In
-Phase 3 it must not contact Kubernetes. The Phase 3.4 command and its
-queue-removal/intent-projection integrations remain unfinished. Phase 6
+Cancellation is a durable request, not a workload termination command. The
+Phase 3 command atomically records state, a safe command receipt, and outbox
+intent but must not contact Kubernetes. Phase 6
 implements the Kubernetes side once an AgentRun already carries
 `desiredState: Cancelled`: the Operator stops new work, terminates the owned
 Job within a bounded deadline, and records observed cancellation in the CR
@@ -154,8 +154,8 @@ The first successfully committed conditional transition wins:
 - If cancellation commits first, later completion/failure reports for the
   prior version are stale. They may be retained as diagnostic delivery records
   but cannot move the run out of `CANCELLING` or overwrite cancellation.
-- Two simultaneous cancellation commands result in one `CANCELLING` update;
-  the losing command reloads and returns the same cancellation result.
+- Two simultaneous cancellation commands serialize on the run row; one writes
+  `CANCELLING` and the other reloads the durable cancellation result.
 
 ## Attempt state machine
 

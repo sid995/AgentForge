@@ -54,8 +54,11 @@ tenant-scoped idempotency key and effective-request hash, actor, cancellation
 metadata, and UTC lifecycle timestamps. Phase 3.3 additionally stores the
 safe immutable create-response snapshot used for idempotent replay; it contains
 only response-visible run fields and deliberately excludes prompt references,
-request hashes, and actor data. The composite project/tenant foreign key
-prevents a run from referencing a project in another tenant.
+request hashes, and actor data. Phase 3.4/3.5 also store a constraint-coupled
+latest command type, command ID, and safe response snapshot for durable
+cancel/retry replay; they do not retain cancellation reason or actor data. The
+composite project/tenant foreign key prevents a run from referencing a project
+in another tenant.
 
 An attempt stores its owning run and tenant, immutable monotonic attempt number,
 lifecycle status, normalized failure category, optimistic version, opaque

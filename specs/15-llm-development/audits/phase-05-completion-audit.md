@@ -140,7 +140,7 @@ documented in `.env.example` and do not define production capacity policy.
 
 | Severity | Item | Owner phase |
 |---|---|---|
-| Medium | Phase 3.3 create/get/list API, 3.4 cancellation, and 3.5 retry commands remain absent; their HTTP/authentication and race paths are not claimed by this audit. | Resume Phase 3 |
+| Medium | Phase 3 API create/cancellation/retry commands are implemented separately; their Docker-dependent integration/lint completion gate remains unverified in that Phase 3 audit. | Phase 3 validation |
 | Medium | Kubernetes admission and actual node capacity remain authoritative; Scheduler reservations are estimates and the Scheduler creates no Kubernetes resources. | Phase 6 Operator |
 | Medium | Request trace persistence is unavailable until the Phase 3 API accepts trace context. Kafka hints propagate existing correlation/trace fields, while polling uses run ID correlation. | Phase 3 API/observability |
 | Low | Local PostgreSQL/Redpanda are development-only credentials and topology. Production TLS, ACLs, replicas, autoscaling, alerts, and GitOps manifests remain infrastructure work. | Infrastructure/operations |
