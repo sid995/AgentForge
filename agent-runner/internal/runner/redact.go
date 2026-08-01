@@ -22,7 +22,11 @@ func NewRedactor(secretRoot string, references []string) (Redactor, error) {
 				continue
 			}
 			value, err := os.ReadFile(filepath.Join(secretRoot, reference, entry.Name()))
-			if err == nil && len(value) >= 4 {
+
+			if err != nil {
+				return Redactor{}, fmt.Errorf("read secret projection %q/%q: %w", reference, entry.Name(), err)
+			}
+			if len(value) > 0 {
 				values = append(values, string(value))
 			}
 		}
