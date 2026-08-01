@@ -18,10 +18,20 @@ func NewRedactor(secretRoot string, references []string) (Redactor, error) {
 			return Redactor{}, fmt.Errorf("read secret projection %q: %w", reference, err)
 		}
 		for _, entry := range entries {
+			path := filepath.Join(secretRoot, reference, entry.Name())
 			if entry.IsDir() {
 				continue
 			}
-			value, err := os.ReadFile(filepath.Join(secretRoot, reference, entry.Name()))
+			if entry.Type()&os.ModeSymlink != 0 {
+				target, err := os.Stat(path)
+				if err != nil {
+					return Redactor{}, fmt.Errorf("read secret projection %q/%q: %w", reference, entry.Name(), err)
+				}
+				if target.IsDir() {
+					continue
+				}
+			}
+			value, err := os.ReadFile(path)
 
 			if err != nil {
 				return Redactor{}, fmt.Errorf("read secret projection %q/%q: %w", reference, entry.Name(), err)

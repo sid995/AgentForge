@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 7 Agent Runner implemented; kind lifecycle gate blocked by local-image reference defect
+Phase 7 Agent Runner verified
 
 ## Overall state
 
@@ -15,12 +15,11 @@ through 3.5 API, cancellation, and retry commands. Those command gaps are now
 closed and validated.
 Phase 7 adds the deterministic non-root Runner, signed mounted-secret task
 verification, confined execution, ordered heartbeats/trajectory, and mandatory
-filesystem or S3-compatible artifacts. The pinned kind image pulls successfully
-in CI, but the Runner lifecycle script attempts to read a repo digest from the
-locally built Runner image; that field is empty for a local tag, so the script
-fails before the real-Kubernetes scenario begins. The Phase 7 kind gate remains
-explicitly unverified until that image-reference defect is fixed and
-`make test-controller-kind` passes.
+filesystem or S3-compatible artifacts. The real-Kubernetes kind lifecycle gate
+now passes with the locally built Runner image loaded into every kind node and
+aliased to its containerd manifest digest. It verifies deterministic execution,
+retained-PVC artifact recovery after Pod deletion, missing-evidence handling,
+retained cleanup, and transient retry.
 
 ## Completed
 
@@ -167,11 +166,6 @@ explicitly unverified until that image-reference defect is fixed and
   MinIO/S3-compatible adapters, checksum verification/retry, root MinIO test
   profile, and a Runner-specific kind lifecycle scenario
 
-## In progress
-
-- Repair the Phase 7 kind lifecycle script's local Runner image reference and
-  rerun the real-Kubernetes Runner/PVC gate
-
 ## Not started
 
 - Model Gateway
@@ -186,7 +180,4 @@ explicitly unverified until that image-reference defect is fixed and
 
 ## Next tasks
 
-1. Repair the local Runner image reference in the kind lifecycle script and run
-   `make test-controller-kind` to complete the Phase 7 real-Kubernetes gate.
-2. Begin Phase 8 artifact metadata and controlled-access work only after the
-   Phase 7 kind gate is verified.
+1. Begin Phase 8 artifact metadata and controlled-access work.

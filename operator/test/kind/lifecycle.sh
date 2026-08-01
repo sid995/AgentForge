@@ -37,7 +37,14 @@ fi
 "${kubectl_bin}" taint node "${worker_node}" agentforge.dev/node-pool=agents:NoSchedule --overwrite
 
 "${kubectl_bin}" apply -f config/crd/bases/execution.agentforge.dev_agentruns.yaml
-"${kubectl_bin}" wait --for=condition=Established customresourcedefinition/agentruns.execution.agentforge.dev --timeout=60s
+crd_deadline=$((SECONDS + 60))
+until [[ "$("${kubectl_bin}" get customresourcedefinition/agentruns.execution.agentforge.dev -o jsonpath='{.status.conditions[?(@.type=="Established")].status}' 2>/dev/null || true)" == "True" ]]; do
+    if (( SECONDS >= crd_deadline )); then
+        printf '%s\n' 'AgentRun CRD did not become Established within 60 seconds' >&2
+        exit 1
+    fi
+    sleep 1
+done
 "${kubectl_bin}" create namespace agentforge-kind-lifecycle
 "${kubectl_bin}" create configmap artifact-store --namespace agentforge-kind-lifecycle --from-literal='config.json={"schemaVersion":1,"backend":"filesystem","root":"/workspace/artifacts"}'
 "${kubectl_bin}" create configmap runner-trust --namespace agentforge-kind-lifecycle --from-file=task-trust.json=test/kind/runner-task-trust.json
@@ -59,12 +66,18 @@ YAML
 manager_pid="$!"
 
 (cd .. && docker build --tag agentforge/runner:kind --file agent-runner/Dockerfile .)
-runner_image="$(docker image inspect agentforge/runner:kind --format '{{index .RepoDigests 0}}')"
-if [[ -z "${runner_image}" ]]; then
+"${kind_bin}" load docker-image --name "${cluster_name}" agentforge/runner:kind
+runner_image="$(
+    docker exec "${cluster_name}-control-plane" ctr --namespace k8s.io images list |
+        awk '$1 == "docker.io/agentforge/runner:kind" && $3 ~ /^sha256:[a-f0-9]{64}$/ { print "docker.io/agentforge/runner@" $3; exit }'
+)"
+if [[ ! "${runner_image}" =~ ^docker\.io/agentforge/runner@sha256:[a-f0-9]{64}$ ]]; then
     printf '%s\n' 'runner kind gate could not resolve a digest-qualified image' >&2
     exit 1
 fi
-"${kind_bin}" load docker-image --name "${cluster_name}" agentforge/runner:kind
+while IFS= read -r node; do
+    docker exec "${node}" ctr --namespace k8s.io images tag docker.io/agentforge/runner:kind "${runner_image}"
+done < <("${kind_bin}" get nodes --name "${cluster_name}")
 
 "${kubectl_bin}" apply -f - <<YAML
 apiVersion: execution.agentforge.dev/v1alpha1
@@ -138,6 +151,13 @@ metadata:
   namespace: agentforge-kind-lifecycle
 spec:
   restartPolicy: Never
+  nodeSelector:
+    agentforge.dev/node-pool: agents
+  tolerations:
+    - key: agentforge.dev/node-pool
+      operator: Equal
+      value: agents
+      effect: NoSchedule
   containers:
     - name: reader
       image: docker.io/library/busybox@sha256:9532d8c39891ca2ecde4d30d7710e01fb739c87a8b9299685c63704296b16028
@@ -150,7 +170,11 @@ spec:
       persistentVolumeClaim:
         claimName: ${runner_pvc}
 YAML
-"${kubectl_bin}" wait --for=jsonpath='{.status.phase}'=Succeeded pod/artifact-reader --namespace agentforge-kind-lifecycle --timeout=120s
+if ! "${kubectl_bin}" wait --for=jsonpath='{.status.phase}'=Succeeded pod/artifact-reader --namespace agentforge-kind-lifecycle --timeout=120s; then
+    "${kubectl_bin}" describe pod artifact-reader --namespace agentforge-kind-lifecycle >&2 || true
+    "${kubectl_bin}" logs artifact-reader --namespace agentforge-kind-lifecycle >&2 || true
+    exit 1
+fi
 
 "${kubectl_bin}" apply -f test/kind/agentrun.yaml
 deadline=$((SECONDS + 300))
