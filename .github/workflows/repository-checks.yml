@@ -54,6 +54,8 @@ jobs:
         run: make test-events-integration
       - name: Integration-test Runner artifacts
         run: make test-runner-integration
+      - name: Integration-test Platform API artifact store
+        run: make test-artifact-integration
       - name: Build Platform API image
         run: make build-platform-api
       - name: Build Scheduler image

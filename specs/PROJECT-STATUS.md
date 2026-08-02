@@ -172,7 +172,8 @@ separate validated sub-phases.
 ## In progress
 
 - Phase 8.1 artifact-store contract, tenant-scoped object-key foundation, and
-  filesystem/S3 adapter conformance tests
+  filesystem/S3 adapter conformance tests implemented; MinIO integration is
+  pending until Docker is available
 
 ## Not started
 

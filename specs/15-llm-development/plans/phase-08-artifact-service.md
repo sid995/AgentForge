@@ -38,6 +38,10 @@ single adapter conformance suite. Add an ADR for server-owned storage
 configuration and key construction. No HTTP endpoint, database schema, or
 client credential is introduced in this sub-phase.
 
+**Validation status (2026-08-02):** Implemented and unit/race/vet validated.
+The MinIO conformance gate is wired through `make test-artifact-integration`,
+but remains unverified locally while the Docker daemon is unavailable.
+
 ### 8.2 Metadata persistence and audit
 
 Add a forward migration for tenant-owned artifact metadata and audit fields,
@@ -51,8 +55,8 @@ atomically.
 Add the versioned OpenAPI contract and authenticated Platform API handlers for
 listing/getting run artifacts and issuing bounded download URLs. Enforce
 server-derived tenant identity, run ownership, content/retention response
-rules, stable error envelopes, and cross-tenant tests. Raw object keys and
-bucket credentials remain absent from client requests and responses.
+rules, stable error envelopes, and cross-tenant tests. Clients never submit raw
+object keys or receive bucket credentials.
 
 ### 8.4 Retention and end-to-end validation
 
