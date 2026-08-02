@@ -29,6 +29,7 @@ type Options struct {
 	Readiness           func(context.Context) error
 	IdentityResolver    identity.Resolver
 	Runs                RunService
+	Artifacts           ArtifactService
 }
 
 // RunService is the application boundary owned by AgentRun HTTP routes.
@@ -40,6 +41,13 @@ type RunService interface {
 	Retry(context.Context, identity.Identity, uuid.UUID, string) (ports.RunCommandResult, error)
 }
 
+// ArtifactService is the application boundary owned by artifact HTTP routes.
+type ArtifactService interface {
+	List(context.Context, identity.Identity, uuid.UUID) ([]domain.Artifact, error)
+	Get(context.Context, identity.Identity, uuid.UUID, uuid.UUID) (domain.Artifact, error)
+	Download(context.Context, identity.Identity, uuid.UUID, uuid.UUID, time.Duration) (ports.PresignedDownload, error)
+}
+
 // API exposes the Platform API HTTP handler and process readiness state.
 type API struct {
 	build            buildinfo.Info
@@ -47,6 +55,7 @@ type API struct {
 	readiness        func(context.Context) error
 	identityResolver identity.Resolver
 	runs             RunService
+	artifacts        ArtifactService
 	handler          http.Handler
 }
 
@@ -66,7 +75,7 @@ func New(options Options) *API {
 		options.RequestIDGenerator = newRequestID
 	}
 
-	api := &API{build: options.Build, readiness: options.Readiness, identityResolver: options.IdentityResolver, runs: options.Runs}
+	api := &API{build: options.Build, readiness: options.Readiness, identityResolver: options.IdentityResolver, runs: options.Runs, artifacts: options.Artifacts}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health/live", api.live)
 	mux.HandleFunc("GET /health/ready", api.ready)
@@ -76,6 +85,11 @@ func New(options Options) *API {
 		mux.HandleFunc("GET /v1/runs/{runId}", api.getRun)
 		mux.HandleFunc("POST /v1/runs/{runId}/cancel", api.cancelRun)
 		mux.HandleFunc("POST /v1/runs/{runId}/retry", api.retryRun)
+	}
+	if api.artifacts != nil {
+		mux.HandleFunc("GET /v1/runs/{runId}/artifacts", api.listArtifacts)
+		mux.HandleFunc("GET /v1/runs/{runId}/artifacts/{artifactId}", api.getArtifact)
+		mux.HandleFunc("GET /v1/runs/{runId}/artifacts/{artifactId}/download", api.downloadArtifact)
 	}
 
 	var handler http.Handler = http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {

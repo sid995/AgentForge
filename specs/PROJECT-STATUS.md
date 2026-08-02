@@ -23,8 +23,8 @@ passes in CI.
 Phase 8 has implemented the platform-owned artifact-store contract, tenant-safe
 object-key foundation, and immutable tenant-scoped PostgreSQL metadata/audit
 records. Docker-dependent MinIO and PostgreSQL integration gates remain
-unverified locally; controlled metadata/download access follows in a separate
-sub-phase.
+unverified locally. Phase 8.3 now adds authenticated metadata reads and
+bounded server-generated download URLs; retention/deletion remains deferred.
 
 ## Completed
 
@@ -178,10 +178,14 @@ sub-phase.
   restrictive application-role grants, repository operations, and PostgreSQL
   RLS integration coverage; the Docker-dependent PostgreSQL gate remains
   unverified locally
+- Phase 8.3 authenticated tenant-scoped artifact list/get/download routes,
+  safe metadata responses, server-only optional S3 configuration, and bounded
+  1- to 900-second download capabilities; prior Docker-dependent MinIO and
+  PostgreSQL integration gates remain unverified locally
 
 ## In progress
 
-- Phase 8.3 tenant-scoped artifact metadata and controlled-download API
+- Phase 8.4 artifact retention/deletion policy and end-to-end validation
 
 ## Not started
 
@@ -197,6 +201,6 @@ sub-phase.
 
 ## Next tasks
 
-1. Add Phase 8.3 authenticated artifact metadata and controlled-download API.
+1. Add Phase 8.4 controlled artifact retention/deletion policy.
 2. Run the pending Phase 8.1 MinIO and Phase 8.2 PostgreSQL Docker-dependent
    integration gates before claiming Phase 8 verification.

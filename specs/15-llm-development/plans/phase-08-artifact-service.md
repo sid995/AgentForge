@@ -66,6 +66,14 @@ server-derived tenant identity, run ownership, content/retention response
 rules, stable error envelopes, and cross-tenant tests. Clients never submit raw
 object keys or receive bucket credentials.
 
+**Validation status (2026-08-02):** Implemented with authenticated list/get/
+download routes, explicit run-before-artifact authorization, safe metadata
+responses, and a 1- to 900-second download lifetime. S3-compatible storage is
+configured only through optional server-owned environment variables; without
+it, metadata reads remain available and downloads fail closed with `503`. Unit,
+HTTP, OpenAPI, and `go vet` checks pass locally. The prior Docker-dependent
+MinIO and PostgreSQL integration gates remain unverified.
+
 ### 8.4 Retention and end-to-end validation
 
 Add controlled deletion/retention transitions only after the metadata model is

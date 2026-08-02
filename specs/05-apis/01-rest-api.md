@@ -72,8 +72,26 @@ workloads or accept client status mutations.
   otherwise it returns `409 RETRY_NOT_ALLOWED`.
 - `GET /runs/{runId}/attempts`
 - `GET /runs/{runId}/trajectory`
-- `GET /runs/{runId}/artifacts`
 - `GET /runs/{runId}/events`
+
+## Artifacts
+
+Phase 8.3 implements authenticated tenant-scoped artifact reads. The resolved
+server identity must own the requested run before metadata or a capability is
+returned. Metadata responses deliberately exclude the storage object key and
+audited actor; clients never send a storage key or credential.
+
+- `GET /v1/runs/{runId}/artifacts` returns immutable metadata for artifacts
+  belonging to one caller-owned run.
+- `GET /v1/runs/{runId}/artifacts/{artifactId}` returns one artifact only when
+  its run belongs to the caller tenant.
+- `GET /v1/runs/{runId}/artifacts/{artifactId}/download` accepts optional
+  `expiresInSeconds` from 1 through 900 (default 300) and returns only a
+  server-generated, short-lived read URL plus its expiry. A missing or
+  unavailable server storage dependency returns `503 DEPENDENCY_UNAVAILABLE`.
+
+All three routes return `404 NOT_FOUND` for an absent or cross-tenant run or
+artifact. They are read-only and do not alter artifact retention or payloads.
 
 ## Builds and deployments
 

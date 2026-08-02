@@ -24,8 +24,10 @@ write.
 Storage clients, buckets, roots, and credentials are injected only through
 trusted server configuration. The filesystem adapter exists for deterministic
 unit conformance tests and explicitly does not mint access URLs. The
-S3-compatible adapter may issue only bounded download URLs; the metadata and
-authorization layer that decides whether to issue one is introduced separately.
+S3-compatible adapter may issue only bounded download URLs. Phase 8.3 adds the
+metadata and authorization layer that decides whether to issue one; it derives
+the key from persisted tenant/project/run/attempt metadata and exposes neither
+that key nor a bucket credential to the client.
 
 PostgreSQL remains authoritative for artifact metadata, retention, actor audit,
 and tenant authorization. Object storage remains authoritative only for payload
