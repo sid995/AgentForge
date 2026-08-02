@@ -7,7 +7,7 @@ BUILD_VERSION ?= development
 BUILD_COMMIT ?= unknown
 BUILD_TIME ?= unknown
 
-.PHONY: help check-tools format lint lint-controller test verify-event-contracts test-integration test-events-integration test-runner-integration test-controller test-controller-kind operator-manifests operator-generate migrate bootstrap-topics build-platform-api build-scheduler build-handoff build-operator build-runner check-all check-all-kind verify
+.PHONY: help check-tools format lint lint-controller test verify-event-contracts test-integration test-events-integration test-runner-integration test-artifact-integration test-controller test-controller-kind operator-manifests operator-generate migrate bootstrap-topics build-platform-api build-scheduler build-handoff build-operator build-runner check-all check-all-kind verify
 
 help:
 	@printf '%s\n' 'AgentForge development targets:'
@@ -20,6 +20,7 @@ help:
 	@printf '%s\n' '  test-integration  Run PostgreSQL integration tests in Docker Compose'
 	@printf '%s\n' '  test-events-integration Run Kafka contract tests against isolated Redpanda'
 	@printf '%s\n' '  test-runner-integration Run Agent Runner artifact tests against isolated MinIO'
+	@printf '%s\n' '  test-artifact-integration Run Platform API artifact-store tests against isolated MinIO'
 	@printf '%s\n' '  test-controller   Generate manifests and run Operator envtest coverage'
 	@printf '%s\n' '  test-controller-kind Run the pinned Operator kind lifecycle gate'
 	@printf '%s\n' '  operator-manifests Regenerate Operator CRD and RBAC manifests'
@@ -97,6 +98,14 @@ test-runner-integration:
 		RUNNER_MINIO_HOST_PORT=29000 RUNNER_MINIO_ROOT_USER="$$runner_access_key" RUNNER_MINIO_ROOT_PASSWORD="$$runner_secret_key" docker compose -f docker-compose.yml -p agentforge-runner-integration --profile runner up --detach --wait minio; \
 		AGENTFORGE_TEST_MINIO_ENDPOINT='127.0.0.1:29000' AGENTFORGE_TEST_MINIO_ACCESS_KEY="$$runner_access_key" AGENTFORGE_TEST_MINIO_SECRET_KEY="$$runner_secret_key" go test -count=1 -tags=runnerintegration ./agent-runner/internal/runner
 
+test-artifact-integration:
+	@set -euo pipefail; \
+		cleanup() { docker compose -f docker-compose.yml -p agentforge-artifact-integration --profile runner down --volumes --remove-orphans; }; \
+		trap cleanup EXIT; \
+		runner_access_key="$${RUNNER_MINIO_ROOT_USER:-agentforge-runner}"; runner_secret_key="$${RUNNER_MINIO_ROOT_PASSWORD:-agentforge-runner-secret}"; \
+		RUNNER_MINIO_HOST_PORT=29000 RUNNER_MINIO_ROOT_USER="$$runner_access_key" RUNNER_MINIO_ROOT_PASSWORD="$$runner_secret_key" docker compose -f docker-compose.yml -p agentforge-artifact-integration --profile runner up --detach --wait minio; \
+		AGENTFORGE_TEST_MINIO_ENDPOINT='127.0.0.1:29000' AGENTFORGE_TEST_MINIO_ACCESS_KEY="$$runner_access_key" AGENTFORGE_TEST_MINIO_SECRET_KEY="$$runner_secret_key" go test -count=1 -tags=artifactintegration ./services/platform-api/internal/adapters/artifactstore
+
 test-controller:
 	@$(MAKE) -C operator test
 	@KUBEBUILDER_ASSETS="$$(operator/bin/setup-envtest use 1.36.0 --bin-dir "$(CURDIR)/operator/bin" -p path)" go test -count=1 -tags=controllerintegration ./services/platform-api/internal/application/handoff
@@ -152,7 +161,7 @@ build-runner:
 		--file agent-runner/Dockerfile .
 
 check-all:
-	@$(MAKE) check-tools format lint test verify-event-contracts test-integration test-events-integration test-runner-integration test-controller build-platform-api build-scheduler build-handoff build-operator build-runner verify
+	@$(MAKE) check-tools format lint test verify-event-contracts test-integration test-events-integration test-runner-integration test-artifact-integration test-controller build-platform-api build-scheduler build-handoff build-operator build-runner verify
 
 check-all-kind: check-all
 	@$(MAKE) test-controller-kind

@@ -44,6 +44,10 @@
 - cross-tenant API and repository access.
 - RLS enforcement.
 - object-storage prefix isolation.
+- artifact metadata/run ownership checks, safe response redaction, and bounded
+  server-generated download capabilities.
+- administrator-only HOT artifact deletion, object-first retry reconciliation,
+  immutable tombstone visibility, and cross-tenant tombstone RLS rejection.
 - Kubernetes namespace and egress isolation.
 - explicit one-to-one cluster-context mapping and cross-tenant handoff
   rejection before Kubernetes writes.

@@ -20,8 +20,8 @@ Copy [`.env.example`](../.env.example) to `.env` before running the local
 PostgreSQL dependency. The example documents every environment variable used
 by the Platform API, migration command, Compose configuration, and supported
 build metadata, relay, Scheduler and handoff database roles, Kafka client,
-trusted execution intent, Kubernetes context mapping, and Redpanda inputs
-through Phase 6.
+trusted execution intent, Kubernetes context mapping, Redpanda inputs, and
+server-owned artifact storage through Phase 8.
 `.env` is ignored by Git; its included passwords are development-only defaults
 and must not be used outside a local machine.
 
@@ -71,6 +71,7 @@ make test-controller
 make lint-controller
 make lint
 make test-runner-integration
+make test-artifact-integration
 make build-operator
 make build-handoff
 make build-platform-api
@@ -169,3 +170,13 @@ Compose project, runs the Runner's S3-compatible artifact tests, and removes
 the test volume. `make build-runner` builds the non-root Runner image. The
 Runner's runtime configuration and Secret mounts are supplied by the Operator
 workload; they are not developer `.env` settings.
+
+Platform API artifact downloads use server-owned S3-compatible configuration:
+`AGENTFORGE_ARTIFACT_S3_ENDPOINT`,
+`AGENTFORGE_ARTIFACT_S3_ACCESS_KEY`,
+`AGENTFORGE_ARTIFACT_S3_SECRET_KEY`, and `AGENTFORGE_ARTIFACT_S3_BUCKET` must
+be supplied together. `AGENTFORGE_ARTIFACT_S3_PREFIX` is optional and
+`AGENTFORGE_ARTIFACT_S3_SECURE` defaults to `true`. These settings are never
+HTTP request fields or API responses. Without them, artifact metadata endpoints
+remain available but download requests fail closed with
+`503 DEPENDENCY_UNAVAILABLE`.
