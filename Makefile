@@ -79,7 +79,7 @@ test-integration:
 		AGENTFORGE_TEST_RELAY_DATABASE_URL='postgres://agentforge_relay:agentforge-relay@127.0.0.1:25432/agentforge?sslmode=disable' \
 		AGENTFORGE_TEST_SCHEDULER_DATABASE_URL='postgres://agentforge_scheduler:agentforge-scheduler@127.0.0.1:25432/agentforge?sslmode=disable' \
 		AGENTFORGE_TEST_HANDOFF_DATABASE_URL='postgres://agentforge_handoff:agentforge-handoff@127.0.0.1:25432/agentforge?sslmode=disable' \
-		go test -count=1 -tags=integration ./services/platform-api/...
+		go test -count=1 -p 1 -tags=integration ./services/platform-api/...
 
 test-events-integration:
 	@set -euo pipefail; \

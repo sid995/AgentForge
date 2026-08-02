@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 7 Agent Runner implemented; kind lifecycle validation enabled
+Phase 7 Agent Runner verified; PostgreSQL integration gate hardened
 
 ## Overall state
 
@@ -15,10 +15,11 @@ through 3.5 API, cancellation, and retry commands. Those command gaps are now
 closed and validated.
 Phase 7 adds the deterministic non-root Runner, signed mounted-secret task
 verification, confined execution, ordered heartbeats/trajectory, and mandatory
-filesystem or S3-compatible artifacts. The pinned real-kind lifecycle gate now
-passes locally, and the PR workflow has been re-enabled to run it. CI evidence
-for the re-enabled job is pending; Phase 7 will be marked Verified after that
-run passes.
+filesystem or S3-compatible artifacts. The pinned real-kind lifecycle gate
+passes locally and in GitHub Actions run 30760524852. The same run then
+exposed a shared-database PostgreSQL integration-test race; the integration
+target now serializes those package tests with `-p 1`, and the updated PR
+result is pending.
 
 ## Completed
 
@@ -163,8 +164,7 @@ run passes.
   cancellation
 - Phase 7.4 manifest-last mandatory artifacts through confined filesystem and
   MinIO/S3-compatible adapters, checksum verification/retry, root MinIO test
-  profile, and a passing local Runner-specific kind lifecycle scenario; the CI
-  kind job is re-enabled for confirmation
+  profile, and passing local and CI Runner-specific kind lifecycle scenarios
 
 ## Not started
 
@@ -180,6 +180,6 @@ run passes.
 
 ## Next tasks
 
-1. Record the re-enabled GitHub Actions kind result and mark Phase 7 Verified
-   only after it passes.
+1. Record the updated GitHub Actions result after the PostgreSQL integration
+   isolation fix.
 2. Continue Phase 8 artifact metadata and controlled-access work.
