@@ -53,10 +53,10 @@ public trust configuration; brokered Vault/source retrieval remains deferred.
 
 Unit and adversarial tests cover signature verification, identity checks,
 confinement, cancellation, redaction, and artifact ordering. Container and
-MinIO tests prove durable artifacts. The Operator kind scenario passes as the
-real-Job/PVC evidence gate, including deterministic signed-task execution,
-retained-PVC recovery after Pod deletion, missing-evidence handling, retained
-cleanup, and transient retry.
+MinIO tests prove durable artifacts. The Operator kind scenario remains the
+real-Job/PVC evidence gate, but is unverified in the current PR because its CI
+job is disabled. Retained-PVC recovery after Pod deletion, missing-evidence
+handling, retained cleanup, and transient retry require a passing CI run.
 
 ## Revisit conditions
 

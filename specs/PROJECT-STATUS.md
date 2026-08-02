@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 7 Agent Runner verified
+Phase 7 Agent Runner implemented; CI kind lifecycle verification pending
 
 ## Overall state
 
@@ -15,11 +15,11 @@ through 3.5 API, cancellation, and retry commands. Those command gaps are now
 closed and validated.
 Phase 7 adds the deterministic non-root Runner, signed mounted-secret task
 verification, confined execution, ordered heartbeats/trajectory, and mandatory
-filesystem or S3-compatible artifacts. The real-Kubernetes kind lifecycle gate
-now passes with the locally built Runner image loaded into every kind node and
-aliased to its containerd manifest digest. It verifies deterministic execution,
-retained-PVC artifact recovery after Pod deletion, missing-evidence handling,
-retained cleanup, and transient retry.
+filesystem or S3-compatible artifacts. Local non-kind validation is recorded
+as passed, but the PR workflow currently does not execute its kind lifecycle
+job. Consequently, real-Kubernetes execution and retained-PVC artifact
+recovery after Pod deletion remain unverified until that job is re-enabled and
+passes in CI.
 
 ## Completed
 

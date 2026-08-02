@@ -28,7 +28,7 @@ metadata:
 ---
 apiVersion: v1
 data:
-  config.json: '{"artifactDestinationRef":"artifact-store","attempt":1,"attemptId":"019b0000-0000-7000-8000-000000000005","configurationRefs":["a-policy-config","z-runner-config"],"projectId":"019b0000-0000-7000-8000-000000000003","runId":"019b0000-0000-7000-8000-000000000004","schemaVersion":1,"secretRefs":["artifact-credential","source-credential"],"taskRef":"vault://tasks/run-example","tenantId":"019b0000-0000-7000-8000-000000000002","timeoutSeconds":1800}'
+  config.json: '{"artifactDestinationRef":"artifact-store","attempt":1,"attemptId":"019b0000-0000-7000-8000-000000000005","configurationRefs":["a-policy-config","z-runner-config"],"projectId":"019b0000-0000-7000-8000-000000000003","runId":"019b0000-0000-7000-8000-000000000004","schemaVersion":1,"secretRefs":["artifact-credential","runner-task","source-credential"],"taskRef":"secret://runner-task/envelope.json","tenantId":"019b0000-0000-7000-8000-000000000002","timeoutSeconds":1800}'
 immutable: true
 kind: ConfigMap
 metadata:
@@ -235,8 +235,11 @@ spec:
         - mountPath: /var/run/agentforge/secrets/artifact-credential
           name: external-secret-00
           readOnly: true
-        - mountPath: /var/run/agentforge/secrets/source-credential
+        - mountPath: /var/run/agentforge/secrets/runner-task
           name: external-secret-01
+          readOnly: true
+        - mountPath: /var/run/agentforge/secrets/source-credential
+          name: external-secret-02
           readOnly: true
       enableServiceLinks: false
       nodeSelector:
@@ -304,6 +307,10 @@ spec:
           defaultMode: 288
           secretName: artifact-credential
       - name: external-secret-01
+        secret:
+          defaultMode: 288
+          secretName: runner-task
+      - name: external-secret-02
         secret:
           defaultMode: 288
           secretName: source-credential

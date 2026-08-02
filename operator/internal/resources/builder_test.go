@@ -308,7 +308,7 @@ func validResourceAgentRun() *executionv1alpha1.AgentRun {
 			RunnerImage:      "ghcr.io/agentforge/runner@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			Runtime:          "python-3.12",
 			ExecutionProfile: "standard",
-			TaskRef:          "vault://tasks/run-example",
+			TaskRef:          "secret://runner-task/envelope.json",
 			TimeoutSeconds:   1800,
 			RetryPolicy: executionv1alpha1.RetryPolicy{
 				MaxAttempts: 3, InitialBackoffSeconds: 5, MaxBackoffSeconds: 300,
@@ -326,7 +326,7 @@ func validResourceAgentRun() *executionv1alpha1.AgentRun {
 				{Name: "z-runner-config"}, {Name: "a-policy-config"},
 			},
 			SecretRefs: []executionv1alpha1.LocalObjectReference{
-				{Name: "source-credential"}, {Name: "artifact-credential"},
+				{Name: "source-credential"}, {Name: "artifact-credential"}, {Name: "runner-task"},
 			},
 			DesiredState: executionv1alpha1.DesiredStateRunning,
 		},

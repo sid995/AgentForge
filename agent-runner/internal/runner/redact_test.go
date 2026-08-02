@@ -45,3 +45,43 @@ func TestNewRedactorRejectsUnreadableSecretProjectionEntry(t *testing.T) {
 		t.Fatal("expected unreadable secret projection entry to fail")
 	}
 }
+
+func TestNewRedactorRejectsEscapingProjectionReferences(t *testing.T) {
+	secretRoot := t.TempDir()
+	for _, reference := range []string{".", "../outside", filepath.Join("task", "..", "outside"), filepath.Join(secretRoot, "task")} {
+		t.Run(reference, func(t *testing.T) {
+			if _, err := NewRedactor(secretRoot, []string{reference}); err == nil {
+				t.Fatal("expected invalid secret projection reference to fail")
+			}
+		})
+	}
+}
+
+func TestNewRedactorRejectsSecretFileSymlinkOutsideProjection(t *testing.T) {
+	secretRoot := t.TempDir()
+	projection := filepath.Join(secretRoot, "task")
+	if err := os.MkdirAll(projection, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	external := filepath.Join(t.TempDir(), "token")
+	if err := os.WriteFile(external, []byte("outside-secret"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(external, filepath.Join(projection, "token")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewRedactor(secretRoot, []string{"task"}); err == nil {
+		t.Fatal("expected outbound secret-file symlink to fail")
+	}
+}
+
+func TestNewRedactorRejectsSymlinkProjection(t *testing.T) {
+	secretRoot := t.TempDir()
+	external := t.TempDir()
+	if err := os.Symlink(external, filepath.Join(secretRoot, "task")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewRedactor(secretRoot, []string{"task"}); err == nil {
+		t.Fatal("expected symlink secret projection to fail")
+	}
+}

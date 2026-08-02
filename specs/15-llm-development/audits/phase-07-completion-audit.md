@@ -17,7 +17,7 @@
 |---|---|---|
 | Deterministic Runner can execute a controlled task | Go Runner module, signed Ed25519 task loader, controlled Python template, non-root image, and unit/race tests | Passed |
 | Heartbeats and trajectory are visible | Ordered JSONL sink emits structured logs and durable trajectory chunks | Passed |
-| Mandatory artifacts survive Pod deletion | Real kind Runner/PVC scenario executes the signed task, deletes the Job Pod, then reads the manifest and terminal evidence from the retained PVC; MinIO integration independently proves S3 durability | Passed |
+| Mandatory artifacts survive Pod deletion | Filesystem Runner/PVC scenario is checked into the kind gate; MinIO integration independently proves S3 durability | Unverified: the current PR workflow does not execute the kind gate, so it has no CI evidence that artifacts survive Pod deletion |
 | Cancellation terminates child processes | Executor applies process-group SIGTERM/SIGKILL and focused deadline tests | Passed |
 
 ## Security and contract review
@@ -48,12 +48,13 @@
 | `make build-runner` | Passed; image runs as UID/GID 65532 |
 | `docker compose config --quiet` | Passed |
 | `make verify` and `git diff --check` | Passed |
-| `make test-controller-kind` | Passed locally on kind 0.32.0/Kubernetes 1.36.1: digest-addressed Runner execution, retained-PVC artifact recovery, missing-evidence handling, retained cleanup, and transient retry |
+| `make test-controller-kind` | Unverified in PR #10: the workflow's kind job is disabled, so there is no current CI result for real Runner/PVC execution, retained-PVC recovery, missing-evidence handling, cleanup, or transient retry |
 
 ## Conclusion
 
-Phase 7 is Verified. All repository checks and the real-Kubernetes Runner/PVC
-gate pass. The kind scenario verifies digest-addressed locally built image
-resolution, deterministic signed-task execution, retained-PVC artifacts,
-missing-evidence failure, retained cleanup, and transient retry. Phase 8 may
-begin artifact metadata and controlled-access work.
+Phase 7 implementation and local non-kind validation are complete. The phase
+is not Verified because the real-Kubernetes Runner/PVC gate has no current CI
+result. The disabled kind job leaves retained-PVC artifact recovery,
+missing-evidence handling, retained cleanup, and transient retry unverified.
+This is the remaining Phase 7 validation risk; re-enable the job and record a
+passing CI run before restoring Verified status.
