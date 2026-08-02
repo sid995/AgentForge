@@ -7,6 +7,7 @@ ARG BUILD_COMMIT=unknown
 ARG BUILD_TIME=unknown
 
 COPY go.work ./
+COPY agent-runner/go.mod agent-runner/go.sum ./agent-runner/
 COPY operator operator
 COPY services/platform-api services/platform-api
 

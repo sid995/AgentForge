@@ -84,6 +84,9 @@ func (r *AgentRunReconciler) reconcileCleanup(ctx context.Context, run *executio
 func (r *AgentRunReconciler) handleCleanupFailure(run *executionv1alpha1.AgentRun, reason string, cleanupErr *ReconcileError) (bool, *ReconcileError) {
 	started := cleanupStartedAt(run)
 	if !started.IsZero() && !r.now().Before(started.Add(cleanupDeadline)) {
+		// A finalizer that can never make progress blocks namespace deletion. Release
+		// it after the bounded escalation window, but leave an explicit condition for
+		// the retained-resource operator to investigate rather than deleting blindly.
 		r.completeCleanup(run, "CleanupEscalated", "Cleanup deadline elapsed; finalizer release requires retained-resource operator review")
 		return true, nil
 	}

@@ -195,6 +195,8 @@ func (r *AgentRunReconciler) configurationReferencesReady(ctx context.Context, r
 	slices.Sort(secretNames)
 	secretNames = slices.Compact(secretNames)
 	for _, name := range secretNames {
+		// Metadata is enough to gate scheduling; use the uncached reader and never
+		// place Secret values in the controller cache or reconciliation status.
 		object := &metav1.PartialObjectMetadata{}
 		object.SetGroupVersionKind(corev1.SchemeGroupVersion.WithKind("Secret"))
 		if err := r.uncachedReader().Get(ctx, client.ObjectKey{Namespace: run.Namespace, Name: name}, object); err != nil {

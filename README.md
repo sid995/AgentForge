@@ -3,7 +3,7 @@
 AgentForge is a Kubernetes-native infrastructure platform for running autonomous coding-agent workloads in isolated environments, tracking their execution and cost, building validated container artifacts, and deploying generated applications through GitOps.
 
 This repository contains the complete specification and GPT-5.6 Codex execution
-playbook plus the implemented control-plane foundations through Phase 6.10.
+playbook plus the implemented control-plane foundations through Phase 7.4.
 Production implementation proceeds through validated, committed sub-phases.
 
 ## Start here
@@ -28,8 +28,7 @@ Production implementation proceeds through validated, committed sub-phases.
 Phase 2 and the Phase 3.1/3.2 AgentRun state/persistence foundation are
 complete. Phase 4.1 now defines the transactional-outbox, at-least-once Kafka,
 idempotent-consumer, retry/DLQ, replay, retention, security, and compatibility
-architecture. Phase 3.3 through 3.5 command/API work remains explicitly
-unfinished. Phase 4.2 adds the PostgreSQL transactional outbox and
+architecture. Phase 3.3 through 3.5 command/API work is verified. Phase 4.2 adds the PostgreSQL transactional outbox and
 provider-independent relay foundation. Phase 4.3 adds executable event
 contracts, Kafka adapters, and pinned local Redpanda in the same root Compose
 file. Phase 4.4 adds database-idempotent consumer transactions and retry/DLQ
@@ -59,7 +58,12 @@ idempotent, tenant-isolated Scheduler-event-to-AgentRun handoff without giving
 the Scheduler process or consumer permission to create Jobs. Phase 6 is closed
 by its Kubernetes/security review and
 [`completion audit`](specs/15-llm-development/audits/phase-06-completion-audit.md);
-see [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md).
+see [`specs/PROJECT-STATUS.md`](specs/PROJECT-STATUS.md). Phase 7 adds the
+non-root deterministic Agent Runner with signed mounted-secret tasks,
+restricted argv execution, ordered trajectory/heartbeats, and manifest-last
+filesystem or S3-compatible artifact publication. Its unit, race, image, and
+MinIO gates pass; the pinned kind node image must be available before the final
+real-Kubernetes Runner gate can be marked verified.
 
 ## Agent Operator development
 
@@ -73,6 +77,16 @@ make test-controller-kind
 make lint-controller
 make build-operator
 ```
+
+For the complete local validation, integration, and image-build workflow, run:
+
+```bash
+make check-all
+```
+
+This runs every repository gate except the external Kubernetes kind lifecycle
+test. When Docker and the pinned kind node image are available, use
+`make check-all-kind` to include that gate.
 
 Generation downloads version-pinned tools into ignored `operator/bin/` paths.
 Phase 6.6 also handles `WaitForFirstConsumer` binding and observed lifecycle;

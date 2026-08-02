@@ -105,7 +105,7 @@ services:
       AGENTFORGE_HANDOFF_CLUSTER_CONTEXTS: ${AGENTFORGE_HANDOFF_CLUSTER_CONTEXTS:-{"cluster-local":"kind-agentforge"}}
       AGENTFORGE_HANDOFF_QUARANTINE_TENANT_ID: ${AGENTFORGE_HANDOFF_QUARANTINE_TENANT_ID:-019b0000-0000-7000-8000-000000000001}
     volumes:
-      - ${AGENTFORGE_HANDOFF_KUBECONFIG:-./.local/kubeconfig}:/kubeconfig/config:ro
+      - ${AGENTFORGE_HANDOFF_KUBECONFIG:-./.local/kubeconfig/config}:/kubeconfig/config:ro
     ports:
       - "${HANDOFF_HOST_PORT:-18082}:8082"
     depends_on:
@@ -114,6 +114,23 @@ services:
       redpanda:
         condition: service_healthy
     restart: unless-stopped
+
+  minio:
+    profiles: ["runner"]
+    image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    cpus: ${RUNNER_MINIO_CPUS:-0.5}
+    mem_limit: ${RUNNER_MINIO_MEMORY_LIMIT:-256m}
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${RUNNER_MINIO_ROOT_USER:-agentforge-runner}
+      MINIO_ROOT_PASSWORD: ${RUNNER_MINIO_ROOT_PASSWORD:-agentforge-runner-secret}
+    ports:
+      - "${RUNNER_MINIO_HOST_PORT:-19000}:9000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://127.0.0.1:9000/minio/health/live"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
 
 volumes:
   postgres-data:

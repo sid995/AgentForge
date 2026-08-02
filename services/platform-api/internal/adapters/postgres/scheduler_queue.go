@@ -34,6 +34,8 @@ func (repository *SchedulerQueueRepository) Claim(ctx context.Context, request p
 	}
 	defer func() { _ = tx.Rollback() }()
 	now := request.Now.UTC()
+	// Rank each tenant before taking row locks. SKIP LOCKED lets schedulers work in
+	// parallel, while the short lease makes a crashed claimant's work eligible again.
 	rows, err := tx.QueryContext(ctx, `
 		with base as materialized (
 			select run.id, run.tenant_id, run.version, run.created_at,

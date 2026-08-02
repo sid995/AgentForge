@@ -1,5 +1,13 @@
 # Agent Runner
 
+## Phase 7 protocol
+
+The Phase 7 protocol is specified in
+`15-llm-development/plans/phase-07-agent-runner.md`. It defines the versioned
+runtime configuration, signed mounted-secret task envelope, trajectory and
+heartbeat records, restricted command policy, artifact manifest, exit taxonomy,
+and terminal-evidence ordering.
+
 ## Pipeline
 
 1. Load signed task envelope.

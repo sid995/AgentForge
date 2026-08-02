@@ -7,18 +7,19 @@ BUILD_VERSION ?= development
 BUILD_COMMIT ?= unknown
 BUILD_TIME ?= unknown
 
-.PHONY: help check-tools format lint lint-controller test verify-event-contracts test-integration test-events-integration test-controller test-controller-kind operator-manifests operator-generate migrate bootstrap-topics build-platform-api build-scheduler build-handoff build-operator verify
+.PHONY: help check-tools format lint lint-controller test verify-event-contracts test-integration test-events-integration test-runner-integration test-controller test-controller-kind operator-manifests operator-generate migrate bootstrap-topics build-platform-api build-scheduler build-handoff build-operator build-runner check-all check-all-kind verify
 
 help:
 	@printf '%s\n' 'AgentForge development targets:'
 	@printf '%s\n' '  check-tools       Check Phase 0 through Phase 6 prerequisites'
 	@printf '%s\n' '  format            Format tracked Go source'
-	@printf '%s\n' '  lint              Run Platform API and Operator static analysis'
+	@printf '%s\n' '  lint              Run Platform API, Agent Runner, and Operator static analysis'
 	@printf '%s\n' '  lint-controller   Run Operator static analysis'
-	@printf '%s\n' '  test              Run Platform API unit tests'
+	@printf '%s\n' '  test              Run Platform API and Agent Runner unit tests'
 	@printf '%s\n' '  verify-event-contracts Validate event schemas, compatibility, and fixtures'
 	@printf '%s\n' '  test-integration  Run PostgreSQL integration tests in Docker Compose'
 	@printf '%s\n' '  test-events-integration Run Kafka contract tests against isolated Redpanda'
+	@printf '%s\n' '  test-runner-integration Run Agent Runner artifact tests against isolated MinIO'
 	@printf '%s\n' '  test-controller   Generate manifests and run Operator envtest coverage'
 	@printf '%s\n' '  test-controller-kind Run the pinned Operator kind lifecycle gate'
 	@printf '%s\n' '  operator-manifests Regenerate Operator CRD and RBAC manifests'
@@ -29,6 +30,9 @@ help:
 	@printf '%s\n' '  build-scheduler    Build the Scheduler container image (BUILD_VERSION, BUILD_COMMIT, BUILD_TIME are supported)'
 	@printf '%s\n' '  build-handoff      Build the AgentRun handoff container image (BUILD_VERSION, BUILD_COMMIT, BUILD_TIME are supported)'
 	@printf '%s\n' '  build-operator     Build the Agent Operator container image'
+	@printf '%s\n' '  build-runner       Build the deterministic Agent Runner container image'
+	@printf '%s\n' '  check-all          Run all local checks, integrations, and image builds except the kind gate'
+	@printf '%s\n' '  check-all-kind     Run check-all plus the pinned Kubernetes kind lifecycle gate'
 	@printf '%s\n' '  verify            Validate repository controls and documentation inventory'
 
 check-tools:
@@ -47,6 +51,11 @@ lint:
 	else \
 		docker run --rm --volume "$(CURDIR):/workspace" --workdir /workspace/services/platform-api $(GOLANGCI_LINT_IMAGE) golangci-lint run ./...; \
 	fi
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		cd agent-runner && golangci-lint run ./...; \
+	else \
+		docker run --rm --volume "$(CURDIR):/workspace" --workdir /workspace/agent-runner $(GOLANGCI_LINT_IMAGE) golangci-lint run ./...; \
+	fi
 	@$(MAKE) -C operator lint
 
 lint-controller:
@@ -54,6 +63,7 @@ lint-controller:
 
 test:
 	@go test ./services/platform-api/...
+	@go test ./agent-runner/...
 
 verify-event-contracts:
 	@go test -count=1 ./services/platform-api/internal/events -run '^TestEventContract'
@@ -78,6 +88,14 @@ test-events-integration:
 		REDPANDA_HOST_PORT=29092 docker compose -f docker-compose.yml -p agentforge-events-integration up --detach --wait redpanda; \
 		COMPOSE_PROJECT_NAME=agentforge-events-integration scripts/bootstrap-topics.sh; \
 		AGENTFORGE_TEST_KAFKA_BROKERS='127.0.0.1:29092' go test -count=1 -tags=brokerintegration ./services/platform-api/internal/adapters/kafka
+
+test-runner-integration:
+	@set -euo pipefail; \
+		cleanup() { docker compose -f docker-compose.yml -p agentforge-runner-integration --profile runner down --volumes --remove-orphans; }; \
+		trap cleanup EXIT; \
+		runner_access_key="$${RUNNER_MINIO_ROOT_USER:-agentforge-runner}"; runner_secret_key="$${RUNNER_MINIO_ROOT_PASSWORD:-agentforge-runner-secret}"; \
+		RUNNER_MINIO_HOST_PORT=29000 RUNNER_MINIO_ROOT_USER="$$runner_access_key" RUNNER_MINIO_ROOT_PASSWORD="$$runner_secret_key" docker compose -f docker-compose.yml -p agentforge-runner-integration --profile runner up --detach --wait minio; \
+		AGENTFORGE_TEST_MINIO_ENDPOINT='127.0.0.1:29000' AGENTFORGE_TEST_MINIO_ACCESS_KEY="$$runner_access_key" AGENTFORGE_TEST_MINIO_SECRET_KEY="$$runner_secret_key" go test -count=1 -tags=runnerintegration ./agent-runner/internal/runner
 
 test-controller:
 	@$(MAKE) -C operator test
@@ -124,6 +142,20 @@ build-handoff:
 
 build-operator:
 	@$(MAKE) -C operator docker-build IMG=agentforge/operator:dev
+
+build-runner:
+	@docker build \
+		--build-arg BUILD_VERSION="$(BUILD_VERSION)" \
+		--build-arg BUILD_COMMIT="$(BUILD_COMMIT)" \
+		--build-arg BUILD_TIME="$(BUILD_TIME)" \
+		--tag agentforge/runner:dev \
+		--file agent-runner/Dockerfile .
+
+check-all:
+	@$(MAKE) check-tools format lint test verify-event-contracts test-integration test-events-integration test-runner-integration test-controller build-platform-api build-scheduler build-handoff build-operator build-runner verify
+
+check-all-kind: check-all
+	@$(MAKE) test-controller-kind
 
 verify:
 	@scripts/verify-repository.sh

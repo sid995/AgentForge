@@ -20,3 +20,4 @@ Initial decisions to record:
 - `docs/adr/ADR-002-transactional-outbox-and-at-least-once-events.md`
 - `docs/adr/ADR-003-postgresql-scheduler-leases-and-reservations.md`
 - `docs/adr/ADR-004-kubernetes-agentrun-operator.md`
+- `docs/adr/ADR-005-deterministic-agent-runner.md`

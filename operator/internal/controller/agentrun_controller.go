@@ -178,6 +178,9 @@ func (r *AgentRunReconciler) Reconcile(ctx context.Context, request ctrl.Request
 	if currentAttemptTerminal(run) {
 		if run.Spec.DesiredState == executionv1alpha1.DesiredStateRunning && retryAllowed(run) {
 			result := r.reconcileRetry(run)
+			// Persist the new attempt before creating its Job on the next reconcile.
+			// A controller restart then resumes a durable attempt identity rather than
+			// accidentally creating two jobs for the same retry.
 			changed, err := r.patchStatusIfChanged(ctx, beforeStatus, run)
 			if err != nil {
 				reconcileErr := classifyAPIError("RetryStatusWriteFailed", err)

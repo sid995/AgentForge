@@ -104,6 +104,18 @@
   namespace and AgentRun projection, exact conflict behavior, real-API
   crash-window replay, and proof that it cannot create Jobs or write status.
 
+## Agent Runner
+
+- signed task schema/key/signature/identity validation and secret redaction;
+- deterministic template, ordered trajectory, heartbeat, deadline, and SIGTERM;
+- argv-only command policy, traversal/symlink confinement, environment and
+  shell rejection, bounded output, hung process-group termination, and exit
+  classification;
+- filesystem artifact-root/key confinement, retry/checksum failure, manifest
+  ordering, termination evidence, and MinIO S3-compatible publication;
+- real-kind Runner Job success, Operator evidence projection, and retained PVC
+  artifact survival after completed Pod deletion.
+
 ## Deployment
 
 - competing promotions.

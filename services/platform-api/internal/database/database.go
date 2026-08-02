@@ -81,6 +81,8 @@ func (pool *Pool) BeginTenant(ctx context.Context, tenantID uuid.UUID) (*TenantT
 		return nil, fmt.Errorf("begin tenant transaction: %w", err)
 	}
 	tenantTx := &TenantTx{tx: tx, conn: connection}
+	// The third argument makes the RLS setting transaction-local. It therefore
+	// cannot leak from this pooled connection into a later tenant request.
 	if _, err := tenantTx.ExecContext(ctx, "select set_config('app.tenant_id', $1, true)", tenantID.String()); err != nil {
 		_ = tenantTx.Rollback()
 		return nil, fmt.Errorf("set tenant context: %w", err)

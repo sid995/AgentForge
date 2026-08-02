@@ -76,6 +76,8 @@ func (relay *Relay) RunOnce(ctx context.Context) (int, error) {
 		result, publishErr := relay.publisher.Publish(publishContext, event.OutboxEvent)
 		cancel()
 		if publishErr == nil {
+			// Mark only after the broker accepts the record. If this write fails, the
+			// lease expires and at-least-once publication retries the same event.
 			if err := relay.repository.MarkPublished(ctx, event.Envelope.EventID, relay.owner, relay.now(), result); err != nil {
 				failures = append(failures, err)
 				continue
