@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 8 artifact metadata and controlled-access foundation in progress
+Phase 8 artifact service verified
 
 ## Overall state
 
@@ -20,11 +20,13 @@ as passed, but the PR workflow currently does not execute its kind lifecycle
 job. Consequently, real-Kubernetes execution and retained-PVC artifact
 recovery after Pod deletion remain unverified until that job is re-enabled and
 passes in CI.
-Phase 8 has implemented the platform-owned artifact-store contract, tenant-safe
-object-key foundation, and immutable tenant-scoped PostgreSQL metadata/audit
-records. Docker-dependent MinIO and PostgreSQL integration gates remain
-unverified locally. Phase 8.3 now adds authenticated metadata reads and
-bounded server-generated download URLs; retention/deletion remains deferred.
+Phase 8 is verified: it provides the platform-owned artifact-store contract,
+tenant-safe object keys, immutable tenant-scoped PostgreSQL metadata/audit
+records, authenticated metadata reads, bounded server-generated download URLs,
+and controlled HOT payload deletion with immutable tombstone evidence. MinIO,
+PostgreSQL/RLS, Redpanda, Runner, controller, image-build, lint, and repository
+verification gates passed. Automatic retention/archive policy remains deferred
+until an approved lifecycle contract defines it.
 
 ## Completed
 
@@ -171,21 +173,23 @@ bounded server-generated download URLs; retention/deletion remains deferred.
   MinIO/S3-compatible adapters, checksum verification/retry, root MinIO test
   profile, and a Runner-specific kind lifecycle scenario
 - Phase 8.1 platform-owned artifact-store contract, tenant-scoped object-key
-  foundation, filesystem/S3 adapter conformance, and ADR-006; MinIO integration
-  remains unverified while Docker is unavailable
+  foundation, filesystem/S3 adapter conformance, ADR-006, and verified MinIO
+  integration
 - Phase 8.2 immutable tenant/project/run/attempt-scoped artifact metadata,
   checksum/retention/audit validation, forward migration `000014`, forced RLS,
-  restrictive application-role grants, repository operations, and PostgreSQL
-  RLS integration coverage; the Docker-dependent PostgreSQL gate remains
-  unverified locally
+  restrictive application-role grants, repository operations, and verified
+  PostgreSQL RLS integration coverage
 - Phase 8.3 authenticated tenant-scoped artifact list/get/download routes,
   safe metadata responses, server-only optional S3 configuration, and bounded
-  1- to 900-second download capabilities; prior Docker-dependent MinIO and
-  PostgreSQL integration gates remain unverified locally
+  1- to 900-second download capabilities, verified by the Phase 8 gate
+- Phase 8.4 project-administrator-only HOT artifact deletion, object-first
+  cleanup/retry reconciliation, immutable tenant-scoped deletion tombstones,
+  read filtering, migration `000015`, and verified unit/HTTP/PostgreSQL
+  integration coverage
 
 ## In progress
 
-- Phase 8.4 artifact retention/deletion policy and end-to-end validation
+- No active implementation phase; Phase 9 has not started
 
 ## Not started
 
@@ -201,6 +205,6 @@ bounded server-generated download URLs; retention/deletion remains deferred.
 
 ## Next tasks
 
-1. Add Phase 8.4 controlled artifact retention/deletion policy.
-2. Run the pending Phase 8.1 MinIO and Phase 8.2 PostgreSQL Docker-dependent
-   integration gates before claiming Phase 8 verification.
+1. Define Phase 9 Model Gateway scope and approved provider/security contract.
+2. Keep automatic artifact archive/expiry policy deferred until its lifecycle
+   contract and operational retention schedule are approved.

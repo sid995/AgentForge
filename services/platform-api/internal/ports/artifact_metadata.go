@@ -13,4 +13,5 @@ type ArtifactRepository interface {
 	Create(context.Context, domain.Artifact) error
 	Get(context.Context, uuid.UUID, uuid.UUID) (domain.Artifact, error)
 	ListByRun(context.Context, uuid.UUID, uuid.UUID) ([]domain.Artifact, error)
+	RecordDeletion(context.Context, domain.ArtifactDeletion) error
 }

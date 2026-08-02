@@ -49,7 +49,9 @@ keys or exposes bucket credentials to clients.
 Phase 8.1 adds the MinIO Go client to the Platform API module, a filesystem
 adapter, S3-compatible checksum verification, and a Docker-backed MinIO test
 target. Metadata persistence, authorization, presigned-upload policy, and
-retention/deletion APIs remain Phase 8.2 through 8.4 work.
+retention/deletion APIs are delivered through Phase 8.2 through 8.4. Phase 8.4
+uses object-first deletion plus immutable PostgreSQL tombstones; it does not
+invent automatic expiry or archive transitions without an approved policy.
 
 ## Validation
 

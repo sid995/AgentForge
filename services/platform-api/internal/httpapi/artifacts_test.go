@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -89,10 +90,45 @@ func TestArtifactRoutesMapScopeValidationAndUnavailableErrors(t *testing.T) {
 	assertErrorCode(t, unavailableResponse, "DEPENDENCY_UNAVAILABLE")
 }
 
+func TestArtifactDeleteRequiresAuthorizationAndReason(t *testing.T) {
+	service := &fakeArtifactService{artifact: testArtifact(), deleteErr: identity.ErrUnauthorized}
+	path := "/v1/runs/" + service.artifact.RunID.String() + "/artifacts/" + service.artifact.ID.String()
+	denied := httptest.NewRequest(http.MethodDelete, path, bytes.NewBufferString(`{"reason":"expired output"}`))
+	denied.Header.Set("Authorization", "Bearer local-token")
+	deniedResponse := httptest.NewRecorder()
+	artifactTestAPI(t, service).Handler().ServeHTTP(deniedResponse, denied)
+	if deniedResponse.Code != http.StatusForbidden {
+		t.Fatalf("delete denied status=%d", deniedResponse.Code)
+	}
+	assertErrorCode(t, deniedResponse, "AUTHORIZATION")
+
+	service.deleteErr = nil
+	allowed := httptest.NewRequest(http.MethodDelete, path, bytes.NewBufferString(`{"reason":"expired output"}`))
+	allowed.Header.Set("Authorization", "Bearer local-token")
+	allowedResponse := httptest.NewRecorder()
+	artifactTestAPIWithRole(t, service, identity.RoleProjectAdministrator).Handler().ServeHTTP(allowedResponse, allowed)
+	if allowedResponse.Code != http.StatusNoContent || service.deleteReason != "expired output" || service.deleteCaller.Role != identity.RoleProjectAdministrator {
+		t.Fatalf("delete allowed status=%d service=%#v", allowedResponse.Code, service)
+	}
+
+	service.deleteErr = domain.ErrValidation
+	invalid := httptest.NewRequest(http.MethodDelete, path, bytes.NewBufferString(`{}`))
+	invalid.Header.Set("Authorization", "Bearer local-token")
+	invalidResponse := httptest.NewRecorder()
+	artifactTestAPIWithRole(t, service, identity.RoleProjectAdministrator).Handler().ServeHTTP(invalidResponse, invalid)
+	if invalidResponse.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("delete invalid status=%d", invalidResponse.Code)
+	}
+}
+
 func artifactTestAPI(t *testing.T, service *fakeArtifactService) *API {
+	return artifactTestAPIWithRole(t, service, identity.RoleDeveloper)
+}
+
+func artifactTestAPIWithRole(t *testing.T, service *fakeArtifactService, role identity.Role) *API {
 	t.Helper()
 	service.tenantID = uuid.Must(uuid.NewV7())
-	resolver, err := identity.NewDevelopmentResolver([]identity.DevelopmentCredential{{Token: "local-token", Identity: identity.Identity{TenantID: service.tenantID, Subject: "developer@example.test", Role: identity.RoleDeveloper}}})
+	resolver, err := identity.NewDevelopmentResolver([]identity.DevelopmentCredential{{Token: "local-token", Identity: identity.Identity{TenantID: service.tenantID, Subject: "developer@example.test", Role: role}}})
 	if err != nil {
 		t.Fatalf("NewDevelopmentResolver() error=%v", err)
 	}
@@ -115,6 +151,9 @@ type fakeArtifactService struct {
 	downloadLifetime time.Duration
 	getErr           error
 	downloadErr      error
+	deleteCaller     identity.Identity
+	deleteReason     string
+	deleteErr        error
 	download         ports.PresignedDownload
 }
 
@@ -139,6 +178,10 @@ func (service *fakeArtifactService) Download(_ context.Context, caller identity.
 		service.download.ExpiresAt = time.Date(2026, 8, 2, 12, 5, 0, 0, time.UTC)
 	}
 	return service.download, nil
+}
+func (service *fakeArtifactService) Delete(_ context.Context, caller identity.Identity, runID, artifactID uuid.UUID, reason string) error {
+	service.deleteCaller, service.getRunID, service.getArtifactID, service.deleteReason = caller, runID, artifactID, reason
+	return service.deleteErr
 }
 
 func mustArtifactURL(value string) *url.URL {

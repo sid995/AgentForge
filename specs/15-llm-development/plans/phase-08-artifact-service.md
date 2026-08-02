@@ -38,9 +38,9 @@ single adapter conformance suite. Add an ADR for server-owned storage
 configuration and key construction. No HTTP endpoint, database schema, or
 client credential is introduced in this sub-phase.
 
-**Validation status (2026-08-02):** Implemented and unit/race/vet validated.
-The MinIO conformance gate is wired through `make test-artifact-integration`,
-but remains unverified locally while the Docker daemon is unavailable.
+**Validation status (2026-08-02):** Verified. Unit, race, and `go vet` checks
+pass, and `make test-artifact-integration` passed against the local MinIO
+service.
 
 ### 8.2 Metadata persistence and audit
 
@@ -50,11 +50,10 @@ PostgreSQL integration tests. The migration must be forward-safe and document
 rollback limits. Metadata writes and any required integration event must commit
 atomically.
 
-**Validation status (2026-08-02):** Implemented with immutable metadata,
+**Validation status (2026-08-02):** Verified with immutable metadata,
 tenant-scoped repository operations, forced RLS, and application-role
 `SELECT`/`INSERT` grants. Domain, repository compilation, and static checks
-pass locally. The PostgreSQL migration/RLS integration gate is wired but
-unverified while the Docker daemon is unavailable. No artifact metadata event
+pass locally. The PostgreSQL migration/RLS integration gate passed. No artifact metadata event
 is currently defined by the approved event contract, so this sub-phase does
 not introduce an outbox event.
 
@@ -66,13 +65,13 @@ server-derived tenant identity, run ownership, content/retention response
 rules, stable error envelopes, and cross-tenant tests. Clients never submit raw
 object keys or receive bucket credentials.
 
-**Validation status (2026-08-02):** Implemented with authenticated list/get/
+**Validation status (2026-08-02):** Verified with authenticated list/get/
 download routes, explicit run-before-artifact authorization, safe metadata
 responses, and a 1- to 900-second download lifetime. S3-compatible storage is
 configured only through optional server-owned environment variables; without
 it, metadata reads remain available and downloads fail closed with `503`. Unit,
-HTTP, OpenAPI, and `go vet` checks pass locally. The prior Docker-dependent
-MinIO and PostgreSQL integration gates remain unverified.
+HTTP, OpenAPI, and `go vet` checks pass locally. The MinIO and PostgreSQL
+integration gates passed.
 
 ### 8.4 Retention and end-to-end validation
 
@@ -80,6 +79,13 @@ Add controlled deletion/retention transitions only after the metadata model is
 validated. Run filesystem conformance, MinIO integration, PostgreSQL/RLS,
 HTTP contract, and full repository gates. A completion audit may mark Phase 8
 verified only after all required local and CI gates pass.
+
+**Validation status (2026-08-02):** Verified with project-administrator-only
+HOT payload deletion, object-first cleanup, retained immutable deletion
+tombstones, and read filtering. Domain, application, HTTP/OpenAPI, repository
+compilation, integration-tag compilation, race, and `go vet` checks pass
+locally. Live MinIO and PostgreSQL integration, lint, and the full repository
+validation gate passed.
 
 ## Acceptance evidence
 

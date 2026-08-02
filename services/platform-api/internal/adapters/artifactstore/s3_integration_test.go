@@ -18,7 +18,7 @@ func TestS3StoreConformance(t *testing.T) {
 	if endpoint == "" || accessKey == "" || secretKey == "" {
 		t.Fatal("MinIO test configuration is required")
 	}
-	client, err := minio.New(endpoint, &minio.Options{Creds: credentials.NewStaticV4(accessKey, secretKey, ""), Secure: false})
+	client, err := minio.New(endpoint, &minio.Options{Creds: credentials.NewStaticV4(accessKey, secretKey, ""), Secure: false, TrailingHeaders: true})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -46,6 +46,7 @@ type ArtifactService interface {
 	List(context.Context, identity.Identity, uuid.UUID) ([]domain.Artifact, error)
 	Get(context.Context, identity.Identity, uuid.UUID, uuid.UUID) (domain.Artifact, error)
 	Download(context.Context, identity.Identity, uuid.UUID, uuid.UUID, time.Duration) (ports.PresignedDownload, error)
+	Delete(context.Context, identity.Identity, uuid.UUID, uuid.UUID, string) error
 }
 
 // API exposes the Platform API HTTP handler and process readiness state.
@@ -89,6 +90,7 @@ func New(options Options) *API {
 	if api.artifacts != nil {
 		mux.HandleFunc("GET /v1/runs/{runId}/artifacts", api.listArtifacts)
 		mux.HandleFunc("GET /v1/runs/{runId}/artifacts/{artifactId}", api.getArtifact)
+		mux.HandleFunc("DELETE /v1/runs/{runId}/artifacts/{artifactId}", api.deleteArtifact)
 		mux.HandleFunc("GET /v1/runs/{runId}/artifacts/{artifactId}/download", api.downloadArtifact)
 	}
 

@@ -36,6 +36,10 @@ type artifactDownloadResponse struct {
 	} `json:"data"`
 }
 
+type deleteArtifactRequest struct {
+	Reason string `json:"reason"`
+}
+
 func (api *API) listArtifacts(writer http.ResponseWriter, request *http.Request) {
 	caller, ok := api.authenticate(writer, request)
 	if !ok {
@@ -116,6 +120,31 @@ func (api *API) downloadArtifact(writer http.ResponseWriter, request *http.Reque
 	_ = json.NewEncoder(writer).Encode(response)
 }
 
+func (api *API) deleteArtifact(writer http.ResponseWriter, request *http.Request) {
+	caller, ok := api.authenticate(writer, request)
+	if !ok {
+		return
+	}
+	runID, ok := pathUUID(writer, request, "runId")
+	if !ok {
+		return
+	}
+	artifactID, ok := pathUUID(writer, request, "artifactId")
+	if !ok {
+		return
+	}
+	var body deleteArtifactRequest
+	if err := decodeJSON(request, &body); err != nil {
+		writeRequestDecodeError(writer, request, err)
+		return
+	}
+	if err := api.artifacts.Delete(request.Context(), caller, runID, artifactID, body.Reason); err != nil {
+		writeArtifactError(writer, request, err)
+		return
+	}
+	writer.WriteHeader(http.StatusNoContent)
+}
+
 func responseForArtifact(artifact domain.Artifact) artifactResponse {
 	return artifactResponse{ID: artifact.ID.String(), AttemptNumber: artifact.AttemptNumber, ContentType: artifact.ContentType, SizeBytes: artifact.SizeBytes, SHA256: artifact.SHA256, RetentionClass: string(artifact.RetentionClass), CreatedAt: artifact.CreatedAt.UTC().Format(time.RFC3339Nano)}
 }
@@ -144,8 +173,8 @@ func writeArtifactError(writer http.ResponseWriter, request *http.Request, err e
 		writeError(writer, request, http.StatusForbidden, "AUTHORIZATION", "The caller is not authorized for this resource.", false)
 	case errors.Is(err, domain.ErrValidation):
 		writeError(writer, request, http.StatusUnprocessableEntity, "VALIDATION", "Request fields are invalid.", false)
-	case errors.Is(err, artifactapp.ErrDownloadUnavailable):
-		writeError(writer, request, http.StatusServiceUnavailable, "DEPENDENCY_UNAVAILABLE", "Artifact downloads are not currently available.", true)
+	case errors.Is(err, artifactapp.ErrDownloadUnavailable), errors.Is(err, artifactapp.ErrDeletionUnavailable):
+		writeError(writer, request, http.StatusServiceUnavailable, "DEPENDENCY_UNAVAILABLE", "Artifact storage is not currently available.", true)
 	default:
 		writeError(writer, request, http.StatusInternalServerError, "INTERNAL", "An internal error occurred.", false)
 	}

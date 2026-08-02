@@ -62,7 +62,7 @@ func run() error {
 	runService := runs.NewService(postgres.NewAgentRunRepository(databasePool), postgres.NewProjectRepository(databasePool), nil)
 	var artifactStore ports.ArtifactStore
 	if configuration.ArtifactStorage != nil {
-		client, err := minio.New(configuration.ArtifactStorage.Endpoint, &minio.Options{Creds: credentials.NewStaticV4(configuration.ArtifactStorage.AccessKey, configuration.ArtifactStorage.SecretKey, ""), Secure: configuration.ArtifactStorage.Secure})
+		client, err := minio.New(configuration.ArtifactStorage.Endpoint, &minio.Options{Creds: credentials.NewStaticV4(configuration.ArtifactStorage.AccessKey, configuration.ArtifactStorage.SecretKey, ""), Secure: configuration.ArtifactStorage.Secure, TrailingHeaders: true})
 		if err != nil {
 			return fmt.Errorf("create artifact storage client: %w", err)
 		}
@@ -71,7 +71,7 @@ func run() error {
 			return err
 		}
 	}
-	artifactService := artifacts.NewService(postgres.NewAgentRunRepository(databasePool), postgres.NewArtifactRepository(databasePool), artifactStore)
+	artifactService := artifacts.NewService(postgres.NewAgentRunRepository(databasePool), postgres.NewArtifactRepository(databasePool), artifactStore, nil)
 	api := httpapi.New(httpapi.Options{
 		Logger:              logger,
 		Build:               buildinfo.Current(),

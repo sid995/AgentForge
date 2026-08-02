@@ -207,3 +207,18 @@ repository tenant predicates. `agentforge_app` receives only `SELECT` and
 `INSERT` grants, making accepted records append-only. The key format is
 validated in the domain as the exact owning tenant/project/run/attempt prefix;
 public clients do not submit a storage key.
+
+## Phase 8.4 artifact deletion boundary
+
+Migration `000015_artifact_deletion_tombstones` keeps `artifacts` immutable and
+adds an append-only `artifact_deletions` tombstone keyed by artifact and tenant.
+The tombstone records the authorized actor, bounded reason, and UTC deletion
+time. Read queries exclude tombstoned artifacts, while the retained metadata
+and tombstone remain available to privileged recovery/audit operations.
+
+Only the application role's tenant-scoped `SELECT`/`INSERT` permissions are
+granted; no application `UPDATE` or `DELETE` is needed. The application deletes
+the object payload before inserting the tombstone, and treats an already absent
+payload as retry-safe reconciliation. Manual deletion is restricted to HOT
+artifacts and a project administrator. ARCHIVE lifecycle automation remains
+deferred because no approved archive-transition contract exists.

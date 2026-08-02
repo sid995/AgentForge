@@ -68,6 +68,13 @@ the supporting composite keys. Production rollback preserves accepted artifact
 audit evidence and uses a corrective forward migration rather than deleting
 metadata.
 
+Phase 8.4 adds `000015_artifact_deletion_tombstones`. It adds the artifact
+`(id, tenant_id)` ownership key and an append-only tenant-scoped tombstone table
+with actor/reason/time constraints, forced RLS, and application `SELECT`/`INSERT`
+grants. Its local down migration removes the tombstone table before the
+supporting ownership key. Production rollback retains deletion evidence and
+uses a corrective forward migration; it never recreates an object payload.
+
 ## Naming and ordering
 
 Migration files use a six-digit, increasing version and a kebab-case purpose:

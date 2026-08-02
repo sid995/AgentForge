@@ -30,6 +30,9 @@
 - Artifact storage configuration and credentials are server-owned. A missing or
   unavailable download store fails closed; it never falls back to a filesystem
   path or an unbounded redirect.
+- Artifact payload deletion is a project-administrator-only HOT retention
+  action. It removes the object before writing immutable PostgreSQL tombstone
+  evidence; ARCHIVE automation remains an explicit future policy decision.
 
 ## Scaling
 

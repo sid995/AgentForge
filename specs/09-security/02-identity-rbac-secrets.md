@@ -12,6 +12,12 @@ Services and Jobs use cloud workload identity or short-lived internal credential
 
 Enforce permission checks at API, service, repository, RLS, Kubernetes RBAC, object-storage prefix, and consumer boundaries.
 
+Phase 8 artifact list/get/download uses the resolved tenant identity and
+caller-owned run scope. The destructive artifact endpoint is narrower: only a
+`project-administrator` may delete a HOT payload, with a bounded reason. The
+service removes the derived object key first and writes tenant-scoped immutable
+tombstone evidence second; developers cannot request this operation.
+
 ## Phase 2 PostgreSQL tenant isolation
 
 The `agentforge_app` database role is `NOBYPASSRLS` and has only the DML grants

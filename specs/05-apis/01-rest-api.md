@@ -89,9 +89,16 @@ audited actor; clients never send a storage key or credential.
   `expiresInSeconds` from 1 through 900 (default 300) and returns only a
   server-generated, short-lived read URL plus its expiry. A missing or
   unavailable server storage dependency returns `503 DEPENDENCY_UNAVAILABLE`.
+- `DELETE /v1/runs/{runId}/artifacts/{artifactId}` requires a
+  project-administrator identity and `{"reason":"..."}`. It supports only
+  HOT artifacts, deletes the payload, and records a retained deletion tombstone
+  without returning the storage key or actor audit fields.
 
-All three routes return `404 NOT_FOUND` for an absent or cross-tenant run or
-artifact. They are read-only and do not alter artifact retention or payloads.
+All routes return `404 NOT_FOUND` for an absent or cross-tenant run or artifact.
+The delete route returns `403 AUTHORIZATION` for callers without the required
+role, `422 VALIDATION` for an invalid body, and `503 DEPENDENCY_UNAVAILABLE`
+when storage cleanup cannot be attempted. It does not implement automatic
+expiry or ARCHIVE lifecycle transitions.
 
 ## Builds and deployments
 

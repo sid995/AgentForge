@@ -45,7 +45,7 @@ func (repository *ArtifactRepository) Get(ctx context.Context, tenantID, artifac
 		return domain.Artifact{}, translateError(err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	artifact, err := scanArtifact(tx.QueryRowContext(ctx, artifactSelect+` where tenant_id = $1 and id = $2`, tenantID, artifactID))
+	artifact, err := scanArtifact(tx.QueryRowContext(ctx, artifactSelect+` where tenant_id = $1 and id = $2 and not exists (select 1 from artifact_deletions where artifact_id = artifacts.id)`, tenantID, artifactID))
 	if err != nil {
 		return domain.Artifact{}, translateError(err)
 	}
@@ -61,7 +61,7 @@ func (repository *ArtifactRepository) ListByRun(ctx context.Context, tenantID, r
 		return nil, translateError(err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	rows, err := tx.QueryContext(ctx, artifactSelect+` where tenant_id = $1 and run_id = $2 order by created_at asc, id asc`, tenantID, runID)
+	rows, err := tx.QueryContext(ctx, artifactSelect+` where tenant_id = $1 and run_id = $2 and not exists (select 1 from artifact_deletions where artifact_id = artifacts.id) order by created_at asc, id asc`, tenantID, runID)
 	if err != nil {
 		return nil, translateError(err)
 	}
@@ -81,6 +81,26 @@ func (repository *ArtifactRepository) ListByRun(ctx context.Context, tenantID, r
 		return nil, translateError(err)
 	}
 	return artifacts, nil
+}
+
+// RecordDeletion preserves immutable audit evidence after object cleanup.
+func (repository *ArtifactRepository) RecordDeletion(ctx context.Context, deletion domain.ArtifactDeletion) error {
+	tx, err := repository.database.BeginTenant(ctx, deletion.TenantID)
+	if err != nil {
+		return translateError(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	_, err = tx.ExecContext(ctx, `
+		insert into artifact_deletions (artifact_id, tenant_id, deleted_by, deletion_reason, deleted_at)
+		values ($1, $2, $3, $4, $5)`,
+		deletion.ArtifactID, deletion.TenantID, deletion.DeletedBy, deletion.DeletionReason, deletion.DeletedAt)
+	if err != nil {
+		return translateError(err)
+	}
+	if err := tx.Commit(); err != nil {
+		return translateError(err)
+	}
+	return nil
 }
 
 const artifactSelect = `

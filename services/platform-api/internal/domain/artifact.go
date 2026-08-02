@@ -49,6 +49,16 @@ type NewArtifactInput struct {
 	CreatedBy      string
 }
 
+// ArtifactDeletion is immutable audit evidence that an artifact payload was
+// removed. The artifact metadata itself is retained for audit and recovery.
+type ArtifactDeletion struct {
+	ArtifactID     uuid.UUID
+	TenantID       uuid.UUID
+	DeletedBy      string
+	DeletionReason string
+	DeletedAt      time.Time
+}
+
 // NewArtifact validates immutable storage metadata and assigns a UUIDv7.
 func NewArtifact(input NewArtifactInput, now time.Time) (Artifact, error) {
 	input.ObjectKey = strings.TrimSpace(input.ObjectKey)
@@ -86,4 +96,14 @@ func hasUnsafeObjectKeySegment(key string) bool {
 		}
 	}
 	return false
+}
+
+// NewArtifactDeletion validates a controlled deletion tombstone.
+func NewArtifactDeletion(artifactID, tenantID uuid.UUID, deletedBy, reason string, now time.Time) (ArtifactDeletion, error) {
+	deletedBy = strings.TrimSpace(deletedBy)
+	reason = strings.TrimSpace(reason)
+	if artifactID == uuid.Nil || tenantID == uuid.Nil || deletedBy == "" || len(deletedBy) > 255 || reason == "" || len(reason) > 500 {
+		return ArtifactDeletion{}, fmt.Errorf("%w: artifact deletion is invalid", ErrValidation)
+	}
+	return ArtifactDeletion{ArtifactID: artifactID, TenantID: tenantID, DeletedBy: deletedBy, DeletionReason: reason, DeletedAt: now.UTC()}, nil
 }

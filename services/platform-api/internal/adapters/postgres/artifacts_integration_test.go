@@ -71,6 +71,28 @@ func TestArtifactsAreTenantScopedAndImmutable(t *testing.T) {
 	}
 
 	assertArtifactRLSAndImmutability(t, appPool, tenantA.ID, tenantB.ID, artifact)
+
+	deletion, err := domain.NewArtifactDeletion(artifact.ID, tenantA.ID, "administrator@example.test", "expired output", now.Add(time.Hour))
+	if err != nil {
+		t.Fatalf("new deletion tombstone: %v", err)
+	}
+	if err := repository.RecordDeletion(ctx, deletion); err != nil {
+		t.Fatalf("record deletion tombstone: %v", err)
+	}
+	if _, err := repository.Get(ctx, tenantA.ID, artifact.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("deleted artifact get error=%v, want ErrNotFound", err)
+	}
+	artifacts, err = repository.ListByRun(ctx, tenantA.ID, run.ID)
+	if err != nil || len(artifacts) != 0 {
+		t.Fatalf("deleted artifact list=%#v error=%v", artifacts, err)
+	}
+	var metadataCount, deletionCount int
+	if err := adminPool.Raw().QueryRowContext(ctx, "select count(*) from artifacts where id = $1", artifact.ID).Scan(&metadataCount); err != nil {
+		t.Fatalf("count retained artifact metadata: %v", err)
+	}
+	if err := adminPool.Raw().QueryRowContext(ctx, "select count(*) from artifact_deletions where artifact_id = $1", artifact.ID).Scan(&deletionCount); err != nil || metadataCount != 1 || deletionCount != 1 {
+		t.Fatalf("tombstone counts metadata=%d deletion=%d error=%v", metadataCount, deletionCount, err)
+	}
 }
 
 func mustArtifact(t *testing.T, tenantID, projectID, runID uuid.UUID, attempt domain.AgentRunAttempt, now time.Time) domain.Artifact {
@@ -117,6 +139,13 @@ func assertArtifactRLSAndImmutability(t *testing.T, pool interface{ Raw() *sql.D
 		artifact.ObjectKey+".blocked", artifact.ContentType, artifact.SizeBytes, artifact.SHA256, artifact.RetentionClass, artifact.CreatedBy, artifact.CreatedAt)
 	if err == nil {
 		t.Fatal("RLS allowed a cross-tenant artifact write")
+	}
+	_, err = tx.ExecContext(ctx, `
+		insert into artifact_deletions (artifact_id, tenant_id, deleted_by, deletion_reason, deleted_at)
+		values ($1, $2, $3, $4, $5)`,
+		artifact.ID, artifact.TenantID, "administrator@example.test", "blocked cross-tenant write", artifact.CreatedAt.Add(time.Hour))
+	if err == nil {
+		t.Fatal("RLS allowed a cross-tenant artifact tombstone")
 	}
 
 	_, err = pool.Raw().ExecContext(ctx, "update artifacts set content_type = 'text/plain' where id = $1", artifact.ID)

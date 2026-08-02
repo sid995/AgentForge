@@ -15,7 +15,10 @@ import (
 	"github.com/sid995/agentforge/services/platform-api/internal/ports"
 )
 
-var ErrDownloadUnavailable = errors.New("artifact download is unavailable")
+var (
+	ErrDownloadUnavailable = errors.New("artifact download is unavailable")
+	ErrDeletionUnavailable = errors.New("artifact deletion is unavailable")
+)
 
 type runReader interface {
 	Get(context.Context, uuid.UUID, uuid.UUID) (domain.AgentRun, error)
@@ -24,6 +27,7 @@ type runReader interface {
 type metadataRepository interface {
 	Get(context.Context, uuid.UUID, uuid.UUID) (domain.Artifact, error)
 	ListByRun(context.Context, uuid.UUID, uuid.UUID) ([]domain.Artifact, error)
+	RecordDeletion(context.Context, domain.ArtifactDeletion) error
 }
 
 // Service authorizes artifact metadata reads and server-generated downloads.
@@ -31,10 +35,14 @@ type Service struct {
 	runs      runReader
 	artifacts metadataRepository
 	store     ports.ArtifactStore
+	now       func() time.Time
 }
 
-func NewService(runs runReader, artifacts metadataRepository, store ports.ArtifactStore) *Service {
-	return &Service{runs: runs, artifacts: artifacts, store: store}
+func NewService(runs runReader, artifacts metadataRepository, store ports.ArtifactStore, now func() time.Time) *Service {
+	if now == nil {
+		now = time.Now
+	}
+	return &Service{runs: runs, artifacts: artifacts, store: store, now: now}
 }
 
 // List returns only artifact metadata belonging to one caller-owned run.
@@ -89,6 +97,40 @@ func (service *Service) Download(ctx context.Context, caller identity.Identity, 
 		return ports.PresignedDownload{}, fmt.Errorf("artifact store returned an invalid download capability")
 	}
 	return download, nil
+}
+
+// Delete removes one HOT artifact payload and records an immutable tombstone.
+// The payload is deleted first so metadata never claims deletion before it has
+// happened. Retrying after a crash safely reconciles an already absent object.
+func (service *Service) Delete(ctx context.Context, caller identity.Identity, runID, artifactID uuid.UUID, reason string) error {
+	if !caller.CanManageArtifacts() {
+		return identity.ErrUnauthorized
+	}
+	artifact, err := service.artifactForRun(ctx, caller.TenantID, runID, artifactID)
+	if err != nil {
+		return err
+	}
+	if artifact.RetentionClass != domain.ArtifactRetentionHot {
+		return fmt.Errorf("%w: archived artifacts cannot be manually deleted", domain.ErrForbidden)
+	}
+	deletion, err := domain.NewArtifactDeletion(artifact.ID, caller.TenantID, caller.Subject, reason, service.now())
+	if err != nil {
+		return err
+	}
+	if service.store == nil {
+		return ErrDeletionUnavailable
+	}
+	key, err := keyForArtifact(artifact)
+	if err != nil {
+		return err
+	}
+	if err := service.store.Delete(ctx, key); err != nil && !errors.Is(err, ports.ErrArtifactNotFound) {
+		return fmt.Errorf("delete artifact payload: %w", err)
+	}
+	if err := service.artifacts.RecordDeletion(ctx, deletion); err != nil && !errors.Is(err, domain.ErrConflict) {
+		return err
+	}
+	return nil
 }
 
 func (service *Service) artifactForRun(ctx context.Context, tenantID, runID, artifactID uuid.UUID) (domain.Artifact, error) {

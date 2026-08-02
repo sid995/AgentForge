@@ -3,6 +3,7 @@ package artifacts
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"testing"
@@ -19,7 +20,7 @@ func TestListAndGetRequireCallerOwnedRun(t *testing.T) {
 	fixture := artifactFixture(t)
 	runs := &fakeRunReader{run: domain.AgentRun{ID: fixture.RunID}}
 	metadata := &fakeMetadataRepository{artifact: fixture, artifacts: []domain.Artifact{fixture}}
-	service := NewService(runs, metadata, nil)
+	service := NewService(runs, metadata, nil, nil)
 	caller := identity.Identity{TenantID: fixture.TenantID, Subject: "developer@example.test", Role: identity.RoleDeveloper}
 
 	items, err := service.List(context.Background(), caller, fixture.RunID)
@@ -40,7 +41,7 @@ func TestListAndGetRequireCallerOwnedRun(t *testing.T) {
 func TestDownloadUsesTrustedMetadataKeyAndBoundedLifetime(t *testing.T) {
 	fixture := artifactFixture(t)
 	store := &fakeArtifactStore{download: ports.PresignedDownload{URL: mustURL(t, "https://storage.example.test/download?signature=opaque"), ExpiresAt: fixture.CreatedAt.Add(5 * time.Minute)}}
-	service := NewService(&fakeRunReader{run: domain.AgentRun{ID: fixture.RunID}}, &fakeMetadataRepository{artifact: fixture}, store)
+	service := NewService(&fakeRunReader{run: domain.AgentRun{ID: fixture.RunID}}, &fakeMetadataRepository{artifact: fixture}, store, nil)
 	caller := identity.Identity{TenantID: fixture.TenantID, Subject: "developer@example.test", Role: identity.RoleDeveloper}
 
 	download, err := service.Download(context.Background(), caller, fixture.RunID, fixture.ID, 5*time.Minute)
@@ -50,14 +51,40 @@ func TestDownloadUsesTrustedMetadataKeyAndBoundedLifetime(t *testing.T) {
 	if _, err := service.Download(context.Background(), caller, fixture.RunID, fixture.ID, ports.MaxArtifactPresignLifetime+time.Second); !errors.Is(err, domain.ErrValidation) {
 		t.Fatalf("invalid lifetime error=%v, want validation", err)
 	}
-	if _, err := NewService(&fakeRunReader{run: domain.AgentRun{ID: fixture.RunID}}, &fakeMetadataRepository{artifact: fixture}, nil).Download(context.Background(), caller, fixture.RunID, fixture.ID, time.Minute); !errors.Is(err, ErrDownloadUnavailable) {
+	if _, err := NewService(&fakeRunReader{run: domain.AgentRun{ID: fixture.RunID}}, &fakeMetadataRepository{artifact: fixture}, nil, nil).Download(context.Background(), caller, fixture.RunID, fixture.ID, time.Minute); !errors.Is(err, ErrDownloadUnavailable) {
 		t.Fatalf("missing store error=%v, want unavailable", err)
 	}
 	corrupt := fixture
 	corrupt.ObjectKey = "tenants/other/projects/other/runs/other/attempts/1/logs/runner.jsonl"
 	store = &fakeArtifactStore{download: ports.PresignedDownload{URL: mustURL(t, "https://storage.example.test/download"), ExpiresAt: fixture.CreatedAt.Add(time.Minute)}}
-	if _, err := NewService(&fakeRunReader{run: domain.AgentRun{ID: fixture.RunID}}, &fakeMetadataRepository{artifact: corrupt}, store).Download(context.Background(), caller, fixture.RunID, fixture.ID, time.Minute); err == nil || store.key.Name != "" {
+	if _, err := NewService(&fakeRunReader{run: domain.AgentRun{ID: fixture.RunID}}, &fakeMetadataRepository{artifact: corrupt}, store, nil).Download(context.Background(), caller, fixture.RunID, fixture.ID, time.Minute); err == nil || store.key.Name != "" {
 		t.Fatalf("corrupt metadata download error=%v store=%#v", err, store)
+	}
+}
+
+func TestDeleteRequiresAdministratorAndRecordsTombstoneAfterPayloadRemoval(t *testing.T) {
+	fixture := artifactFixture(t)
+	now := fixture.CreatedAt.Add(time.Hour)
+	store := &fakeArtifactStore{}
+	metadata := &fakeMetadataRepository{artifact: fixture}
+	service := NewService(&fakeRunReader{run: domain.AgentRun{ID: fixture.RunID}}, metadata, store, func() time.Time { return now })
+	developer := identity.Identity{TenantID: fixture.TenantID, Subject: "developer@example.test", Role: identity.RoleDeveloper}
+	if err := service.Delete(context.Background(), developer, fixture.RunID, fixture.ID, "expired output"); !errors.Is(err, identity.ErrUnauthorized) {
+		t.Fatalf("developer delete error=%v, want unauthorized", err)
+	}
+	administrator := identity.Identity{TenantID: fixture.TenantID, Subject: "administrator@example.test", Role: identity.RoleProjectAdministrator}
+	if err := service.Delete(context.Background(), administrator, fixture.RunID, fixture.ID, "expired output"); err != nil || store.key.Name != "logs/runner.jsonl" || metadata.deletion.ArtifactID != fixture.ID || metadata.deletion.DeletedBy != administrator.Subject || metadata.deletion.DeletionReason != "expired output" || !metadata.deletion.DeletedAt.Equal(now) {
+		t.Fatalf("delete error=%v store=%#v deletion=%#v", err, store, metadata.deletion)
+	}
+	reconciled := &fakeMetadataRepository{artifact: fixture}
+	if err := NewService(&fakeRunReader{run: domain.AgentRun{ID: fixture.RunID}}, reconciled, &fakeArtifactStore{deleteErr: fmt.Errorf("missing: %w", ports.ErrArtifactNotFound)}, func() time.Time { return now }).Delete(context.Background(), administrator, fixture.RunID, fixture.ID, "reconcile missing payload"); err != nil || reconciled.deletion.ArtifactID != fixture.ID {
+		t.Fatalf("reconciled delete error=%v deletion=%#v", err, reconciled.deletion)
+	}
+
+	archived := fixture
+	archived.RetentionClass = domain.ArtifactRetentionArchive
+	if err := NewService(&fakeRunReader{run: domain.AgentRun{ID: fixture.RunID}}, &fakeMetadataRepository{artifact: archived}, &fakeArtifactStore{}, func() time.Time { return now }).Delete(context.Background(), administrator, fixture.RunID, fixture.ID, "expired output"); !errors.Is(err, domain.ErrForbidden) {
+		t.Fatalf("archived delete error=%v, want forbidden", err)
 	}
 }
 
@@ -103,6 +130,8 @@ type fakeMetadataRepository struct {
 	listTenantID uuid.UUID
 	artifact     domain.Artifact
 	artifacts    []domain.Artifact
+	deletion     domain.ArtifactDeletion
+	recordErr    error
 }
 
 func (repository *fakeMetadataRepository) Get(_ context.Context, tenantID, artifactID uuid.UUID) (domain.Artifact, error) {
@@ -118,11 +147,17 @@ func (repository *fakeMetadataRepository) ListByRun(_ context.Context, tenantID,
 	return repository.artifacts, nil
 }
 
+func (repository *fakeMetadataRepository) RecordDeletion(_ context.Context, deletion domain.ArtifactDeletion) error {
+	repository.deletion = deletion
+	return repository.recordErr
+}
+
 type fakeArtifactStore struct {
-	key      ports.ArtifactKey
-	lifetime time.Duration
-	download ports.PresignedDownload
-	err      error
+	key       ports.ArtifactKey
+	lifetime  time.Duration
+	download  ports.PresignedDownload
+	err       error
+	deleteErr error
 }
 
 func (store *fakeArtifactStore) Put(context.Context, ports.ArtifactKey, ports.ArtifactUpload) (ports.ArtifactObject, error) {
@@ -134,8 +169,9 @@ func (store *fakeArtifactStore) Get(context.Context, ports.ArtifactKey) (ports.A
 func (store *fakeArtifactStore) Head(context.Context, ports.ArtifactKey) (ports.ArtifactObject, error) {
 	return ports.ArtifactObject{}, errors.New("not implemented")
 }
-func (store *fakeArtifactStore) Delete(context.Context, ports.ArtifactKey) error {
-	return errors.New("not implemented")
+func (store *fakeArtifactStore) Delete(_ context.Context, key ports.ArtifactKey) error {
+	store.key = key
+	return store.deleteErr
 }
 func (store *fakeArtifactStore) PresignDownload(_ context.Context, key ports.ArtifactKey, lifetime time.Duration) (ports.PresignedDownload, error) {
 	store.key, store.lifetime = key, lifetime
