@@ -16,10 +16,10 @@ closed and validated.
 Phase 7 adds the deterministic non-root Runner, signed mounted-secret task
 verification, confined execution, ordered heartbeats/trajectory, and mandatory
 filesystem or S3-compatible artifacts. The pinned real-kind lifecycle gate
-passes locally and in GitHub Actions run 30760524852. The same run then
-exposed a shared-database PostgreSQL integration-test race; the integration
-target now serializes those package tests with `-p 1`, and the updated PR
-result is pending.
+passes locally and in GitHub Actions run 30761087006. The same repository
+checks run also passed the PostgreSQL, Kafka, MinIO, lint, test, and image
+build gates after the integration target serialized shared database packages
+with `-p 1`.
 
 ## Completed
 
@@ -180,6 +180,4 @@ result is pending.
 
 ## Next tasks
 
-1. Record the updated GitHub Actions result after the PostgreSQL integration
-   isolation fix.
-2. Continue Phase 8 artifact metadata and controlled-access work.
+1. Continue Phase 8 artifact metadata and controlled-access work.
