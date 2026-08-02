@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 7 Agent Runner implemented; CI kind lifecycle verification pending
+Phase 8 artifact metadata and controlled-access foundation in progress
 
 ## Overall state
 
@@ -20,6 +20,9 @@ as passed, but the PR workflow currently does not execute its kind lifecycle
 job. Consequently, real-Kubernetes execution and retained-PVC artifact
 recovery after Pod deletion remain unverified until that job is re-enabled and
 passes in CI.
+Phase 8 begins with the platform-owned artifact-store contract and tenant-safe
+object-key foundation; metadata persistence and controlled access follow in
+separate validated sub-phases.
 
 ## Completed
 
@@ -166,6 +169,11 @@ passes in CI.
   MinIO/S3-compatible adapters, checksum verification/retry, root MinIO test
   profile, and a Runner-specific kind lifecycle scenario
 
+## In progress
+
+- Phase 8.1 artifact-store contract, tenant-scoped object-key foundation, and
+  filesystem/S3 adapter conformance tests
+
 ## Not started
 
 - Model Gateway
@@ -180,4 +188,5 @@ passes in CI.
 
 ## Next tasks
 
-1. Begin Phase 8 artifact metadata and controlled-access work.
+1. Complete Phase 8.1 storage contract and adapter conformance tests.
+2. Add Phase 8.2 tenant-scoped PostgreSQL artifact metadata and audit records.
