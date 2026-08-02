@@ -74,6 +74,27 @@ func TestLoadOverrides(t *testing.T) {
 	}
 }
 
+func TestLoadArtifactStorage(t *testing.T) {
+	configuration, err := Load(testLookup(map[string]string{
+		"AGENTFORGE_ARTIFACT_S3_ENDPOINT":   "minio.example.test:9000",
+		"AGENTFORGE_ARTIFACT_S3_ACCESS_KEY": "server-access-key",
+		"AGENTFORGE_ARTIFACT_S3_SECRET_KEY": "server-secret-key",
+		"AGENTFORGE_ARTIFACT_S3_BUCKET":     "agentforge-artifacts",
+		"AGENTFORGE_ARTIFACT_S3_PREFIX":     "production",
+		"AGENTFORGE_ARTIFACT_S3_SECURE":     "false",
+	}))
+	if err != nil || configuration.ArtifactStorage == nil || configuration.ArtifactStorage.Endpoint != "minio.example.test:9000" || configuration.ArtifactStorage.Secure {
+		t.Fatalf("Load() artifact storage=%#v error=%v", configuration.ArtifactStorage, err)
+	}
+}
+
+func TestLoadRejectsPartialArtifactStorage(t *testing.T) {
+	_, err := Load(testLookup(map[string]string{"AGENTFORGE_ARTIFACT_S3_ENDPOINT": "minio.example.test:9000"}))
+	if err == nil || !strings.Contains(err.Error(), "AGENTFORGE_ARTIFACT_S3_ENDPOINT") {
+		t.Fatalf("Load() error=%v, want artifact storage validation", err)
+	}
+}
+
 func TestLoadRejectsInvalidValues(t *testing.T) {
 	tests := []struct {
 		name  string

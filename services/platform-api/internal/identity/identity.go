@@ -38,6 +38,11 @@ func (identity Identity) CanManageRuns() bool {
 	return identity.Role == RoleDeveloper || identity.Role == RoleProjectAdministrator
 }
 
+// CanManageArtifacts limits destructive artifact operations to administrators.
+func (identity Identity) CanManageArtifacts() bool {
+	return identity.Role == RoleProjectAdministrator
+}
+
 // Validate ensures an identity cannot be constructed with an incomplete scope.
 func (identity Identity) Validate() error {
 	if identity.TenantID == uuid.Nil || strings.TrimSpace(identity.Subject) == "" || !identity.CanManageRuns() {

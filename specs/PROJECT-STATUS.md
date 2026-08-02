@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 7 Agent Runner verified; PostgreSQL integration gate hardened
+Phase 8 artifact service verified
 
 ## Overall state
 
@@ -15,11 +15,18 @@ through 3.5 API, cancellation, and retry commands. Those command gaps are now
 closed and validated.
 Phase 7 adds the deterministic non-root Runner, signed mounted-secret task
 verification, confined execution, ordered heartbeats/trajectory, and mandatory
-filesystem or S3-compatible artifacts. The pinned real-kind lifecycle gate
-passes locally and in GitHub Actions run 30761087006. The same repository
-checks run also passed the PostgreSQL, Kafka, MinIO, lint, test, and image
-build gates after the integration target serialized shared database packages
-with `-p 1`.
+filesystem or S3-compatible artifacts. Local non-kind validation is recorded
+as passed, but the PR workflow currently does not execute its kind lifecycle
+job. Consequently, real-Kubernetes execution and retained-PVC artifact
+recovery after Pod deletion remain unverified until that job is re-enabled and
+passes in CI.
+Phase 8 is verified: it provides the platform-owned artifact-store contract,
+tenant-safe object keys, immutable tenant-scoped PostgreSQL metadata/audit
+records, authenticated metadata reads, bounded server-generated download URLs,
+and controlled HOT payload deletion with immutable tombstone evidence. MinIO,
+PostgreSQL/RLS, Redpanda, Runner, controller, image-build, lint, and repository
+verification gates passed. Automatic retention/archive policy remains deferred
+until an approved lifecycle contract defines it.
 
 ## Completed
 
@@ -164,7 +171,25 @@ with `-p 1`.
   cancellation
 - Phase 7.4 manifest-last mandatory artifacts through confined filesystem and
   MinIO/S3-compatible adapters, checksum verification/retry, root MinIO test
-  profile, and passing local and CI Runner-specific kind lifecycle scenarios
+  profile, and a Runner-specific kind lifecycle scenario
+- Phase 8.1 platform-owned artifact-store contract, tenant-scoped object-key
+  foundation, filesystem/S3 adapter conformance, ADR-006, and verified MinIO
+  integration
+- Phase 8.2 immutable tenant/project/run/attempt-scoped artifact metadata,
+  checksum/retention/audit validation, forward migration `000014`, forced RLS,
+  restrictive application-role grants, repository operations, and verified
+  PostgreSQL RLS integration coverage
+- Phase 8.3 authenticated tenant-scoped artifact list/get/download routes,
+  safe metadata responses, server-only optional S3 configuration, and bounded
+  1- to 900-second download capabilities, verified by the Phase 8 gate
+- Phase 8.4 project-administrator-only HOT artifact deletion, object-first
+  cleanup/retry reconciliation, immutable tenant-scoped deletion tombstones,
+  read filtering, migration `000015`, and verified unit/HTTP/PostgreSQL
+  integration coverage
+
+## In progress
+
+- No active implementation phase; Phase 9 has not started
 
 ## Not started
 
@@ -180,4 +205,6 @@ with `-p 1`.
 
 ## Next tasks
 
-1. Continue Phase 8 artifact metadata and controlled-access work.
+1. Define Phase 9 Model Gateway scope and approved provider/security contract.
+2. Keep automatic artifact archive/expiry policy deferred until its lifecycle
+   contract and operational retention schedule are approved.

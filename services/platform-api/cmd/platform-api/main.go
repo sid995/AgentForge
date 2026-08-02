@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -11,7 +12,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
+
+	"github.com/sid995/agentforge/services/platform-api/internal/adapters/artifactstore"
 	"github.com/sid995/agentforge/services/platform-api/internal/adapters/postgres"
+	"github.com/sid995/agentforge/services/platform-api/internal/application/artifacts"
 	"github.com/sid995/agentforge/services/platform-api/internal/application/runs"
 	"github.com/sid995/agentforge/services/platform-api/internal/buildinfo"
 	"github.com/sid995/agentforge/services/platform-api/internal/config"
@@ -19,6 +25,7 @@ import (
 	"github.com/sid995/agentforge/services/platform-api/internal/httpapi"
 	"github.com/sid995/agentforge/services/platform-api/internal/identity"
 	"github.com/sid995/agentforge/services/platform-api/internal/logging"
+	"github.com/sid995/agentforge/services/platform-api/internal/ports"
 )
 
 func main() {
@@ -53,6 +60,18 @@ func run() error {
 		}
 	}
 	runService := runs.NewService(postgres.NewAgentRunRepository(databasePool), postgres.NewProjectRepository(databasePool), nil)
+	var artifactStore ports.ArtifactStore
+	if configuration.ArtifactStorage != nil {
+		client, err := minio.New(configuration.ArtifactStorage.Endpoint, &minio.Options{Creds: credentials.NewStaticV4(configuration.ArtifactStorage.AccessKey, configuration.ArtifactStorage.SecretKey, ""), Secure: configuration.ArtifactStorage.Secure, TrailingHeaders: true})
+		if err != nil {
+			return fmt.Errorf("create artifact storage client: %w", err)
+		}
+		artifactStore, err = artifactstore.NewS3Store(client, configuration.ArtifactStorage.Bucket, configuration.ArtifactStorage.Prefix)
+		if err != nil {
+			return err
+		}
+	}
+	artifactService := artifacts.NewService(postgres.NewAgentRunRepository(databasePool), postgres.NewArtifactRepository(databasePool), artifactStore, nil)
 	api := httpapi.New(httpapi.Options{
 		Logger:              logger,
 		Build:               buildinfo.Current(),
@@ -61,6 +80,7 @@ func run() error {
 		Readiness:           databasePool.Ping,
 		IdentityResolver:    resolver,
 		Runs:                runService,
+		Artifacts:           artifactService,
 	})
 	server := &http.Server{
 		Handler:           api.Handler(),

@@ -30,3 +30,12 @@ func TestDevelopmentResolverRejectsIncompleteCredential(t *testing.T) {
 		t.Fatal("NewDevelopmentResolver() error = nil, want validation error")
 	}
 }
+
+func TestOnlyProjectAdministratorsCanDeleteArtifacts(t *testing.T) {
+	if (Identity{Role: RoleDeveloper}).CanManageArtifacts() {
+		t.Fatal("developer can delete artifacts")
+	}
+	if !(Identity{Role: RoleProjectAdministrator}).CanManageArtifacts() {
+		t.Fatal("project administrator cannot delete artifacts")
+	}
+}

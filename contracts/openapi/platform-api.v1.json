@@ -3,7 +3,7 @@
   "info": {
     "title": "AgentForge Platform API",
     "version": "v1",
-    "description": "Implemented Phase 3.3 AgentRun API surface. Production OIDC and resource RBAC replace the development identity adapter in Phase 12."
+    "description": "Implemented AgentRun and artifact read API surface. Production OIDC and resource RBAC replace the development identity adapter in Phase 12."
   },
   "paths": {
     "/v1/projects/{projectId}/runs": {
@@ -71,6 +71,33 @@
         "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "object", "additionalProperties": false}}}},
         "responses": {"202": {"description": "Retry request accepted", "headers": {"Idempotent-Replay": {"schema": {"type": "string", "enum": ["true"]}}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RunEnvelope"}}}}, "401": {"$ref": "#/components/responses/AuthenticationRequired"}, "404": {"$ref": "#/components/responses/NotFound"}, "409": {"$ref": "#/components/responses/RetryNotAllowed"}, "413": {"$ref": "#/components/responses/RequestTooLarge"}, "422": {"$ref": "#/components/responses/Validation"}}
       }
+    },
+    "/v1/runs/{runId}/artifacts": {
+      "get": {
+        "operationId": "listRunArtifacts", "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/RunID"}],
+        "responses": {"200": {"description": "Tenant-scoped immutable artifact metadata", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ArtifactList"}}}}, "401": {"$ref": "#/components/responses/AuthenticationRequired"}, "404": {"$ref": "#/components/responses/NotFound"}, "422": {"$ref": "#/components/responses/Validation"}}
+      }
+    },
+    "/v1/runs/{runId}/artifacts/{artifactId}": {
+      "get": {
+        "operationId": "getRunArtifact", "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/RunID"}, {"$ref": "#/components/parameters/ArtifactID"}],
+        "responses": {"200": {"description": "Tenant-scoped immutable artifact metadata", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ArtifactEnvelope"}}}}, "401": {"$ref": "#/components/responses/AuthenticationRequired"}, "404": {"$ref": "#/components/responses/NotFound"}, "422": {"$ref": "#/components/responses/Validation"}}
+      },
+      "delete": {
+        "operationId": "deleteRunArtifact", "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/RunID"}, {"$ref": "#/components/parameters/ArtifactID"}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DeleteArtifactRequest"}}}},
+        "responses": {"204": {"description": "Artifact payload removed and deletion tombstone recorded"}, "401": {"$ref": "#/components/responses/AuthenticationRequired"}, "403": {"$ref": "#/components/responses/AuthorizationDenied"}, "404": {"$ref": "#/components/responses/NotFound"}, "422": {"$ref": "#/components/responses/Validation"}, "503": {"$ref": "#/components/responses/DependencyUnavailable"}}
+      }
+    },
+    "/v1/runs/{runId}/artifacts/{artifactId}/download": {
+      "get": {
+        "operationId": "downloadRunArtifact", "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/RunID"}, {"$ref": "#/components/parameters/ArtifactID"}, {"$ref": "#/components/parameters/ArtifactDownloadExpiry"}],
+        "responses": {"200": {"description": "Short-lived server-generated read capability", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ArtifactDownloadEnvelope"}}}}, "401": {"$ref": "#/components/responses/AuthenticationRequired"}, "404": {"$ref": "#/components/responses/NotFound"}, "422": {"$ref": "#/components/responses/Validation"}, "503": {"$ref": "#/components/responses/DependencyUnavailable"}}
+      }
     }
   },
   "components": {
@@ -78,9 +105,11 @@
     "parameters": {
       "ProjectID": {"name": "projectId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
       "RunID": {"name": "runId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+      "ArtifactID": {"name": "artifactId", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
       "IdempotencyKey": {"name": "Idempotency-Key", "in": "header", "required": true, "schema": {"type": "string", "minLength": 1, "maxLength": 255}},
       "Limit": {"name": "limit", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 50}},
-      "Cursor": {"name": "cursor", "in": "query", "schema": {"type": "string"}}
+      "Cursor": {"name": "cursor", "in": "query", "schema": {"type": "string"}},
+      "ArtifactDownloadExpiry": {"name": "expiresInSeconds", "in": "query", "schema": {"type": "integer", "minimum": 1, "maximum": 900, "default": 300}}
     },
     "schemas": {
       "CreateRunRequest": {
@@ -96,20 +125,28 @@
         }
       },
       "CancelRunRequest": {"type": "object", "additionalProperties": false, "required": ["reason"], "properties": {"reason": {"type": "string", "minLength": 1, "maxLength": 500}}},
+      "DeleteArtifactRequest": {"type": "object", "additionalProperties": false, "required": ["reason"], "properties": {"reason": {"type": "string", "minLength": 1, "maxLength": 500}}},
       "ResourceRequest": {"type": "object", "additionalProperties": false, "required": ["cpuMillis", "memoryMiB"], "properties": {"cpuMillis": {"type": "integer", "minimum": 1, "maximum": 128000}, "memoryMiB": {"type": "integer", "minimum": 1, "maximum": 524288}}},
       "Run": {"type": "object", "required": ["id", "projectId", "runtime", "resources", "timeoutSeconds", "maxAttempts", "attemptCount", "status", "createdAt", "updatedAt"], "properties": {"id": {"type": "string", "format": "uuid"}, "projectId": {"type": "string", "format": "uuid"}, "runtime": {"type": "string"}, "resources": {"$ref": "#/components/schemas/ResourceRequest"}, "timeoutSeconds": {"type": "integer"}, "maxAttempts": {"type": "integer"}, "attemptCount": {"type": "integer"}, "status": {"type": "string", "enum": ["QUEUED", "SCHEDULING", "CAPACITY_WAIT", "PROVISIONING", "RUNNING", "TESTING", "BUILDING", "SCANNING", "READY_TO_DEPLOY", "DEPLOYING", "CANCELLING", "SUCCEEDED", "CANCELLED", "PROVISIONING_FAILED", "EXECUTION_FAILED", "BUILD_FAILED", "POLICY_REJECTED", "DEPLOYMENT_FAILED", "TIMED_OUT"]}, "failureCategory": {"type": ["string", "null"], "enum": ["VALIDATION", "AUTHENTICATION", "AUTHORIZATION", "QUOTA", "CONFLICT", "TRANSIENT_DEPENDENCY", "PERMANENT_DEPENDENCY", "EXECUTION", "POLICY", "INTERNAL", null]}, "cancellationReason": {"type": ["string", "null"]}, "cancellationRequestedBy": {"type": ["string", "null"]}, "cancellationRequestedAt": {"type": ["string", "null"], "format": "date-time"}, "completedAt": {"type": ["string", "null"], "format": "date-time"}, "createdAt": {"type": "string", "format": "date-time"}, "updatedAt": {"type": "string", "format": "date-time"}}},
       "RunEnvelope": {"type": "object", "required": ["data"], "properties": {"data": {"$ref": "#/components/schemas/Run"}}},
       "RunList": {"type": "object", "required": ["data"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/Run"}}, "nextCursor": {"type": "string"}}},
+      "Artifact": {"type": "object", "required": ["id", "attemptNumber", "contentType", "sizeBytes", "sha256", "retentionClass", "createdAt"], "properties": {"id": {"type": "string", "format": "uuid"}, "attemptNumber": {"type": "integer", "minimum": 1}, "contentType": {"type": "string"}, "sizeBytes": {"type": "integer", "minimum": 0, "format": "int64"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "retentionClass": {"type": "string", "enum": ["HOT", "ARCHIVE"]}, "createdAt": {"type": "string", "format": "date-time"}}},
+      "ArtifactEnvelope": {"type": "object", "required": ["data"], "properties": {"data": {"$ref": "#/components/schemas/Artifact"}}},
+      "ArtifactList": {"type": "object", "required": ["data"], "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/Artifact"}}}},
+      "ArtifactDownload": {"type": "object", "required": ["url", "expiresAt"], "properties": {"url": {"type": "string", "format": "uri"}, "expiresAt": {"type": "string", "format": "date-time"}}},
+      "ArtifactDownloadEnvelope": {"type": "object", "required": ["data"], "properties": {"data": {"$ref": "#/components/schemas/ArtifactDownload"}}},
       "Error": {"type": "object", "required": ["error"], "properties": {"error": {"type": "object", "required": ["code", "message", "requestId", "retryable"], "properties": {"code": {"type": "string"}, "message": {"type": "string"}, "requestId": {"type": "string"}, "retryable": {"type": "boolean"}}}}}
     },
     "responses": {
       "AuthenticationRequired": {"description": "Missing or invalid bearer credential", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+      "AuthorizationDenied": {"description": "Authenticated caller lacks permission", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
       "NotFound": {"description": "Resource is absent or outside the caller tenant", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
       "Validation": {"description": "Request is malformed or outside supported bounds", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
       "RequestTooLarge": {"description": "Request body exceeds configured limit", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
       "IdempotencyKeyReused": {"description": "Idempotency key is paired with a different effective request", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
       "RunTerminal": {"description": "Run has a non-cancelled terminal outcome", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
-      "RetryNotAllowed": {"description": "Run is not a retryable terminal failure or has reached its attempt limit", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
+      "RetryNotAllowed": {"description": "Run is not a retryable terminal failure or has reached its attempt limit", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}},
+      "DependencyUnavailable": {"description": "Artifact download capability is temporarily unavailable", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}
     }
   }
 }

@@ -34,6 +34,7 @@ type Config struct {
 	MaxRequestBodyBytes int64
 	Database            DatabaseConfig
 	DevelopmentIdentity *DevelopmentIdentityConfig
+	ArtifactStorage     *ArtifactStorageConfig
 }
 
 // DevelopmentIdentityConfig is an explicitly local-only opaque bearer identity.
@@ -104,6 +105,9 @@ func Load(lookup LookupEnv) (Config, error) {
 		return Config{}, err
 	}
 	if config.DevelopmentIdentity, err = developmentIdentity(lookup, config.Environment); err != nil {
+		return Config{}, err
+	}
+	if config.ArtifactStorage, err = artifactStorage(lookup); err != nil {
 		return Config{}, err
 	}
 
