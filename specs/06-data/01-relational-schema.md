@@ -9,6 +9,7 @@
 - project_environments
 - agent_runs
 - agent_run_attempts
+- artifacts
 - builds
 - deployments
 - deployment_revisions
@@ -191,3 +192,18 @@ reference and attempt ceiling plus intent insert/replay access. The separate
 `agentforge_handoff` role may read those intents and registered cluster/tenant
 authorization and may read or insert durable processed-event markers; it
 cannot update AgentRuns, attempts, reservations, or outbox rows.
+
+## Phase 8.2 artifact metadata boundary
+
+Migration `000014_artifact_metadata` creates the immutable tenant-owned
+`artifacts` table. Each record stores its project/run/attempt lineage, the
+attempt number, trusted scoped object key, content type, byte count, SHA-256,
+retention class, and audited actor/time. Composite foreign keys to the matching
+run/project/tenant and attempt/run/tenant/number keys prevent cross-tenant or
+cross-attempt metadata references; the object key is globally unique.
+
+Artifacts have forced RLS using transaction-local `app.tenant_id` and explicit
+repository tenant predicates. `agentforge_app` receives only `SELECT` and
+`INSERT` grants, making accepted records append-only. The key format is
+validated in the domain as the exact owning tenant/project/run/attempt prefix;
+public clients do not submit a storage key.

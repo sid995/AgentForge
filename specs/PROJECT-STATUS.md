@@ -20,9 +20,11 @@ as passed, but the PR workflow currently does not execute its kind lifecycle
 job. Consequently, real-Kubernetes execution and retained-PVC artifact
 recovery after Pod deletion remain unverified until that job is re-enabled and
 passes in CI.
-Phase 8 begins with the platform-owned artifact-store contract and tenant-safe
-object-key foundation; metadata persistence and controlled access follow in
-separate validated sub-phases.
+Phase 8 has implemented the platform-owned artifact-store contract, tenant-safe
+object-key foundation, and immutable tenant-scoped PostgreSQL metadata/audit
+records. Docker-dependent MinIO and PostgreSQL integration gates remain
+unverified locally; controlled metadata/download access follows in a separate
+sub-phase.
 
 ## Completed
 
@@ -168,12 +170,18 @@ separate validated sub-phases.
 - Phase 7.4 manifest-last mandatory artifacts through confined filesystem and
   MinIO/S3-compatible adapters, checksum verification/retry, root MinIO test
   profile, and a Runner-specific kind lifecycle scenario
+- Phase 8.1 platform-owned artifact-store contract, tenant-scoped object-key
+  foundation, filesystem/S3 adapter conformance, and ADR-006; MinIO integration
+  remains unverified while Docker is unavailable
+- Phase 8.2 immutable tenant/project/run/attempt-scoped artifact metadata,
+  checksum/retention/audit validation, forward migration `000014`, forced RLS,
+  restrictive application-role grants, repository operations, and PostgreSQL
+  RLS integration coverage; the Docker-dependent PostgreSQL gate remains
+  unverified locally
 
 ## In progress
 
-- Phase 8.1 artifact-store contract, tenant-scoped object-key foundation, and
-  filesystem/S3 adapter conformance tests implemented; MinIO integration is
-  pending until Docker is available
+- Phase 8.3 tenant-scoped artifact metadata and controlled-download API
 
 ## Not started
 
@@ -189,5 +197,6 @@ separate validated sub-phases.
 
 ## Next tasks
 
-1. Complete Phase 8.1 storage contract and adapter conformance tests.
-2. Add Phase 8.2 tenant-scoped PostgreSQL artifact metadata and audit records.
+1. Add Phase 8.3 authenticated artifact metadata and controlled-download API.
+2. Run the pending Phase 8.1 MinIO and Phase 8.2 PostgreSQL Docker-dependent
+   integration gates before claiming Phase 8 verification.

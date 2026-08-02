@@ -50,6 +50,14 @@ PostgreSQL integration tests. The migration must be forward-safe and document
 rollback limits. Metadata writes and any required integration event must commit
 atomically.
 
+**Validation status (2026-08-02):** Implemented with immutable metadata,
+tenant-scoped repository operations, forced RLS, and application-role
+`SELECT`/`INSERT` grants. Domain, repository compilation, and static checks
+pass locally. The PostgreSQL migration/RLS integration gate is wired but
+unverified while the Docker daemon is unavailable. No artifact metadata event
+is currently defined by the approved event contract, so this sub-phase does
+not introduce an outbox event.
+
 ### 8.3 Tenant-scoped metadata and access API
 
 Add the versioned OpenAPI contract and authenticated Platform API handlers for

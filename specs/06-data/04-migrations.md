@@ -59,6 +59,15 @@ for cancel/retry replay. The local down migration drops only these appended
 fields; production rollback uses a corrective forward migration after receipts
 have been accepted.
 
+Phase 8.2 adds `000014_artifact_metadata`. It first adds composite ownership
+keys to AgentRuns and attempts, then creates immutable tenant-owned artifact
+metadata with composite lineage foreign keys, checksum and retention checks,
+tenant/run/attempt indexes, forced RLS, and application-role `SELECT`/`INSERT`
+grants. The local down migration drops the empty development artifact table and
+the supporting composite keys. Production rollback preserves accepted artifact
+audit evidence and uses a corrective forward migration rather than deleting
+metadata.
+
 ## Naming and ordering
 
 Migration files use a six-digit, increasing version and a kebab-case purpose:
