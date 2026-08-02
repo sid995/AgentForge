@@ -4,7 +4,7 @@
 
 ## Current milestone
 
-Phase 7 Agent Runner implemented; CI kind lifecycle verification pending
+Phase 7 Agent Runner implemented; kind lifecycle validation enabled
 
 ## Overall state
 
@@ -15,11 +15,10 @@ through 3.5 API, cancellation, and retry commands. Those command gaps are now
 closed and validated.
 Phase 7 adds the deterministic non-root Runner, signed mounted-secret task
 verification, confined execution, ordered heartbeats/trajectory, and mandatory
-filesystem or S3-compatible artifacts. Local non-kind validation is recorded
-as passed, but the PR workflow currently does not execute its kind lifecycle
-job. Consequently, real-Kubernetes execution and retained-PVC artifact
-recovery after Pod deletion remain unverified until that job is re-enabled and
-passes in CI.
+filesystem or S3-compatible artifacts. The pinned real-kind lifecycle gate now
+passes locally, and the PR workflow has been re-enabled to run it. CI evidence
+for the re-enabled job is pending; Phase 7 will be marked Verified after that
+run passes.
 
 ## Completed
 
@@ -164,7 +163,8 @@ passes in CI.
   cancellation
 - Phase 7.4 manifest-last mandatory artifacts through confined filesystem and
   MinIO/S3-compatible adapters, checksum verification/retry, root MinIO test
-  profile, and a Runner-specific kind lifecycle scenario
+  profile, and a passing local Runner-specific kind lifecycle scenario; the CI
+  kind job is re-enabled for confirmation
 
 ## Not started
 
@@ -180,4 +180,6 @@ passes in CI.
 
 ## Next tasks
 
-1. Begin Phase 8 artifact metadata and controlled-access work.
+1. Record the re-enabled GitHub Actions kind result and mark Phase 7 Verified
+   only after it passes.
+2. Continue Phase 8 artifact metadata and controlled-access work.

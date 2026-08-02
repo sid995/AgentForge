@@ -69,15 +69,16 @@ manager_pid="$!"
 "${kind_bin}" load docker-image --name "${cluster_name}" agentforge/runner:kind
 runner_image="$(
     docker exec "${cluster_name}-control-plane" ctr --namespace k8s.io images list |
-        awk '$1 == "docker.io/agentforge/runner:kind" && $3 ~ /^sha256:[a-f0-9]{64}$/ { print "docker.io/agentforge/runner@" $3; exit }'
+        awk '$1 == "docker.io/agentforge/runner:kind" && $3 ~ /^sha256:[a-f0-9]{64}$/ && !found { print "docker.io/agentforge/runner@" $3; found = 1 }'
 )"
 if [[ ! "${runner_image}" =~ ^docker\.io/agentforge/runner@sha256:[a-f0-9]{64}$ ]]; then
     printf '%s\n' 'runner kind gate could not resolve a digest-qualified image' >&2
     exit 1
 fi
+kind_nodes="$(${kind_bin} get nodes --name "${cluster_name}")"
 while IFS= read -r node; do
     docker exec "${node}" ctr --namespace k8s.io images tag docker.io/agentforge/runner:kind "${runner_image}"
-done < <("${kind_bin}" get nodes --name "${cluster_name}")
+done <<<"${kind_nodes}"
 
 "${kubectl_bin}" apply -f - <<YAML
 apiVersion: execution.agentforge.dev/v1alpha1
@@ -126,7 +127,7 @@ deadline=$((SECONDS + 300))
 runner_phase=""
 while (( SECONDS < deadline )); do
     runner_phase="$("${kubectl_bin}" get agentrun lifecycle-runner-success --namespace agentforge-kind-lifecycle -o jsonpath='{.status.phase}' 2>/dev/null || true)"
-    if [[ "${runner_phase}" == "Succeeded" ]]; then
+    if [[ "${runner_phase}" == "Succeeded" || "${runner_phase}" == "Failed" ]]; then
         break
     fi
     if ! kill -0 "${manager_pid}" 2>/dev/null; then
